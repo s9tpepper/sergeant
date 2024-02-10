@@ -1,0 +1,12 @@
+[package]
+name = "twitch-chat-client"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+colored = { version = "2.1.0", features = ["no-color"] }
+futures-util = "0.3.30"
+irc = "0.15.0"
+tokio = { version = "1.36.0", features = ["full"] }
