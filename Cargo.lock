@@ -257,6 +257,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "25cbce373ec4653f1a01a31e8a5e5ec0c622dc27ff9c4e6606eefef5cbbed4a5"
 
 [[package]]
+name = "ferris-twitch"
+version = "0.1.0"
+dependencies = [
+ "colored",
+ "dotenv",
+ "futures-util",
+ "irc",
+ "tokio",
+]
+
+[[package]]
 name = "foreign-types"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -933,17 +944,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f4f7f0dd8d50a853a531c426359045b1998f04219d88799810762cd4ad314234"
 dependencies = [
  "serde",
-]
-
-[[package]]
-name = "twitch-chat-client"
-version = "0.1.0"
-dependencies = [
- "colored",
- "dotenv",
- "futures-util",
- "irc",
- "tokio",
 ]
 
 [[package]]

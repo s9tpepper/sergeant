@@ -1,5 +1,5 @@
 use dotenv::dotenv;
-use twitch_chat_client::twitch::client::TwitchClient;
+use ferris_twitch::twitch::client::TwitchClient;
 use std::env;
 use std::error::Error;
 

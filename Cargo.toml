@@ -1,5 +1,5 @@
 [package]
-name = "twitch-chat-client"
+name = "ferris-twitch"
 version = "0.1.0"
 edition = "2021"
 
