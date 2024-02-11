@@ -4,15 +4,15 @@ pub struct Badges {
 }
 
 pub struct TwitchMessage {
-    badges: Badges,
-    nickname: Option<String>,
-    display_name: Option<String>,
-    first_msg: Option<bool>,
-    returning_chatter: Option<bool>,
-    subscriber: Option<bool>,
-    moderator: Option<bool>,
-    message: Option<String>,
-    color: Option<String>,
+    pub badges: Badges,
+    pub nickname: Option<String>,
+    pub display_name: Option<String>,
+    pub first_msg: Option<bool>,
+    pub returning_chatter: Option<bool>,
+    pub subscriber: Option<bool>,
+    pub moderator: Option<bool>,
+    pub message: Option<String>,
+    pub color: Option<String>,
 }
 
 impl TwitchMessage {
@@ -83,15 +83,12 @@ pub mod messages {
                    "subscriber" => twitch_message.set_field_bool("subscriber", tag.1),
                    "returning-chatter" => twitch_message.set_field_bool("returning_chatter", tag.1),
                    "mod" => twitch_message.set_field_bool("moderator", tag.1),
-                   _ => panic!() // ...at the disco!
+                   _other => {},
                 }
             }
         }
 
-        if let Command::PRIVMSG(ref message_sender, ref message) = message.command {
-            println!("message_sender: {message_sender}");
-            println!("message: {message}");
-
+        if let Command::PRIVMSG(ref _message_sender, ref message) = message.command {
             twitch_message.message = Some(message.to_string());
         }
 

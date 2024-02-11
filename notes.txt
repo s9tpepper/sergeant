@@ -1,0 +1,13 @@
+TODO:
+
+Handle all of these message tags:
+  badge-info
+  client-nonce
+  emotes
+  flags
+  id
+  room-id
+  tmi-sent-ts
+  turbo
+  user-id
+  user-type
