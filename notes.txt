@@ -3,6 +3,7 @@ TODO:
 Handle all of these message tags:
   badge-info
   client-nonce
+  emote-only
   emotes
   flags
   id

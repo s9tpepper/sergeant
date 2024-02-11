@@ -1,3 +1,5 @@
+use hex_rgb::*;
+
 pub struct Badges {
     broadcaster: bool,
     premium: bool,
@@ -16,6 +18,13 @@ pub struct TwitchMessage {
 }
 
 impl TwitchMessage {
+    pub fn get_nickname_color(&self) -> (u8, u8, u8) {
+        let hex_color = self.color.clone().unwrap_or("#FFFFFF".to_string());
+        let color = convert_hexcode_to_rgb(hex_color).unwrap();
+
+        (color.red, color.green, color.blue)
+    }
+
     fn set_field_bool(&mut self, field: &str, tag_value: Option<String>) {
         if let Some(value) = tag_value {
             match field {

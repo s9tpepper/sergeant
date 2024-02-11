@@ -2,6 +2,7 @@ use irc::client::{prelude::Config, Client, Sender, ClientStream};
 use irc::proto::Command;
 use futures_util::StreamExt;
 use std::error::Error;
+use colored::*;
 
 use super::messages::TwitchMessage;
 use super::messages::messages::parse;
@@ -55,16 +56,23 @@ impl TwitchClient {
 
         while let Some(message) = self.stream.next().await.transpose()? {
             if let Command::PRIVMSG(ref _sender, ref _msg) = message.command {
-                let twitch_message:TwitchMessage = parse(message);
-
-                println!("{}: {}",
-                         twitch_message.display_name.unwrap_or("unknown_soldier".to_string()),
-                         twitch_message.message.unwrap());
+                self.print_message(parse(message));
             }
         }
 
         Ok(())
     }
+
+    fn print_message(&self, twitch_message: TwitchMessage) {
+        let nickname = twitch_message.display_name.clone().unwrap_or("unknown_soldier".to_string());
+        let message = twitch_message.message.clone().unwrap();
+        let (r, g, b) = twitch_message.get_nickname_color().to_owned();
+
+        println!("{}: {}",
+                 nickname.truecolor(r, g, b).bold(),
+                 message);
+    }
+
 
     pub fn send_message(self, msg:String) -> Result<(), Box<dyn Error>>{
         self.sender.send(msg.as_str())?;
@@ -72,4 +80,6 @@ impl TwitchClient {
         Ok(())
     }
 }
+
+
 
