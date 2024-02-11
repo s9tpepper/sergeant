@@ -5,8 +5,16 @@ pub struct Badges {
     premium: bool,
 }
 
+pub struct Emote {
+    id: String,
+    start: u16,
+    end: u16,
+    url: String,
+}
+
 pub struct TwitchMessage {
     pub badges: Badges,
+    pub emotes: Vec<Emote>,
     pub nickname: Option<String>,
     pub display_name: Option<String>,
     pub first_msg: Option<bool>,
@@ -44,7 +52,9 @@ impl TwitchMessage {
             match key {
                 "broadcaster" => self.badges.broadcaster = get_bool(value),
                 "premium" => self.badges.premium = get_bool(value),
-                _ => todo!(),
+                other => {
+                    println!("{}", other);
+                },
             }
         }
     }
@@ -64,11 +74,12 @@ pub mod messages {
     use irc::client::prelude::Message;
     use irc::proto::Command;
 
-    use super::{TwitchMessage, Badges};
+    use super::{TwitchMessage, Badges, Emote};
 
     pub fn parse(message: Message) -> TwitchMessage {
         let mut twitch_message = TwitchMessage {
             badges: Badges { broadcaster: false, premium: false },
+            emotes: vec![],
             nickname: None,
             display_name: None,
             first_msg: None,
@@ -92,6 +103,7 @@ pub mod messages {
                    "subscriber" => twitch_message.set_field_bool("subscriber", tag.1),
                    "returning-chatter" => twitch_message.set_field_bool("returning_chatter", tag.1),
                    "mod" => twitch_message.set_field_bool("moderator", tag.1),
+                   "emotes" => process_emotes(tag.1, &mut twitch_message),
                    _other => {},
                 }
             }
@@ -103,6 +115,33 @@ pub mod messages {
 
         twitch_message
     } 
+
+    // 303147449:0-13
+    // id: text-position-for-emote
+    //
+    // https://static-cdn.jtvnw.net/emoticons/v2/303147449/default/dark/1.0
+    fn process_emotes(tag_value: Option<String>, twitch_message: &mut TwitchMessage) {
+        if let Some(value) = tag_value {
+            let emotes:Vec<&str> = value.split('/').collect();
+            for emote_data in emotes.into_iter() {
+                let mut emote_parts = emote_data.split(':');
+                let emote_id = emote_parts.next();
+                let mut emote_position_data = emote_parts.next().unwrap().split("-");
+                let start = emote_position_data.next().unwrap().to_string().parse::<u16>().unwrap();
+                let end = emote_position_data.next().unwrap().to_string().parse::<u16>().unwrap();
+                let url = format!("https://static-cdn.jtvnw.net/emoticons/v2/{}/default/dark/1.0", emote_id.unwrap());
+
+                let emote = Emote {
+                    id: emote_id.unwrap().to_owned(),
+                    start,
+                    end,
+                    url,
+                };
+
+                twitch_message.emotes.push(emote);
+            }
+        }
+    }
 
     fn set_display_name(tag_value: Option<String>, twitch_message: &mut TwitchMessage) {
         if let Some(value) = tag_value {
@@ -132,6 +171,67 @@ mod tests {
     use irc::proto::Message;
     use irc::proto::message::Tag;
     use super::messages::parse;
+
+    #[test]
+    fn test_parse_emotes_length() {
+        let tag = Tag("emotes".to_string(), Some("303147449:0-13/emotesv2_a388006c5b8c4826906248a22b50d0a3:15-28".to_string()));
+        let tags = vec![tag];
+        let msg = Message::with_tags(
+            Some(tags), 
+            Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
+            "PRIVMSG", 
+            vec!["#s9tpepper_", "This is a message from twitch"]);
+
+        let twitch_message = parse(msg.unwrap());
+
+        assert_eq!(2, twitch_message.emotes.len());
+    }
+
+    #[test]
+    fn test_parse_emotes_url() {
+        let tag = Tag("emotes".to_string(), Some("303147449:0-13/emotesv2_a388006c5b8c4826906248a22b50d0a3:15-28".to_string()));
+        let tags = vec![tag];
+        let msg = Message::with_tags(
+            Some(tags), 
+            Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
+            "PRIVMSG", 
+            vec!["#s9tpepper_", "This is a message from twitch"]);
+
+        let twitch_message = parse(msg.unwrap());
+
+        assert_eq!("https://static-cdn.jtvnw.net/emoticons/v2/303147449/default/dark/1.0", twitch_message.emotes[0].url);
+    }
+
+    #[test]
+    fn test_parse_emotes_id() {
+        let tag = Tag("emotes".to_string(), Some("303147449:0-13/emotesv2_a388006c5b8c4826906248a22b50d0a3:15-28".to_string()));
+        let tags = vec![tag];
+        let msg = Message::with_tags(
+            Some(tags), 
+            Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
+            "PRIVMSG", 
+            vec!["#s9tpepper_", "This is a message from twitch"]);
+
+        let twitch_message = parse(msg.unwrap());
+
+        assert_eq!("303147449", twitch_message.emotes[0].id);
+    }
+
+    #[test]
+    fn test_parse_emotes_position() {
+        let tag = Tag("emotes".to_string(), Some("303147449:0-13/emotesv2_a388006c5b8c4826906248a22b50d0a3:15-28".to_string()));
+        let tags = vec![tag];
+        let msg = Message::with_tags(
+            Some(tags), 
+            Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
+            "PRIVMSG", 
+            vec!["#s9tpepper_", "This is a message from twitch"]);
+
+        let twitch_message = parse(msg.unwrap());
+
+        assert_eq!(0, twitch_message.emotes[0].start);
+        assert_eq!(13, twitch_message.emotes[0].end);
+    }
 
     #[test]
     fn test_parse_message() {
