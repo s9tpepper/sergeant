@@ -1,4 +1,5 @@
 use hex_rgb::*;
+use image::io::Reader;
 
 pub struct Badges {
     broadcaster: bool,
@@ -71,8 +72,13 @@ fn get_bool(value: &str) -> bool {
 }
 
 pub mod messages {
+    use std::{path::Path, io::Cursor};
+    use std::error::Error;
+
     use irc::client::prelude::Message;
     use irc::proto::Command;
+    use image::io::Reader as ImageReader;
+    use base64::prelude::*;
 
     use super::{TwitchMessage, Badges, Emote};
 
@@ -111,10 +117,36 @@ pub mod messages {
 
         if let Command::PRIVMSG(ref _message_sender, ref message) = message.command {
             twitch_message.message = Some(message.to_string());
+            let _ = add_emotes(&mut twitch_message);
         }
 
         twitch_message
     } 
+
+    fn add_emotes(twitch_message: &mut TwitchMessage) -> Result<(), Box<dyn Error>> {
+        for emote in twitch_message.emotes.iter() {
+            let url = Path::new(&emote.url);
+            println!("loading: {:?}", url);
+
+            let img_data = ImageReader::open(url)?.decode()?;
+            println!("loading 1");
+
+            let mut buffer:Vec<u8> = Vec::new();
+            println!("loading 2");
+            img_data.write_to(&mut Cursor::new(&mut buffer), image::ImageOutputFormat::Png)?;
+            println!("loading 3");
+            let base64_emote = BASE64_STANDARD.encode(&buffer);
+            println!("base64: {}", base64_emote);
+
+            let mut msg = twitch_message.message.clone().unwrap();
+            msg.push_str(base64_emote.as_str());
+            println!("msg: {}", msg);
+
+            twitch_message.message = Some(msg);
+        }
+
+        Ok(())
+    }
 
     // 303147449:0-13
     // id: text-position-for-emote
@@ -123,16 +155,25 @@ pub mod messages {
     fn process_emotes(tag_value: Option<String>, twitch_message: &mut TwitchMessage) {
         if let Some(value) = tag_value {
             let emotes:Vec<&str> = value.split('/').collect();
+            if emotes.len() == 0 {
+                return
+            }
+
             for emote_data in emotes.into_iter() {
                 let mut emote_parts = emote_data.split(':');
                 let emote_id = emote_parts.next();
-                let mut emote_position_data = emote_parts.next().unwrap().split("-");
+                let Some(emote_id) = emote_id else { continue; };
+
+                let positions = emote_parts.next();
+                let Some(emote_position_data) = positions else { continue; };
+                let mut emote_position_data = emote_position_data.split("-");
                 let start = emote_position_data.next().unwrap().to_string().parse::<u16>().unwrap();
                 let end = emote_position_data.next().unwrap().to_string().parse::<u16>().unwrap();
-                let url = format!("https://static-cdn.jtvnw.net/emoticons/v2/{}/default/dark/1.0", emote_id.unwrap());
+
+                let url = format!("https://static-cdn.jtvnw.net/emoticons/v2/{}/default/dark/1.0", emote_id);
 
                 let emote = Emote {
-                    id: emote_id.unwrap().to_owned(),
+                    id: emote_id.to_owned(),
                     start,
                     end,
                     url,
@@ -171,6 +212,24 @@ mod tests {
     use irc::proto::Message;
     use irc::proto::message::Tag;
     use super::messages::parse;
+
+    #[test]
+    fn test_parse_emotes_attaching() {
+        let tag = Tag("emotes".to_string(), Some("303147449:0-13/emotesv2_a388006c5b8c4826906248a22b50d0a3:15-28".to_string()));
+        let tags = vec![tag];
+        let msg = Message::with_tags(
+            Some(tags), 
+            Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
+            "PRIVMSG", 
+            vec!["#s9tpepper_", "This is a message from twitch"]);
+
+        let twitch_message = parse(msg.unwrap());
+
+        let parsed_message = twitch_message.message.unwrap();
+        println!("{}", parsed_message);
+
+        assert_eq!("hi", parsed_message);
+    }
 
     #[test]
     fn test_parse_emotes_length() {
