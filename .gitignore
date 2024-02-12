@@ -1,3 +1,6 @@
 /target
 .env
 
+# test files
+test.sh
+newtest.sh

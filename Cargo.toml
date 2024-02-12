@@ -13,4 +13,6 @@ futures-util = "0.3.30"
 hex-rgb = "0.1.1"
 image = "0.24.8"
 irc = "0.15.0"
+openssl = "0.10.63"
+reqwest = { version = "0.11.24", features = ["blocking", "rustls"] }
 tokio = { version = "1.36.0", features = ["full"] }

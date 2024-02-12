@@ -56,7 +56,7 @@ impl TwitchClient {
 
         while let Some(message) = self.stream.next().await.transpose()? {
             if let Command::PRIVMSG(ref _sender, ref _msg) = message.command {
-                self.print_message(parse(message));
+                self.print_message(parse(message).await?);
             }
         }
 
