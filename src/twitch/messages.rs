@@ -222,6 +222,8 @@ mod tests {
     use irc::proto::Message;
     use irc::proto::message::Tag;
 
+    use crate::twitch::fixtures::TEST_MESSAGE_WITH_EMOTES;
+
     use super::messages::parse;
 
     use std::error::Error;
@@ -242,7 +244,7 @@ mod tests {
         let parsed_message = twitch_message.message.unwrap();
         println!("{}", parsed_message);
 
-        assert_eq!(MESSAGE_WITH_EMOTES, parsed_message);
+        assert_eq!(TEST_MESSAGE_WITH_EMOTES, parsed_message);
 
         Ok(())
     }
