@@ -4,7 +4,7 @@ use futures_util::StreamExt;
 use std::error::Error;
 use colored::*;
 
-use super::messages::TwitchMessage;
+use super::messages::{TwitchMessage, BadgeItem};
 use super::messages::messages::parse;
 
 const TWITCH_IRC_SERVER:&str = "irc.chat.twitch.tv";
@@ -14,10 +14,15 @@ pub struct TwitchClient {
     // client: Client,
     sender: Sender,
     stream: ClientStream,
+    badges: Vec<BadgeItem>,
 }
 
 impl TwitchClient {
-    pub async fn new(twitch_name: String, oauth_token: String, mut channels: Vec<String>) -> Result<TwitchClient, Box<dyn Error>> {
+    pub async fn new(
+        twitch_name: String,
+        oauth_token: String,
+        mut channels: Vec<String>,
+        badges: Vec<BadgeItem>) -> Result<TwitchClient, Box<dyn Error>> {
 
         // If channels are not defined then default to the twitch user's channel 
         if channels.len() == 0 {
@@ -45,6 +50,7 @@ impl TwitchClient {
             // client,
             sender,
             stream,
+            badges,
         };
 
         Ok(twitch_client)
@@ -65,12 +71,32 @@ impl TwitchClient {
 
     fn print_message(&self, twitch_message: TwitchMessage) {
         let nickname = twitch_message.display_name.clone().unwrap_or("unknown_soldier".to_string());
-        let message = twitch_message.message.clone().unwrap();
+        let mut message = twitch_message.message.clone().unwrap();
         let (r, g, b) = twitch_message.get_nickname_color().to_owned();
 
-        println!("{}: {}",
-                 nickname.truecolor(r, g, b).bold(),
-                 message);
+        if message.ends_with("\n\r") || message.ends_with("\r\n") {
+            message.pop();
+            message.pop();
+            message.pop();
+            message.pop();
+        } 
+
+        if message.ends_with("\r") || message.ends_with("\n") {
+            message.pop();
+            message.pop();
+        }
+
+        if message.starts_with("\r\n") || message.starts_with("\n\r") {
+            message.replace_range(0..3, "");
+        }
+
+        if message.starts_with("\r") || message.starts_with("\n") {
+            message.replace_range(0..1, "");
+        }
+
+        let nick = nickname.truecolor(r, g, b).bold();
+        let final_message = format!("{nick}: {message}");
+        println!("{final_message}");
     }
 
 

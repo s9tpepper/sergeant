@@ -1,8 +1,10 @@
 use hex_rgb::*;
+use serde::{Serialize, Deserialize};
 
 pub struct Badges {
     broadcaster: bool,
     premium: bool,
+    no_audio: bool,
 }
 
 pub struct Emote {
@@ -24,6 +26,29 @@ pub struct TwitchMessage {
     pub moderator: Option<bool>,
     pub message: Option<String>,
     pub color: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct BadgeVersion {
+    // id: String,
+    // title: String,
+    // description: String,
+    // click_action: String,
+    // click_url: String,
+    image_url_1x: String,
+    // image_url_2x: String,
+    // image_url_4x: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct BadgeItem {
+    set_id: String,
+    versions: Vec<BadgeVersion>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TwitchApiResponse<T> {
+    pub data: T,
 }
 
 impl TwitchMessage {
@@ -56,6 +81,7 @@ impl TwitchMessage {
             match key {
                 "broadcaster" => self.badges.broadcaster = get_bool(value),
                 "premium" => self.badges.premium = get_bool(value),
+                "no_audio" => self.badges.no_audio = get_bool(value),
                 other => {
                     println!("{}", other);
                 },
@@ -84,7 +110,7 @@ pub mod messages {
 
     pub async fn parse(message: Message) -> Result<TwitchMessage, Box<dyn Error>> {
         let mut twitch_message = TwitchMessage {
-            badges: Badges { broadcaster: false, premium: false },
+            badges: Badges { no_audio: false, broadcaster: false, premium: false },
             emotes: vec![],
             nickname: None,
             display_name: None,

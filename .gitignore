@@ -1,5 +1,6 @@
 /target
 .env
+.DS_Store
 
 # test files
 test.sh

@@ -430,6 +430,8 @@ dependencies = [
  "irc",
  "openssl",
  "reqwest",
+ "serde",
+ "serde_json",
  "tokio",
 ]
 
