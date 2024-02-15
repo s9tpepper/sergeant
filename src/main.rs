@@ -4,13 +4,9 @@ use ferris_twitch::twitch::messages::{BadgeItem, TwitchApiResponse};
 use std::env;
 use std::error::Error;
 
-// use serde_json;
-
 type AsyncResult<T> = Result<T, Box<dyn Error>>;
 
 const USERNAME_OAUTH_REQUIRED:&str = "You must provide either command line arguments, or environment variables, to connect to Twitch chat.";
-
-// const badges:Vec<BadgeItem>;
 
 fn get_credentials() -> (String, String, String) {
     dotenv().ok();
@@ -20,7 +16,7 @@ fn get_credentials() -> (String, String, String) {
     let client_id_env_var = env::var("CLIENT_ID").unwrap_or("".to_string());
 
     let args: Vec<String> = env::args().collect();
-    
+
     let blank_string = "".to_string();
     let name: String;
     let token: String;
@@ -40,8 +36,7 @@ fn get_credentials() -> (String, String, String) {
     (name, token, client_id)
 }
 
-
-async fn get_badges(token: &String, client_id: &String) -> AsyncResult<Vec<BadgeItem>> {
+async fn get_badges(token: &str, client_id: &String) -> AsyncResult<Vec<BadgeItem>> {
     // Global badges: https://api.twitch.tv/helix/chat/badges/global
     // oauth:141241241241241
     //
@@ -52,7 +47,10 @@ async fn get_badges(token: &String, client_id: &String) -> AsyncResult<Vec<Badge
     //
     let response = reqwest::Client::new()
         .get("https://api.twitch.tv/helix/chat/badges/global")
-        .header("Authorization", format!("Bearer {}", token.replace("oauth:", "")))
+        .header(
+            "Authorization",
+            format!("Bearer {}", token.replace("oauth:", "")),
+        )
         .header("Client-Id", client_id)
         .send()
         .await?

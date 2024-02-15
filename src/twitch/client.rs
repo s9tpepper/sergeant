@@ -1,13 +1,13 @@
-use irc::client::{prelude::Config, Client, Sender, ClientStream};
-use irc::proto::Command;
-use futures_util::StreamExt;
-use std::error::Error;
 use colored::*;
+use futures_util::StreamExt;
+use irc::client::{prelude::Config, Client, ClientStream, Sender};
+use irc::proto::Command;
+use std::error::Error;
 
-use super::messages::{TwitchMessage, BadgeItem};
-use super::messages::messages::parse;
+use super::messages::parse;
+use super::messages::{BadgeItem, TwitchMessage};
 
-const TWITCH_IRC_SERVER:&str = "irc.chat.twitch.tv";
+const TWITCH_IRC_SERVER: &str = "irc.chat.twitch.tv";
 
 pub struct TwitchClient {
     // config: Config,
@@ -22,10 +22,10 @@ impl TwitchClient {
         twitch_name: String,
         oauth_token: String,
         mut channels: Vec<String>,
-        badges: Vec<BadgeItem>) -> Result<TwitchClient, Box<dyn Error>> {
-
-        // If channels are not defined then default to the twitch user's channel 
-        if channels.len() == 0 {
+        badges: Vec<BadgeItem>,
+    ) -> Result<TwitchClient, Box<dyn Error>> {
+        // If channels are not defined then default to the twitch user's channel
+        if channels.is_empty() {
             channels.push(format!("#{}", twitch_name));
         }
 
@@ -58,7 +58,8 @@ impl TwitchClient {
 
     pub async fn start_receiving(&mut self) -> Result<(), Box<dyn Error>> {
         // Ask Twitch for more capabilities so we can receive message tags
-        self.sender.send("CAP REQ :twitch.tv/commands twitch.tv/tags")?;
+        self.sender
+            .send("CAP REQ :twitch.tv/commands twitch.tv/tags")?;
 
         while let Some(message) = self.stream.next().await.transpose()? {
             if let Command::PRIVMSG(ref _sender, ref _msg) = message.command {
@@ -70,7 +71,10 @@ impl TwitchClient {
     }
 
     fn print_message(&self, twitch_message: TwitchMessage) {
-        let nickname = twitch_message.display_name.clone().unwrap_or("unknown_soldier".to_string());
+        let nickname = twitch_message
+            .display_name
+            .clone()
+            .unwrap_or("unknown_soldier".to_string());
         let mut message = twitch_message.message.clone().unwrap();
         let (r, g, b) = twitch_message.get_nickname_color().to_owned();
 
@@ -79,9 +83,9 @@ impl TwitchClient {
             message.pop();
             message.pop();
             message.pop();
-        } 
+        }
 
-        if message.ends_with("\r") || message.ends_with("\n") {
+        if message.ends_with('\r') || message.ends_with('\n') {
             message.pop();
             message.pop();
         }
@@ -90,7 +94,7 @@ impl TwitchClient {
             message.replace_range(0..3, "");
         }
 
-        if message.starts_with("\r") || message.starts_with("\n") {
+        if message.starts_with('\r') || message.starts_with('\n') {
             message.replace_range(0..1, "");
         }
 
@@ -99,13 +103,9 @@ impl TwitchClient {
         println!("{final_message}");
     }
 
-
-    pub fn send_message(self, msg:String) -> Result<(), Box<dyn Error>>{
+    pub fn send_message(self, msg: String) -> Result<(), Box<dyn Error>> {
         self.sender.send(msg.as_str())?;
 
         Ok(())
     }
 }
-
-
-
