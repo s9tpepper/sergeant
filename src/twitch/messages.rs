@@ -8,6 +8,8 @@ use base64::prelude::*;
 use irc::client::prelude::Message;
 use irc::proto::Command;
 
+type AsyncResult<T> = Result<T, Box<dyn Error>>;
+
 pub struct Badges {
     broadcaster: bool,
     premium: bool,
@@ -56,6 +58,30 @@ pub struct BadgeItem {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TwitchApiResponse<T> {
     pub data: T,
+}
+
+pub async fn get_badges(token: &str, client_id: &String) -> AsyncResult<Vec<BadgeItem>> {
+    // Global badges: https://api.twitch.tv/helix/chat/badges/global
+    // oauth:141241241241241
+    //
+    // scopes:
+    // chat:read+chat:edit+channel:moderate+channel:read:redemptions+channel:bot+user:write:chat
+    // base64: encoded app title
+    // https://twitchtokengenerator.com/api/create
+    //
+    let response = reqwest::Client::new()
+        .get("https://api.twitch.tv/helix/chat/badges/global")
+        .header(
+            "Authorization",
+            format!("Bearer {}", token.replace("oauth:", "")),
+        )
+        .header("Client-Id", client_id)
+        .send()
+        .await?
+        .json::<TwitchApiResponse<Vec<BadgeItem>>>()
+        .await?;
+
+    Ok(response.data)
 }
 
 impl TwitchMessage {

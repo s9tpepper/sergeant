@@ -1,3 +1,32 @@
+Feature List:
+Start Chat Client
+- ferris_twitch chat name? token? client_id?
+
+List Chat Commands
+- ferris_twitch commands list
+
+Add Chat Command
+- ferris_twitch commands add font "Berkeley Mono"
+    !font => "Berkeley Mono" 
+
+Remove Chat Command
+- ferris_twitch commands remove font
+
+Send Message
+- ferris_twitch send "A chat message"
+
+Send Announcements
+- ferris_twitch announce -t 10m -n main "This is a scheduled announcement"
+
+List Announcement
+- ferris_twitch announce list
+    main: "This is a scheduled announcement" (10m)
+    event: "This is another announcement" (15m)
+
+Remove Announcement
+- ferris_twitch announce remove event
+
+
 TODO:
 Fix this panic:
   thread 'main' panicked at src/twitch/messages.rs:23:55:
@@ -16,3 +45,4 @@ Handle all of these message tags:
   turbo
   user-id
   user-type
+
