@@ -3,14 +3,14 @@ Start Chat Client
 - ferris_twitch chat name? token? client_id?
 
 List Chat Commands
-- ferris_twitch commands list
+- ferris_twitch cmds list
 
 Add Chat Command
-- ferris_twitch commands add font "Berkeley Mono"
+- ferris_twitch cmds add font "Berkeley Mono"
     !font => "Berkeley Mono" 
 
 Remove Chat Command
-- ferris_twitch commands remove font
+- ferris_twitch cmds remove font
 
 Send Message
 - ferris_twitch send "A chat message"
