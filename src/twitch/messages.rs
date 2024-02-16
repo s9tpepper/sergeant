@@ -115,8 +115,8 @@ impl TwitchMessage {
                 "broadcaster" => self.badges.broadcaster = get_bool(value),
                 "premium" => self.badges.premium = get_bool(value),
                 "no_audio" => self.badges.no_audio = get_bool(value),
-                other => {
-                    println!("{}", other);
+                _other => {
+                    // println!("{}", other);
                 }
             }
         }
