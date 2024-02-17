@@ -68,35 +68,11 @@ impl TwitchClient {
     }
 
     fn print_message(&self, twitch_message: TwitchMessage) {
-        let nickname = twitch_message
-            .display_name
-            .clone()
-            .unwrap_or("unknown_soldier".to_string());
-        let mut message = twitch_message.message.clone().unwrap();
         let (r, g, b) = twitch_message.get_nickname_color().to_owned();
-
-        if message.ends_with("\n\r") || message.ends_with("\r\n") {
-            message.pop();
-            message.pop();
-            message.pop();
-            message.pop();
-        }
-
-        if message.ends_with('\r') || message.ends_with('\n') {
-            message.pop();
-            message.pop();
-        }
-
-        if message.starts_with("\r\n") || message.starts_with("\n\r") {
-            message.replace_range(0..3, "");
-        }
-
-        if message.starts_with('\r') || message.starts_with('\n') {
-            message.replace_range(0..1, "");
-        }
+        let nickname = twitch_message.display_name;
 
         let nick = nickname.truecolor(r, g, b).bold();
-        let final_message = format!("{nick}: {message}");
+        let final_message = format!("{nick}: {}", twitch_message.message);
         println!("{final_message}");
     }
 

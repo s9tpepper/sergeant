@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use base64::prelude::*;
 use irc::client::prelude::Message;
 use irc::proto::Command;
+use irc::proto::message::Tag;
 
 use directories::ProjectDirs;
 
@@ -28,14 +29,14 @@ pub struct Emote {
 pub struct TwitchMessage {
     pub badges: Vec<String>,
     pub emotes: Vec<Emote>,
-    pub nickname: Option<String>,
-    pub display_name: Option<String>,
-    pub first_msg: Option<bool>,
-    pub returning_chatter: Option<bool>,
-    pub subscriber: Option<bool>,
-    pub moderator: Option<bool>,
-    pub message: Option<String>,
-    pub color: Option<String>,
+    pub nickname: String,
+    pub display_name: String,
+    pub first_msg: bool,
+    pub returning_chatter: bool,
+    pub subscriber: bool,
+    pub moderator: bool,
+    pub message: String,
+    pub color: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -136,25 +137,9 @@ async fn generate_badge_file(badge_path: PathBuf, version: &BadgeVersion) -> Res
 
 impl TwitchMessage {
     pub fn get_nickname_color(&self) -> (u8, u8, u8) {
-        let hex_color = self.color.clone().unwrap_or("#FFFFFF".to_string());
-        if hex_color.is_empty() {
-            return (167, 23, 124);
-        }
-        let color = convert_hexcode_to_rgb(hex_color).unwrap();
+        let color = Color::new(&self.color).unwrap();
 
         (color.red, color.green, color.blue)
-    }
-
-    fn set_field_bool(&mut self, field: &str, tag_value: Option<String>) {
-        if let Some(value) = tag_value {
-            match field {
-                "subscriber" => self.subscriber = Some(get_bool(&value)),
-                "first_msg" => self.first_msg = Some(get_bool(&value)),
-                "returning_chatter" => self.returning_chatter = Some(get_bool(&value)),
-                "moderator" => self.moderator = Some(get_bool(&value)),
-                _ => panic!(), // ... at the disco!
-            }
-        }
     }
 }
 
@@ -162,44 +147,55 @@ fn get_bool(value: &str) -> bool {
     value != "0"
 }
 
-pub async fn parse(message: Message) -> Result<TwitchMessage, Box<dyn Error>> {
-    let mut twitch_message = TwitchMessage {
-        badges: vec![],
-        emotes: vec![],
-        nickname: None,
-        display_name: None,
-        first_msg: None,
-        returning_chatter: None,
-        subscriber: None,
-        message: None,
-        moderator: None,
-        color: None,
-    };
+pub async fn parse(irc_message: Message) -> Result<TwitchMessage, Box<dyn Error>> {
 
-    let nickname: String = message.source_nickname().unwrap_or("").to_owned();
-    twitch_message.nickname = Some(nickname);
+    let nickname: String = irc_message.source_nickname().unwrap_or("").to_owned();
 
-    if let Some(tags) = message.tags {
-        for tag in tags {
-            match tag.0.as_str() {
-                "badges" => set_badges(tag.1, &mut twitch_message),
-                "color" => set_color(tag.1, &mut twitch_message),
-                "display-name" => set_display_name(tag.1, &mut twitch_message),
-                "first-msg" => twitch_message.set_field_bool("first_msg", tag.1),
-                "subscriber" => twitch_message.set_field_bool("subscriber", tag.1),
-                "returning-chatter" => twitch_message.set_field_bool("returning_chatter", tag.1),
-                "mod" => twitch_message.set_field_bool("moderator", tag.1),
-                "emotes" => process_emotes(tag.1, &mut twitch_message),
+    let mut badges: Vec<String> = vec![];
+    let mut color = "#FF9912".to_string();
+    let mut display_name = "".to_string();
+    let mut first_msg = false;
+    let mut subscriber = false;
+    let mut returning_chatter = false;
+    let mut moderator = false;
+    let mut emotes: Vec<Emote> = vec![];
+
+    if let Some(tags) = irc_message.tags {
+        for Tag(tag, value) in tags {
+            match tag.as_str() {
+                "badges" => set_badges(value, &mut badges),
+                "color" => if let Some(value) = value { color = value; },
+                "display-name" => if let Some(value) = value { display_name = value; },
+                "first-msg" => if let Some(value) = value { first_msg = get_bool(&value); },
+                "subscriber" => if let Some(value) = value { subscriber = get_bool(&value); },
+                "returning-chatter" => if let Some(value) = value { returning_chatter = get_bool(&value); },
+                "mod" => if let Some(value) = value { moderator = get_bool(&value); },
+                "emotes" => process_emotes(value, &mut emotes),
                 _other => {}
             }
         }
     }
 
-    if let Command::PRIVMSG(ref _message_sender, ref message) = message.command {
-        twitch_message.message = Some(message.to_string());
-        add_emotes(&mut twitch_message).await?;
-        add_badges(&mut twitch_message).await?;
+    let mut message = String::new();
+    if let Command::PRIVMSG(ref _message_sender, ref msg) = irc_message.command {
+        message = msg.to_string();
+        add_emotes(&mut message, &mut emotes).await?;
+        let encoded_badges = add_badges(&badges).await?;
+        display_name = format!("{} {}", encoded_badges, display_name);
     }
+
+    let twitch_message = TwitchMessage {
+        badges,
+        emotes,
+        nickname,
+        display_name,
+        first_msg,
+        returning_chatter,
+        subscriber,
+        message,
+        moderator,
+        color,
+    };
 
     Ok(twitch_message)
 }
@@ -213,30 +209,31 @@ fn get_iterm_encoded_image(base64: String) -> String {
     )
 }
 
-async fn add_badges(twitch_message: &mut TwitchMessage) -> Result<(), Box<dyn Error>> {
+async fn add_badges(badges: &[String]) -> Result<String, Box<dyn Error>> {
+    let mut badges_list = String::new();
     let data_dir = get_data_directory()?;
-    for badge in twitch_message.badges.iter() {
+    for badge in badges.iter() {
         let badge_path = data_dir.join(format!("{}.txt", badge));
         let base64 = fs::read_to_string(badge_path)?;
         let encoded_badge = get_iterm_encoded_image(base64);
-        twitch_message.display_name = Some(format!("{} {}", encoded_badge.as_str(), twitch_message.display_name.as_ref().unwrap()));
+        // format!("{} {}", encoded_badge.as_str(), twitch_message.display_name.as_ref().unwrap()));
+        badges_list.push_str(&encoded_badge);
+
     }
 
-    Ok(())
+    Ok(badges_list)
 }
 
-async fn add_emotes(twitch_message: &mut TwitchMessage) -> Result<(), Box<dyn Error>> {
-    for emote in twitch_message.emotes.iter_mut() {
-        let range = std::ops::Range {
-            start: emote.start,
-            end: emote.end + 1,
-        };
-        let temp_msg = twitch_message.message.clone().expect("no message found");
+async fn add_emotes(message: &mut String, emotes: &mut [Emote]) -> Result<(), Box<dyn Error>> {
+    for emote in emotes.iter_mut() {
+        let range = emote.start..=emote.end;
+        let temp_msg = message.clone();
         let emote_name = temp_msg.get(range);
         emote.name = emote_name.unwrap_or("").to_string();
     }
 
-    for emote in twitch_message.emotes.iter() {
+    // let mut offset = 0;
+    for emote in emotes.iter() {
         let file_bytes: Vec<u8> = reqwest::get(&emote.url).await?.bytes().await?.to_vec();
 
         let img_data = image::load_from_memory(&file_bytes)?;
@@ -255,9 +252,16 @@ async fn add_emotes(twitch_message: &mut TwitchMessage) -> Result<(), Box<dyn Er
         // TODO: Figure out the right encoding to make emotes work in tmux
         // let encoded_image = format!(" \x1b]tmux;\x1b]\x1b]1337;File=size={};inline=1;preserveAspectRatio=1:{}\x07", size, base64_emote.as_str());
 
-        let mut msg = twitch_message.message.clone().unwrap();
-        msg = msg.replace(&emote.name, encoded_image.as_str());
-        twitch_message.message = Some(msg);
+        *message = message.replace(&emote.name, encoded_image.as_str());
+        // message.replace_range(0..=message.len(), &msg);
+
+
+
+    //     let start = emote.start + offset;
+    //     let end = emote.end + offset;
+    //     message.replace_range(start..=end, &encoded_image);
+    // 
+    //     offset += encoded_image.len() - (end - start);
     }
 
     Ok(())
@@ -266,14 +270,9 @@ async fn add_emotes(twitch_message: &mut TwitchMessage) -> Result<(), Box<dyn Er
 // 303147449:0-13
 // id: text-position-for-emote
 // https://static-cdn.jtvnw.net/emoticons/v2/303147449/default/dark/1.0
-fn process_emotes(tag_value: Option<String>, twitch_message: &mut TwitchMessage) {
+fn process_emotes(tag_value: Option<String>, emotes: &mut Vec<Emote>) {
     if let Some(value) = tag_value {
-        let emotes: Vec<&str> = value.split('/').collect();
-        if emotes.is_empty() {
-            return;
-        }
-
-        for emote_data in emotes.into_iter() {
+        for emote_data in value.split('/') {
             let mut emote_parts = emote_data.split(':');
             let emote_id = emote_parts.next();
             let Some(emote_id) = emote_id else {
@@ -281,19 +280,20 @@ fn process_emotes(tag_value: Option<String>, twitch_message: &mut TwitchMessage)
             };
 
             let positions = emote_parts.next();
-            let Some(emote_position_data) = positions else {
+            let Some(mut emote_position_data) = positions else {
                 continue;
             };
-            let mut emote_position_data = emote_position_data.split('-');
-            let start = emote_position_data
-                .next()
-                .unwrap()
+
+            if let Some((a, _)) = emote_position_data.split_once(',') {
+                emote_position_data = a;
+            }
+
+            let (s, e) = emote_position_data.split_once('-').unwrap();
+            let start = s
                 .to_string()
                 .parse::<usize>()
                 .unwrap();
-            let end = emote_position_data
-                .next()
-                .unwrap()
+            let end = e
                 .to_string()
                 .parse::<usize>()
                 .unwrap();
@@ -302,6 +302,7 @@ fn process_emotes(tag_value: Option<String>, twitch_message: &mut TwitchMessage)
                 "https://static-cdn.jtvnw.net/emoticons/v2/{}/default/dark/1.0",
                 emote_id
             );
+
             let name = "".to_string();
 
             let emote = Emote {
@@ -312,29 +313,16 @@ fn process_emotes(tag_value: Option<String>, twitch_message: &mut TwitchMessage)
                 name,
             };
 
-            twitch_message.emotes.push(emote);
+            emotes.push(emote);
         }
     }
 }
 
-fn set_display_name(tag_value: Option<String>, twitch_message: &mut TwitchMessage) {
-    if let Some(value) = tag_value {
-        twitch_message.display_name = Some(value);
-    }
-}
 
-fn set_color(tag_value: Option<String>, twitch_message: &mut TwitchMessage) {
-    if let Some(value) = tag_value {
-        twitch_message.color = Some(value);
-    }
-}
 
-fn set_badges(tag_value: Option<String>, twitch_message: &mut TwitchMessage) {
+fn set_badges(tag_value: Option<String>, valid_badges: &mut Vec<String>) {
     if let Some(value) = tag_value {
-        let badges: Vec<&str> = value.split(',').collect();
-
-        let mut valid_badges: Vec<String> = vec![];
-        for badge in badges.into_iter() {
+        for badge in value.split(',') {
             let mut badge_parts = badge.split('/');
             if let Some(key) = badge_parts.next() {
                 let value = badge_parts.next().unwrap_or("0");
@@ -343,8 +331,6 @@ fn set_badges(tag_value: Option<String>, twitch_message: &mut TwitchMessage) {
                 }
             }
         }
-
-        twitch_message.badges = valid_badges;
     }
 }
 
