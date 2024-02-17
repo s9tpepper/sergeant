@@ -4,13 +4,16 @@ use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fs;
 use std::io::Cursor;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use base64::prelude::*;
 use irc::client::prelude::Message;
 use irc::proto::Command;
 
 use directories::ProjectDirs;
+
+const ESCAPE:&str = "\x1b";
+const BELL:&str = "\x07";
 
 type AsyncResult<T> = Result<T, Box<dyn Error>>;
 
@@ -195,9 +198,31 @@ pub async fn parse(message: Message) -> Result<TwitchMessage, Box<dyn Error>> {
     if let Command::PRIVMSG(ref _message_sender, ref message) = message.command {
         twitch_message.message = Some(message.to_string());
         add_emotes(&mut twitch_message).await?;
+        add_badges(&mut twitch_message).await?;
     }
 
     Ok(twitch_message)
+}
+
+fn get_iterm_encoded_image(base64: String) -> String {
+    format!(
+        "{}]1337;File=inline=1;height=20px;preserveAspectRatio=1:{}{}",
+        ESCAPE,
+        base64.as_str(),
+        BELL
+    )
+}
+
+async fn add_badges(twitch_message: &mut TwitchMessage) -> Result<(), Box<dyn Error>> {
+    let data_dir = get_data_directory()?;
+    for badge in twitch_message.badges.iter() {
+        let badge_path = data_dir.join(format!("{}.txt", badge));
+        let base64 = fs::read_to_string(badge_path)?;
+        let encoded_badge = get_iterm_encoded_image(base64);
+        twitch_message.display_name = Some(format!("{} {}", encoded_badge.as_str(), twitch_message.display_name.as_ref().unwrap()));
+    }
+
+    Ok(())
 }
 
 async fn add_emotes(twitch_message: &mut TwitchMessage) -> Result<(), Box<dyn Error>> {
@@ -213,7 +238,6 @@ async fn add_emotes(twitch_message: &mut TwitchMessage) -> Result<(), Box<dyn Er
 
     for emote in twitch_message.emotes.iter() {
         let file_bytes: Vec<u8> = reqwest::get(&emote.url).await?.bytes().await?.to_vec();
-        let size = file_bytes.len();
 
         let img_data = image::load_from_memory(&file_bytes)?;
 
@@ -224,11 +248,9 @@ async fn add_emotes(twitch_message: &mut TwitchMessage) -> Result<(), Box<dyn Er
         //ESC]1337;File=size=FILESIZEINBYTES;inline=1:base-64 encoded file contents^G
         // works in iTerm
         let encoded_image = format!(
-            "\x1b]1337;File=size={};inline=1;height=20px;preserveAspectRatio=1:{}\x07",
-            size,
+            "\x1b]1337;File=inline=1;height=20px;preserveAspectRatio=1:{}\x07",
             base64_emote.as_str()
         );
-        // let encoded_image = format!("\x1bPtmux;\x1b\x1b]1337;File=size={};inline=1;height=20px;preserveAspectRatio=1:{}\x07\x1b\\", size, base64_emote.as_str());
 
         // TODO: Figure out the right encoding to make emotes work in tmux
         // let encoded_image = format!(" \x1b]tmux;\x1b]\x1b]1337;File=size={};inline=1;preserveAspectRatio=1:{}\x07", size, base64_emote.as_str());
@@ -316,7 +338,7 @@ fn set_badges(tag_value: Option<String>, twitch_message: &mut TwitchMessage) {
             let mut badge_parts = badge.split('/');
             if let Some(key) = badge_parts.next() {
                 let value = badge_parts.next().unwrap_or("0");
-                if value != "1" {
+                if value == "1" {
                     valid_badges.push(key.to_string());
                 }
             }
