@@ -85,8 +85,8 @@ struct Cli {
 } 
 
 async fn start_chat(twitch_name: String, oauth_token: String, client_id: String) -> AsyncResult<()> {
-    let badges = get_badges(&oauth_token, &client_id).await?;
-    let mut twitch_client = TwitchClient::new(twitch_name, oauth_token, vec![], badges).await?;
+    get_badges(&oauth_token, &client_id).await?;
+    let mut twitch_client = TwitchClient::new(twitch_name, oauth_token, vec![]).await?;
     twitch_client.start_receiving().await?;
 
     Ok(())

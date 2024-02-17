@@ -5,7 +5,7 @@ use irc::proto::Command;
 use std::error::Error;
 
 use super::messages::parse;
-use super::messages::{BadgeItem, TwitchMessage};
+use super::messages::TwitchMessage;
 
 const TWITCH_IRC_SERVER: &str = "irc.chat.twitch.tv";
 
@@ -14,15 +14,13 @@ pub struct TwitchClient {
     // client: Client,
     sender: Sender,
     stream: ClientStream,
-    badges: Vec<BadgeItem>,
 }
 
 impl TwitchClient {
     pub async fn new(
         twitch_name: String,
         oauth_token: String,
-        mut channels: Vec<String>,
-        badges: Vec<BadgeItem>,
+        mut channels: Vec<String>
     ) -> Result<TwitchClient, Box<dyn Error>> {
         // If channels are not defined then default to the twitch user's channel
         if channels.is_empty() {
@@ -50,7 +48,6 @@ impl TwitchClient {
             // client,
             sender,
             stream,
-            badges,
         };
 
         Ok(twitch_client)
