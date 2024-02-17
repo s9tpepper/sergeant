@@ -9,6 +9,7 @@ edition = "2021"
 base64 = "0.21.7"
 clap = { version = "4.5.0", features = ["derive", "env"] }
 colored = "2.1.0"
+directories = "5.0.1"
 dotenv = { version = "0.15.0", features = ["cli", "clap"] }
 futures-util = "0.3.30"
 hex-rgb = "0.1.1"

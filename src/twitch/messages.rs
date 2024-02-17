@@ -2,11 +2,15 @@ use hex_rgb::*;
 use serde::{Deserialize, Serialize};
 
 use std::error::Error;
+use std::fs;
 use std::io::Cursor;
+use std::path::{Path, PathBuf};
 
 use base64::prelude::*;
 use irc::client::prelude::Message;
 use irc::proto::Command;
+
+use directories::ProjectDirs;
 
 type AsyncResult<T> = Result<T, Box<dyn Error>>;
 
@@ -54,7 +58,22 @@ pub struct TwitchApiResponse<T> {
     pub data: T,
 }
 
+fn get_data_directory() -> Result<PathBuf, Box<dyn Error>> {
+    if let Some(project_directories) = ProjectDirs::from("com", "s9tpepper", "FerrisTwitch") {
+        let data_directory = project_directories.data_dir();
+
+        if !data_directory.exists() {
+            std::fs::create_dir_all(data_directory)?;
+        }
+
+        return Ok(data_directory.to_path_buf())
+    }
+
+    Err("Could not get data directory".into())
+}
+
 pub async fn get_badges(token: &str, client_id: &String) -> AsyncResult<Vec<BadgeItem>> {
+
     // Global badges: https://api.twitch.tv/helix/chat/badges/global
     // oauth:141241241241241
     //
@@ -63,7 +82,7 @@ pub async fn get_badges(token: &str, client_id: &String) -> AsyncResult<Vec<Badg
     // base64: encoded app title
     // https://twitchtokengenerator.com/api/create
     //
-    let response = reqwest::Client::new()
+    let mut response = reqwest::Client::new()
         .get("https://api.twitch.tv/helix/chat/badges/global")
         .header(
             "Authorization",
@@ -75,7 +94,41 @@ pub async fn get_badges(token: &str, client_id: &String) -> AsyncResult<Vec<Badg
         .json::<TwitchApiResponse<Vec<BadgeItem>>>()
         .await?;
 
+    let data_dir = get_data_directory()?;
+
+    for badge_item in response.data.iter_mut() {
+        let file_name = format!("{}.txt", badge_item.set_id);
+        let Some(ref version) = badge_item.versions.pop() else {
+            continue
+        };
+
+        let badge_path = data_dir.join(file_name);
+
+        if !badge_path.exists() {
+            generate_badge_file(badge_path, version).await?;
+        }
+    }
+
     Ok(response.data)
+}
+
+async fn get_encoded_image(url: &str) -> Result<String, Box<dyn Error>>{
+    let file_bytes: Vec<u8> = reqwest::get(url).await?.bytes().await?.to_vec();
+    let img_data = image::load_from_memory(&file_bytes)?;
+
+    let mut buffer: Vec<u8> = Vec::new();
+    img_data.write_to(&mut Cursor::new(&mut buffer), image::ImageOutputFormat::Png)?;
+    let base64_emote = BASE64_STANDARD.encode(&buffer);
+
+    Ok(base64_emote)
+}
+
+async fn generate_badge_file(badge_path: PathBuf, version: &BadgeVersion) -> Result<(), Box<dyn Error>> {
+    if let Ok(encoded_image) = get_encoded_image(&version.image_url_1x).await {
+        fs::write(badge_path, encoded_image)?;
+    }
+
+    Ok(())
 }
 
 impl TwitchMessage {
