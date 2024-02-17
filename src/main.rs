@@ -8,7 +8,7 @@ use std::error::Error;
 type AsyncResult<T> = Result<T, Box<dyn Error>>;
 
 #[derive(Subcommand)]
-enum Commands {
+enum Cmds {
     /// Start Twitch Chat client
     Chat {
         /// Your Twitch username
@@ -81,7 +81,7 @@ enum Commands {
 #[derive(Parser)]
 struct Cli {
     #[command(subcommand)]
-    commands: Commands,
+    commands: Cmds,
 } 
 
 async fn start_chat(twitch_name: String, oauth_token: String, client_id: String) -> AsyncResult<()> {
@@ -133,21 +133,21 @@ async fn main() {
     dotenv().ok();
 
     let cli = Cli::parse();
-    let _ = match cli.commands {
-        Commands::Chat{ twitch_name, oauth_token, client_id } => { 
+    match cli.commands {
+        Cmds::Chat{ twitch_name, oauth_token, client_id } => { 
             let _ = start_chat(twitch_name, oauth_token, client_id).await;
         },
-        Commands::ListCommands => { list_commands(); },
-        Commands::AddCommand{ command_name, message } => { add_command(command_name, message); },
-        Commands::RemoveCommand{ command_name } => { remove_command(command_name); },
-        Commands::ListAnnouncements => { list_announcements(); },
-        Commands::AddAnnouncement{ announcement_name, timing, message } => {
+        Cmds::ListCommands => { list_commands(); },
+        Cmds::AddCommand{ command_name, message } => { add_command(command_name, message); },
+        Cmds::RemoveCommand{ command_name } => { remove_command(command_name); },
+        Cmds::ListAnnouncements => { list_announcements(); },
+        Cmds::AddAnnouncement{ announcement_name, timing, message } => {
             add_announcement(announcement_name, timing, message);
         },
-        Commands::RemoveAnnouncement{ announcement_name } => {
+        Cmds::RemoveAnnouncement{ announcement_name } => {
             remove_announcement(announcement_name);
         },
-        Commands::SendMessage{ message } => {
+        Cmds::SendMessage{ message } => {
             send_message(message);
         },
     };
