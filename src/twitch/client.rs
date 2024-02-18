@@ -25,7 +25,7 @@ impl TwitchClient {
     pub async fn new(
         twitch_name: String,
         oauth_token: String,
-        mut channels: Vec<String>
+        mut channels: Vec<String>,
     ) -> Result<TwitchClient, Box<dyn Error>> {
         // If channels are not defined then default to the twitch user's channel
         if channels.is_empty() {
@@ -96,13 +96,14 @@ impl TwitchClient {
     }
 
     fn output_chat_command(&self, command: &str, channel: &str) -> Result<(), Box<dyn Error>> {
-        let mut data_dir = get_data_directory()?;
-        data_dir.push("chat_commands");
+        let mut data_dir = get_data_directory(Some("chat_commands"))?;
         data_dir.push(command);
 
         let message = fs::read_to_string(data_dir)?;
 
-        let _ = self.client.send_privmsg(channel, format!("[bot] {}", message));
+        let _ = self
+            .client
+            .send_privmsg(channel, format!("[bot] {}", message));
 
         Ok(())
     }

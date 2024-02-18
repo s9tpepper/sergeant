@@ -9,11 +9,11 @@ use std::path::PathBuf;
 
 use base64::prelude::*;
 use irc::client::prelude::Message;
-use irc::proto::Command;
 use irc::proto::message::Tag;
+use irc::proto::Command;
 
-const ESCAPE:&str = "\x1b";
-const BELL:&str = "\x07";
+const ESCAPE: &str = "\x1b";
+const BELL: &str = "\x07";
 
 type AsyncResult<T> = Result<T, Box<dyn Error>>;
 
@@ -63,7 +63,6 @@ pub struct TwitchApiResponse<T> {
 }
 
 pub async fn get_badges(token: &str, client_id: &String) -> AsyncResult<Vec<BadgeItem>> {
-
     // Global badges: https://api.twitch.tv/helix/chat/badges/global
     // oauth:141241241241241
     //
@@ -84,12 +83,12 @@ pub async fn get_badges(token: &str, client_id: &String) -> AsyncResult<Vec<Badg
         .json::<TwitchApiResponse<Vec<BadgeItem>>>()
         .await?;
 
-    let data_dir = get_data_directory()?;
+    let data_dir = get_data_directory(None)?;
 
     for badge_item in response.data.iter_mut() {
         let file_name = format!("{}.txt", badge_item.set_id);
         let Some(ref version) = badge_item.versions.pop() else {
-            continue
+            continue;
         };
 
         let badge_path = data_dir.join(file_name);
@@ -102,7 +101,7 @@ pub async fn get_badges(token: &str, client_id: &String) -> AsyncResult<Vec<Badg
     Ok(response.data)
 }
 
-async fn get_encoded_image(url: &str) -> Result<String, Box<dyn Error>>{
+async fn get_encoded_image(url: &str) -> Result<String, Box<dyn Error>> {
     let file_bytes: Vec<u8> = reqwest::get(url).await?.bytes().await?.to_vec();
     let img_data = image::load_from_memory(&file_bytes)?;
 
@@ -113,7 +112,10 @@ async fn get_encoded_image(url: &str) -> Result<String, Box<dyn Error>>{
     Ok(base64_emote)
 }
 
-async fn generate_badge_file(badge_path: PathBuf, version: &BadgeVersion) -> Result<(), Box<dyn Error>> {
+async fn generate_badge_file(
+    badge_path: PathBuf,
+    version: &BadgeVersion,
+) -> Result<(), Box<dyn Error>> {
     if let Ok(encoded_image) = get_encoded_image(&version.image_url_1x).await {
         fs::write(badge_path, encoded_image)?;
     }
@@ -134,7 +136,6 @@ fn get_bool(value: &str) -> bool {
 }
 
 pub async fn parse(irc_message: Message) -> Result<TwitchMessage, Box<dyn Error>> {
-
     let nickname: String = irc_message.source_nickname().unwrap_or("").to_owned();
 
     let mut badges: Vec<String> = vec![];
@@ -150,12 +151,36 @@ pub async fn parse(irc_message: Message) -> Result<TwitchMessage, Box<dyn Error>
         for Tag(tag, value) in tags {
             match tag.as_str() {
                 "badges" => set_badges(value, &mut badges),
-                "color" => if let Some(value) = value { color = value; },
-                "display-name" => if let Some(value) = value { display_name = value; },
-                "first-msg" => if let Some(value) = value { first_msg = get_bool(&value); },
-                "subscriber" => if let Some(value) = value { subscriber = get_bool(&value); },
-                "returning-chatter" => if let Some(value) = value { returning_chatter = get_bool(&value); },
-                "mod" => if let Some(value) = value { moderator = get_bool(&value); },
+                "color" => {
+                    if let Some(value) = value {
+                        color = value;
+                    }
+                }
+                "display-name" => {
+                    if let Some(value) = value {
+                        display_name = value;
+                    }
+                }
+                "first-msg" => {
+                    if let Some(value) = value {
+                        first_msg = get_bool(&value);
+                    }
+                }
+                "subscriber" => {
+                    if let Some(value) = value {
+                        subscriber = get_bool(&value);
+                    }
+                }
+                "returning-chatter" => {
+                    if let Some(value) = value {
+                        returning_chatter = get_bool(&value);
+                    }
+                }
+                "mod" => {
+                    if let Some(value) = value {
+                        moderator = get_bool(&value);
+                    }
+                }
                 "emotes" => process_emotes(value, &mut emotes),
                 _other => {}
             }
@@ -201,14 +226,13 @@ fn get_iterm_encoded_image(base64: String) -> String {
 
 async fn add_badges(badges: &[String]) -> Result<String, Box<dyn Error>> {
     let mut badges_list = String::new();
-    let data_dir = get_data_directory()?;
+    let data_dir = get_data_directory(None)?;
     for badge in badges.iter() {
         let badge_path = data_dir.join(format!("{}.txt", badge));
         let base64 = fs::read_to_string(badge_path)?;
         let encoded_badge = get_iterm_encoded_image(base64);
         // format!("{} {}", encoded_badge.as_str(), twitch_message.display_name.as_ref().unwrap()));
         badges_list.push_str(&encoded_badge);
-
     }
 
     Ok(badges_list)
@@ -245,13 +269,11 @@ async fn add_emotes(message: &mut String, emotes: &mut [Emote]) -> Result<(), Bo
         *message = message.replace(&emote.name, encoded_image.as_str());
         // message.replace_range(0..=message.len(), &msg);
 
-
-
-    //     let start = emote.start + offset;
-    //     let end = emote.end + offset;
-    //     message.replace_range(start..=end, &encoded_image);
-    // 
-    //     offset += encoded_image.len() - (end - start);
+        //     let start = emote.start + offset;
+        //     let end = emote.end + offset;
+        //     message.replace_range(start..=end, &encoded_image);
+        //
+        //     offset += encoded_image.len() - (end - start);
     }
 
     Ok(())
@@ -279,14 +301,8 @@ fn process_emotes(tag_value: Option<String>, emotes: &mut Vec<Emote>) {
             }
 
             let (s, e) = emote_position_data.split_once('-').unwrap();
-            let start = s
-                .to_string()
-                .parse::<usize>()
-                .unwrap();
-            let end = e
-                .to_string()
-                .parse::<usize>()
-                .unwrap();
+            let start = s.to_string().parse::<usize>().unwrap();
+            let end = e.to_string().parse::<usize>().unwrap();
 
             let url = format!(
                 "https://static-cdn.jtvnw.net/emoticons/v2/{}/default/dark/1.0",
@@ -307,8 +323,6 @@ fn process_emotes(tag_value: Option<String>, emotes: &mut Vec<Emote>) {
         }
     }
 }
-
-
 
 fn set_badges(tag_value: Option<String>, valid_badges: &mut Vec<String>) {
     if let Some(value) = tag_value {
@@ -463,10 +477,7 @@ mod tests {
 
         let twitch_message = parse(msg.unwrap()).await?;
 
-        assert_eq!(
-            "This is a message from twitch",
-            twitch_message.message
-        );
+        assert_eq!("This is a message from twitch", twitch_message.message);
 
         Ok(())
     }
