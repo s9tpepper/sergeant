@@ -1,9 +1,11 @@
 use dotenv::dotenv;
 use clap::{Parser, Subcommand};
 
+use ferris_twitch::commands::add_chat_command;
 use ferris_twitch::twitch::client::TwitchClient;
 use ferris_twitch::twitch::messages::get_badges;
 use std::error::Error;
+use std::process::exit;
 
 type AsyncResult<T> = Result<T, Box<dyn Error>>;
 
@@ -98,8 +100,10 @@ fn list_commands() {
 }
 
 fn add_command(command_name: String, message: String) {
-    println!("Add command here {} {}", command_name, message);
-    todo!();
+    let result = add_chat_command(command_name, message);
+    if result.is_err() {
+        exit(1)
+    }
 }
 
 fn remove_command(command_name: String) {

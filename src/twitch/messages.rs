@@ -1,3 +1,4 @@
+use crate::utils::get_data_directory;
 use hex_rgb::*;
 use serde::{Deserialize, Serialize};
 
@@ -10,8 +11,6 @@ use base64::prelude::*;
 use irc::client::prelude::Message;
 use irc::proto::Command;
 use irc::proto::message::Tag;
-
-use directories::ProjectDirs;
 
 const ESCAPE:&str = "\x1b";
 const BELL:&str = "\x07";
@@ -60,20 +59,6 @@ pub struct BadgeItem {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TwitchApiResponse<T> {
     pub data: T,
-}
-
-fn get_data_directory() -> Result<PathBuf, Box<dyn Error>> {
-    if let Some(project_directories) = ProjectDirs::from("com", "s9tpepper", "FerrisTwitch") {
-        let data_directory = project_directories.data_dir();
-
-        if !data_directory.exists() {
-            std::fs::create_dir_all(data_directory)?;
-        }
-
-        return Ok(data_directory.to_path_buf())
-    }
-
-    Err("Could not get data directory".into())
 }
 
 pub async fn get_badges(token: &str, client_id: &String) -> AsyncResult<Vec<BadgeItem>> {
