@@ -1,8 +1,13 @@
 use colored::*;
 use futures_util::StreamExt;
-use irc::client::{prelude::Config, Client, ClientStream, Sender};
+use irc::client::prelude::Config;
+use irc::client::{prelude::Client, ClientStream, Sender};
 use irc::proto::Command;
 use std::error::Error;
+use std::fs;
+
+use crate::commands::get_list_commands;
+use crate::utils::get_data_directory;
 
 use super::messages::parse;
 use super::messages::TwitchMessage;
@@ -11,7 +16,7 @@ const TWITCH_IRC_SERVER: &str = "irc.chat.twitch.tv";
 
 pub struct TwitchClient {
     // config: Config,
-    // client: Client,
+    client: Client,
     sender: Sender,
     stream: ClientStream,
 }
@@ -33,7 +38,7 @@ impl TwitchClient {
             password: Some(oauth_token.to_owned()),
             server: Some(TWITCH_IRC_SERVER.to_string()),
             port: Some(6697),
-            channels,
+            channels: channels.clone(),
             ..Config::default()
         };
 
@@ -45,7 +50,7 @@ impl TwitchClient {
 
         let twitch_client = TwitchClient {
             // config,
-            // client,
+            client,
             sender,
             stream,
         };
@@ -74,10 +79,36 @@ impl TwitchClient {
         let nick = nickname.truecolor(r, g, b).bold();
         let final_message = format!("{nick}: {}", twitch_message.message);
         println!("{final_message}");
+
+        self.check_for_chat_commands(&twitch_message.message, &twitch_message.channel);
     }
 
-    pub fn send_message(self, msg: String) -> Result<(), Box<dyn Error>> {
-        self.sender.send(msg.as_str())?;
+    fn check_for_chat_commands(&self, message: &str, channel: &str) {
+        let commands_list = get_list_commands();
+        if let Ok(list) = &commands_list {
+            for item in list {
+                let command = format!("!{}", item);
+                if message.contains(&command) {
+                    let _ = self.output_chat_command(item, channel);
+                }
+            }
+        }
+    }
+
+    fn output_chat_command(&self, command: &str, channel: &str) -> Result<(), Box<dyn Error>> {
+        let mut data_dir = get_data_directory()?;
+        data_dir.push("chat_commands");
+        data_dir.push(command);
+
+        let message = fs::read_to_string(data_dir)?;
+
+        let _ = self.client.send_privmsg(channel, format!("[bot] {}", message));
+
+        Ok(())
+    }
+
+    pub fn send_message(&self, msg: &str) -> Result<(), Box<dyn Error>> {
+        self.sender.send(msg)?;
 
         Ok(())
     }

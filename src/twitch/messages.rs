@@ -36,6 +36,7 @@ pub struct TwitchMessage {
     pub moderator: bool,
     pub message: String,
     pub color: String,
+    pub channel: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -162,7 +163,10 @@ pub async fn parse(irc_message: Message) -> Result<TwitchMessage, Box<dyn Error>
     }
 
     let mut message = String::new();
-    if let Command::PRIVMSG(ref _message_sender, ref msg) = irc_message.command {
+    let mut channel = String::new();
+    if let Command::PRIVMSG(ref message_sender, ref msg) = irc_message.command {
+        channel = message_sender.to_string();
+
         message = msg.to_string();
         add_emotes(&mut message, &mut emotes).await?;
         let encoded_badges = add_badges(&badges).await?;
@@ -180,6 +184,7 @@ pub async fn parse(irc_message: Message) -> Result<TwitchMessage, Box<dyn Error>
         message,
         moderator,
         color,
+        channel,
     };
 
     Ok(twitch_message)
