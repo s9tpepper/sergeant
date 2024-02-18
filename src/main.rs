@@ -1,7 +1,7 @@
 use dotenv::dotenv;
 use clap::{Parser, Subcommand};
 
-use ferris_twitch::commands::{add_chat_command, get_list_commands};
+use ferris_twitch::commands::{add_chat_command, get_list_commands, remove_chat_command};
 use ferris_twitch::twitch::client::TwitchClient;
 use ferris_twitch::twitch::messages::get_badges;
 use std::error::Error;
@@ -43,7 +43,6 @@ enum Cmds {
     /// Remove a chat command
     RemoveCommand {
         /// The name of the chat command to remove
-        #[arg(long, short)]
         command_name: String
     },
 
@@ -109,16 +108,18 @@ fn list_commands() {
 }
 
 
-fn add_command(command_name: String, message: String) {
+fn add_command(command_name: &str, message: &str) {
     let result = add_chat_command(command_name, message);
     if result.is_err() {
         exit(1)
     }
 }
 
-fn remove_command(command_name: String) {
-    println!("Remove command here {}", command_name);
-    todo!();
+fn remove_command(command_name: &str) {
+    let result = remove_chat_command(command_name);
+    if result.is_err() {
+        exit(3)
+    }
 }
 
 fn list_announcements() {
@@ -126,17 +127,17 @@ fn list_announcements() {
     todo!();
 }
 
-fn add_announcement(announcement_name: String, timing: String, message: String) {
+fn add_announcement(announcement_name: &str, timing: &str, message: &str) {
     println!("Add announcement here {} {} {}", announcement_name, timing, message);
     todo!();
 }
 
-fn remove_announcement(announcement_name: String) {
+fn remove_announcement(announcement_name: &str) {
     println!("Remove announcement here {}", announcement_name);
     todo!();
 }
 
-fn send_message(message: String) {
+fn send_message(message: &str) {
     println!("Send message {}", message);
     todo!();
 }
@@ -152,17 +153,17 @@ async fn main() {
             let _ = start_chat(twitch_name, oauth_token, client_id).await;
         },
         Cmds::ListCommands => { list_commands(); },
-        Cmds::AddCommand{ command_name, message } => { add_command(command_name, message); },
-        Cmds::RemoveCommand{ command_name } => { remove_command(command_name); },
+        Cmds::AddCommand{ command_name, message } => { add_command(&command_name, &message); },
+        Cmds::RemoveCommand{ command_name } => { remove_command(&command_name); },
         Cmds::ListAnnouncements => { list_announcements(); },
         Cmds::AddAnnouncement{ announcement_name, timing, message } => {
-            add_announcement(announcement_name, timing, message);
+            add_announcement(&announcement_name, &timing, &message);
         },
         Cmds::RemoveAnnouncement{ announcement_name } => {
-            remove_announcement(announcement_name);
+            remove_announcement(&announcement_name);
         },
         Cmds::SendMessage{ message } => {
-            send_message(message);
+            send_message(&message);
         },
     };
 }
