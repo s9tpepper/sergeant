@@ -1,7 +1,7 @@
 use dotenv::dotenv;
 use clap::{Parser, Subcommand};
 
-use ferris_twitch::commands::add_chat_command;
+use ferris_twitch::commands::{add_chat_command, get_list_commands};
 use ferris_twitch::twitch::client::TwitchClient;
 use ferris_twitch::twitch::messages::get_badges;
 use std::error::Error;
@@ -95,9 +95,19 @@ async fn start_chat(twitch_name: String, oauth_token: String, client_id: String)
 }
 
 fn list_commands() {
-    println!("Chat commands go here");
-    todo!();
+    let result = get_list_commands();
+    if result.is_err() {
+        exit(2)
+    }
+
+    if let Ok(list) = &result {
+        println!("Available chat commands:");
+        for item in list {
+            println!("- {}", item);
+        }
+    }
 }
+
 
 fn add_command(command_name: String, message: String) {
     let result = add_chat_command(command_name, message);

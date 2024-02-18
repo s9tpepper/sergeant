@@ -17,3 +17,24 @@ pub fn add_chat_command(command_name: String, message: String) -> Result<(), Box
 
     Ok(())
 }
+
+pub fn get_list_commands() -> Result<Vec<String>, Box<dyn Error>>{
+    let mut command_path = get_data_directory()?;
+    command_path.push("chat_commands");
+
+    let mut commands = vec![];
+    let dir_entries = fs::read_dir(command_path)?;
+
+    for entry in dir_entries {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_file() {
+            let file_name = path.file_name();
+            if let Some(file_name) = file_name {
+                commands.push(file_name.to_string_lossy().to_string());
+            }
+        }
+    }
+
+    Ok(commands)
+}
