@@ -361,7 +361,7 @@ mod tests {
 
         let twitch_message = parse(msg.unwrap()).await?;
 
-        let parsed_message = twitch_message.message.unwrap();
+        let parsed_message = twitch_message.message;
         println!("{}", parsed_message);
 
         assert_eq!(TEST_MESSAGE_WITH_EMOTES, parsed_message);
@@ -475,7 +475,7 @@ mod tests {
 
         assert_eq!(
             "This is a message from twitch",
-            twitch_message.message.unwrap()
+            twitch_message.message
         );
 
         Ok(())
@@ -497,7 +497,7 @@ mod tests {
 
         let twitch_message = parse(msg.unwrap()).await?;
 
-        assert_eq!("rayslash", twitch_message.nickname.unwrap());
+        assert_eq!("rayslash", twitch_message.nickname);
 
         Ok(())
     }
@@ -510,7 +510,7 @@ mod tests {
 
         let twitch_message = parse(msg.unwrap()).await?;
 
-        assert_eq!("s9tpepper_", twitch_message.display_name.unwrap());
+        assert_eq!("s9tpepper_", twitch_message.display_name);
 
         Ok(())
     }
@@ -523,7 +523,7 @@ mod tests {
 
         let twitch_message = parse(msg.unwrap()).await?;
 
-        assert_eq!("#8A2BE2", twitch_message.color.unwrap());
+        assert_eq!("#8A2BE2", twitch_message.color);
 
         Ok(())
     }
@@ -536,7 +536,7 @@ mod tests {
 
         let twitch_message = parse(msg.unwrap()).await?;
 
-        assert_eq!(true, twitch_message.returning_chatter.unwrap());
+        assert_eq!(true, twitch_message.returning_chatter);
 
         Ok(())
     }
@@ -549,7 +549,7 @@ mod tests {
 
         let twitch_message = parse(msg.unwrap()).await?;
 
-        assert_eq!(false, twitch_message.returning_chatter.unwrap());
+        assert_eq!(false, twitch_message.returning_chatter);
 
         Ok(())
     }
@@ -562,7 +562,7 @@ mod tests {
 
         let twitch_message = parse(msg.unwrap()).await?;
 
-        assert_eq!(true, twitch_message.subscriber.unwrap());
+        assert_eq!(true, twitch_message.subscriber);
 
         Ok(())
     }
@@ -575,7 +575,7 @@ mod tests {
 
         let twitch_message = parse(msg.unwrap()).await?;
 
-        assert_eq!(false, twitch_message.subscriber.unwrap());
+        assert_eq!(false, twitch_message.subscriber);
 
         Ok(())
     }
@@ -588,7 +588,7 @@ mod tests {
 
         let twitch_message = parse(msg.unwrap()).await?;
 
-        assert_eq!(true, twitch_message.moderator.unwrap());
+        assert_eq!(true, twitch_message.moderator);
 
         Ok(())
     }
@@ -601,7 +601,7 @@ mod tests {
 
         let twitch_message = parse(msg.unwrap()).await?;
 
-        assert_eq!(false, twitch_message.moderator.unwrap());
+        assert_eq!(false, twitch_message.moderator);
 
         Ok(())
     }
@@ -614,7 +614,7 @@ mod tests {
 
         let twitch_message = parse(msg.unwrap()).await?;
 
-        assert_eq!(true, twitch_message.first_msg.unwrap());
+        assert_eq!(true, twitch_message.first_msg);
 
         Ok(())
     }
@@ -627,7 +627,7 @@ mod tests {
 
         let twitch_message = parse(msg.unwrap()).await?;
 
-        assert_eq!(false, twitch_message.first_msg.unwrap());
+        assert_eq!(false, twitch_message.first_msg);
 
         Ok(())
     }
