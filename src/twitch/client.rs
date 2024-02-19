@@ -141,6 +141,12 @@ impl TwitchClient {
 
         let nick = nickname.truecolor(r, g, b).bold();
         let final_message = format!("{nick}: {}", twitch_message.message);
+
+        if twitch_message.first_msg {
+            let first_time_msg = "✨ First Time Chat:".to_string().truecolor(255, 255, 0).bold();
+            println!("{}", first_time_msg);
+        }
+
         println!("{final_message}");
 
         self.check_for_chat_commands(&twitch_message.message, &twitch_message.channel);
