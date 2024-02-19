@@ -2,7 +2,6 @@ use colored::*;
 use futures_util::StreamExt;
 use irc::client::prelude::Config;
 use irc::client::{prelude::Client, ClientStream, Sender};
-use irc::proto::Command;
 use std::error::Error;
 use std::fs;
 use std::time::{Duration, SystemTime};
@@ -77,9 +76,9 @@ impl TwitchClient {
             .send("CAP REQ :twitch.tv/commands twitch.tv/tags")?;
 
         while let Some(message) = self.stream.next().await.transpose()? {
-            if let Command::PRIVMSG(ref _sender, ref _msg) = message.command {
-                self.print_message(parse(message).await?);
-
+            if let Ok(parsed_message) = parse(message).await {
+                self.print_message(&parsed_message);
+                self.print_raid_message(&parsed_message);
                 let _ = self.check_for_announcements(announcements, &mut start);
             }
         }
@@ -134,22 +133,34 @@ impl TwitchClient {
 
         Ok(())
     }
+    
+    fn print_raid_message(&self, twitch_message: &TwitchMessage) {
+        if let TwitchMessage::RaidMessage { raid_notice } = twitch_message {
+            let first_time_msg = "🪂 Raid!:".to_string().truecolor(255, 255, 0).bold();
+            println!("{}", first_time_msg);
+            println!("{}", raid_notice.replace("\\s", " "));
+        }
+    }
 
-    fn print_message(&self, twitch_message: TwitchMessage) {
-        let (r, g, b) = twitch_message.get_nickname_color().to_owned();
-        let nickname = twitch_message.display_name;
+    fn print_message(&self, twitch_message: &TwitchMessage) {
+        let TwitchMessage::PrivMessage { message } = twitch_message else {
+            return 
+        };
+
+        let (r, g, b) = message.get_nickname_color().to_owned();
+        let nickname = &message.display_name;
 
         let nick = nickname.truecolor(r, g, b).bold();
-        let final_message = format!("{nick}: {}", twitch_message.message);
+        let final_message = format!("{nick}: {}", message.message);
 
-        if twitch_message.first_msg {
+        if message.first_msg {
             let first_time_msg = "✨ First Time Chat:".to_string().truecolor(255, 255, 0).bold();
             println!("{}", first_time_msg);
         }
 
         println!("{final_message}");
 
-        self.check_for_chat_commands(&twitch_message.message, &twitch_message.channel);
+        self.check_for_chat_commands(&message.message, &message.channel);
     }
 
     fn check_for_chat_commands(&self, message: &str, channel: &str) {
