@@ -51,12 +51,17 @@ pub fn get_list_commands() -> Result<Vec<String>, Box<dyn Error>> {
 pub fn remove_chat_command(command_name: &str) -> Result<(), Box<dyn Error>> {
     let mut command_path = get_data_directory(Some("chat_commands"))?;
     command_path.push(command_name);
-
-    if !command_path.exists() {
-        return Ok(());
+    if command_path.exists() {
+        return Ok(fs::remove_file(command_path)?);
     }
 
-    Ok(fs::remove_file(command_path)?)
+    let mut command_path = get_data_directory(Some("chat_announcements"))?;
+    command_path.push(command_name);
+    if command_path.exists() {
+        return Ok(fs::remove_file(command_path)?);
+    }
+
+    Ok(())
 }
 
 pub fn get_list_announcements() -> Result<Vec<String>, Box<dyn Error>> {
