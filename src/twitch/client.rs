@@ -98,7 +98,7 @@ impl TwitchClient {
             if path.is_file() {
                 let file_contents = fs::read_to_string(&path)?;
                 if let Some((timing, message)) = file_contents.split_once('\n') {
-                    let timing = Duration::from_secs(timing.parse::<u64>()?);
+                    let timing = Duration::from_secs(timing.parse::<u64>()? * 60);
                     let start = SystemTime::now();
                     let message = message.to_string();
                     let announcement = Announcement {
