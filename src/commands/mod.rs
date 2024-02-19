@@ -2,13 +2,19 @@ use std::{error::Error, fs};
 
 use crate::utils::get_data_directory;
 
-pub fn add_chat_command(command_name: &str, message: &str, timing: Option<usize>) -> Result<(), Box<dyn Error>> {
+pub fn add_chat_command(
+    command_name: &str,
+    message: &str,
+    timing: Option<usize>,
+) -> Result<(), Box<dyn Error>> {
     let mut target_dir = "chat_commands";
 
     let file_contents = if let Some(timing) = timing {
         target_dir = "chat_announcements";
         format!("{}\n{}", timing, message)
-    } else { message.to_string() };
+    } else {
+        message.to_string()
+    };
 
     let mut command_path = get_data_directory(Some(target_dir))?;
 

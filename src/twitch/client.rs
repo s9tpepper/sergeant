@@ -5,6 +5,7 @@ use irc::client::{prelude::Client, ClientStream, Sender};
 use irc::proto::Command;
 use std::error::Error;
 use std::fs;
+use std::time::{Duration, SystemTime};
 
 use crate::commands::get_list_commands;
 use crate::utils::get_data_directory;
@@ -19,6 +20,13 @@ pub struct TwitchClient {
     client: Client,
     sender: Sender,
     stream: ClientStream,
+    channels: Vec<String>,
+}
+
+pub struct Announcement {
+    pub timing: Duration,
+    pub message: String,
+    pub start: SystemTime,
 }
 
 impl TwitchClient {
@@ -53,12 +61,17 @@ impl TwitchClient {
             client,
             sender,
             stream,
+            channels,
         };
 
         Ok(twitch_client)
     }
 
-    pub async fn start_receiving(&mut self) -> Result<(), Box<dyn Error>> {
+    pub async fn start_receiving(
+        &mut self,
+        announcements: &mut Vec<Announcement>,
+    ) -> Result<(), Box<dyn Error>> {
+        let mut start = SystemTime::now();
         // Ask Twitch for more capabilities so we can receive message tags
         self.sender
             .send("CAP REQ :twitch.tv/commands twitch.tv/tags")?;
@@ -66,6 +79,56 @@ impl TwitchClient {
         while let Some(message) = self.stream.next().await.transpose()? {
             if let Command::PRIVMSG(ref _sender, ref _msg) = message.command {
                 self.print_message(parse(message).await?);
+
+                let _ = self.check_for_announcements(announcements, &mut start);
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn get_announcements(&mut self) -> Result<Vec<Announcement>, Box<dyn Error>> {
+        let announcements_dir = get_data_directory(Some("chat_announcements"))?;
+
+        let mut announcements = vec![];
+        let dir_entries = fs::read_dir(announcements_dir)?;
+        for entry in dir_entries {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_file() {
+                let file_contents = fs::read_to_string(&path)?;
+                if let Some((timing, message)) = file_contents.split_once('\n') {
+                    let timing = Duration::from_secs(timing.parse::<u64>()?);
+                    let start = SystemTime::now();
+                    let message = message.to_string();
+                    let announcement = Announcement {
+                        timing,
+                        message,
+                        start,
+                    };
+
+                    announcements.push(announcement);
+                }
+            }
+        }
+
+        Ok(announcements)
+    }
+
+    fn check_for_announcements(
+        &self,
+        announcements: &mut Vec<Announcement>,
+        start: &mut SystemTime,
+    ) -> Result<(), Box<dyn Error>> {
+        let channel = &self.channels[0];
+        for announcement in announcements {
+            if let Ok(elapsed) = start.elapsed() {
+                let time_to_announce = elapsed > announcement.timing;
+
+                if time_to_announce {
+                    announcement.start = SystemTime::now();
+                    self.client.send_privmsg(channel, &announcement.message)?;
+                };
             }
         }
 

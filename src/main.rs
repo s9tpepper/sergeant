@@ -23,7 +23,7 @@ enum SubCmds {
         /// The message to send for the command
         message: String,
 
-        /// The timing for the message 
+        /// The timing for the message
         timing: Option<usize>,
     },
 
@@ -77,7 +77,11 @@ async fn start_chat(
 ) -> AsyncResult<()> {
     get_badges(&oauth_token, &client_id).await?;
     let mut twitch_client = TwitchClient::new(twitch_name, oauth_token, vec![]).await?;
-    twitch_client.start_receiving().await?;
+
+    // TODO: Add a flag here to toggle announcements on/off
+    let mut announcements = twitch_client.get_announcements()?;
+
+    twitch_client.start_receiving(&mut announcements).await?;
 
     Ok(())
 }
@@ -160,7 +164,11 @@ async fn main() {
             SubCmds::List => {
                 list_commands();
             }
-            SubCmds::Add { name, message, timing } => {
+            SubCmds::Add {
+                name,
+                message,
+                timing,
+            } => {
                 add_command(&name, &message, timing);
             }
             SubCmds::Remove { name } => {
