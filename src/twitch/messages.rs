@@ -153,7 +153,9 @@ pub async fn parse(irc_message: Message) -> Result<TwitchMessage, Box<dyn Error>
                 "badges" => set_badges(value, &mut badges),
                 "color" => {
                     if let Some(value) = value {
-                        color = value;
+                        if !value.is_empty() {
+                            color = value;
+                        }
                     }
                 }
                 "display-name" => {
