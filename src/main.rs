@@ -2,11 +2,14 @@ use clap::{Parser, Subcommand};
 use dotenv::dotenv;
 
 use ferris_twitch::commands::{
-    add_chat_command, get_list_announcements, get_list_commands, remove_chat_command,
+    add_chat_command, authenticate_with_twitch, get_list_announcements, get_list_commands,
+    remove_chat_command,
 };
 use ferris_twitch::twitch::client::TwitchClient;
 use ferris_twitch::twitch::messages::get_badges;
+use ferris_twitch::utils::get_data_directory;
 use std::error::Error;
+use std::fs;
 use std::process::exit;
 
 type AsyncResult<T> = Result<T, Box<dyn Error>>;
@@ -40,17 +43,18 @@ enum Cmds {
     Chat {
         /// Your Twitch username
         #[arg(long, short = 'n', env = "TWITCH_NAME")]
-        twitch_name: String,
+        twitch_name: Option<String>,
 
         /// Your Twitch OAuth Token
         #[arg(long, short = 't', env = "OAUTH_TOKEN")]
-        oauth_token: String,
+        oauth_token: Option<String>,
 
         /// Your Twitch app client ID
         #[arg(long, short, env = "CLIENT_ID")]
-        client_id: String,
+        client_id: Option<String>,
     },
 
+    /// Manage chat commands
     Commands {
         #[command(subcommand)]
         cmd: SubCmds,
@@ -62,6 +66,9 @@ enum Cmds {
         #[arg(long, short)]
         message: String,
     },
+
+    /// Login to Twitch and get a token
+    Login,
 }
 
 #[derive(Parser)]
@@ -70,12 +77,34 @@ struct Cli {
     commands: Cmds,
 }
 
+fn get_credentials(
+    twitch_name: Option<String>,
+    oauth_token: Option<String>,
+    client_id: Option<String>,
+) -> Result<(String, String, String), Box<dyn Error>> {
+    match (twitch_name, oauth_token, client_id) {
+        (Some(twitch_name), Some(oauth_token), Some(client_id)) => {
+            Ok((twitch_name, oauth_token, client_id))
+        }
+        (twitch_name, oauth_token, client_id) => {
+            let error_message = "You need to provide credentials via positional args, env vars, or by running the login command";
+            let data_dir = get_data_directory(Some("token")).expect(error_message);
+            data_dir.push("token.txt");
+
+            let token_file = fs::read(data_dir);
+
+            Ok(("", "", ""))
+        }
+    }
+}
+
 async fn start_chat(
     twitch_name: String,
     oauth_token: String,
     client_id: String,
 ) -> AsyncResult<()> {
     get_badges(&oauth_token, &client_id).await?;
+
     let mut twitch_client = TwitchClient::new(twitch_name, oauth_token, vec![]).await?;
 
     // TODO: Add a flag here to toggle announcements on/off
@@ -145,10 +174,17 @@ fn send_message(message: &str) {
     todo!();
 }
 
+async fn start_login_flow() {
+    let result = authenticate_with_twitch().await;
+    if result.is_err() {
+        exit(5);
+    }
+}
+
 #[tokio::main]
 async fn main() {
     // Load ENV vars with DotEnv
-    dotenv().ok();
+    // dotenv().ok();
 
     let cli = Cli::parse();
     match cli.commands {
@@ -157,7 +193,13 @@ async fn main() {
             oauth_token,
             client_id,
         } => {
-            let _ = start_chat(twitch_name, oauth_token, client_id).await;
+            // check if there's values
+
+            // if not, check for the token.txt
+            // else panic
+            let (name, token, id) = get_credentials(twitch_name, oauth_token, client_id);
+
+            let _ = start_chat(name, token, id).await;
         }
 
         Cmds::Commands { cmd } => match cmd {
@@ -178,6 +220,10 @@ async fn main() {
 
         Cmds::SendMessage { message } => {
             send_message(&message);
+        }
+
+        Cmds::Login => {
+            start_login_flow().await;
         }
     };
 }

@@ -1,6 +1,40 @@
-use std::{error::Error, fs};
+use core::time::*;
+use serde::{Deserialize, Serialize};
+use std::{error::Error, fs, thread::sleep};
+
+use base64::prelude::*;
 
 use crate::utils::get_data_directory;
+
+const TWITCH_CREATE_TOKEN: &str = "https://twitchtokengenerator.com/api/create/[APP_NAME]/[SCOPES]";
+const TWITCH_SCOPES: &str =
+    "chat:read+chat:edit+channel:moderate+channel:read:redemptions+channel:bot+user:write:chat";
+const TWITCH_TOKEN_STATUS: &str = "https://twitchtokengenerator.com/api/status/[ID]";
+// const TWITCH_TOKEN_REFRESH: &str = "https://twitchtokengenerator.com/api/refresh/[REFRESH_TOKEN]";
+
+#[derive(Serialize, Deserialize, Debug)]
+struct TokenResponse {
+    success: bool,
+    id: String,
+    message: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct TokenStatus {
+    success: bool,
+    id: String,
+
+    // Success field
+    scopes: Option<Vec<String>>,
+    token: Option<String>,
+    refresh: Option<String>,
+    username: Option<String>,
+    client_id: Option<String>,
+
+    // Error fields
+    message: Option<String>,
+    error: Option<usize>,
+}
 
 pub fn add_chat_command(
     command_name: &str,
@@ -81,4 +115,63 @@ pub fn get_list_announcements() -> Result<Vec<String>, Box<dyn Error>> {
     }
 
     Ok(commands)
+}
+
+pub async fn authenticate_with_twitch() -> Result<(), Box<dyn Error>> {
+    let app_name = BASE64_STANDARD.encode(clap::crate_name!());
+    let url = TWITCH_CREATE_TOKEN
+        .replace("[APP_NAME]", &app_name)
+        .replace("[SCOPES]", TWITCH_SCOPES);
+
+    let token_response = reqwest::get(url).await?.json::<TokenResponse>().await?;
+    println!(
+        "Navigate to this url to grant a token: {}",
+        token_response.message
+    );
+
+    let ten_seconds = Duration::from_secs(10);
+    let max_retries = 18;
+    let mut retries = 0;
+
+    let status_id = token_response.id.as_str();
+    let status_url = TWITCH_TOKEN_STATUS.replace("[ID]", status_id);
+    loop {
+        if retries == max_retries {
+            println!("You took too long, please try again");
+            break;
+        }
+
+        let token_status_response = reqwest::get(&status_url).await;
+        if token_status_response.is_err() {
+            dbg!(&token_status_response);
+            return Err("token status response was bad".into());
+        }
+
+        let token_status_serializing = token_status_response?.json::<TokenStatus>().await;
+        if token_status_serializing.is_err() {
+            dbg!(&token_status_serializing);
+            return Err("token serialization failed".into());
+        }
+
+        let token_status = token_status_serializing?;
+        if token_status.success {
+            store_token(token_status)?;
+            break;
+        }
+
+        sleep(ten_seconds);
+        retries += 1;
+    }
+
+    println!("Token has been successfully generated.");
+    Ok(())
+}
+
+fn store_token(token_status: TokenStatus) -> Result<(), Box<dyn Error>> {
+    let mut token_dir = get_data_directory(Some("token"))?;
+    token_dir.push("oath_token.txt");
+
+    fs::write(token_dir, serde_json::to_string(&token_status)?)?;
+
+    Ok(())
 }

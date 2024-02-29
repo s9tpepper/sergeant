@@ -133,7 +133,7 @@ impl TwitchClient {
 
         Ok(())
     }
-    
+
     fn print_raid_message(&self, twitch_message: &TwitchMessage) {
         if let TwitchMessage::RaidMessage { raid_notice } = twitch_message {
             let first_time_msg = "🪂 Raid!:".to_string().truecolor(255, 255, 0).bold();
@@ -144,7 +144,7 @@ impl TwitchClient {
 
     fn print_message(&self, twitch_message: &TwitchMessage) {
         let TwitchMessage::PrivMessage { message } = twitch_message else {
-            return 
+            return;
         };
 
         let (r, g, b) = message.get_nickname_color().to_owned();
@@ -154,7 +154,10 @@ impl TwitchClient {
         let final_message = format!("{nick}: {}", message.message);
 
         if message.first_msg {
-            let first_time_msg = "✨ First Time Chat:".to_string().truecolor(255, 255, 0).bold();
+            let first_time_msg = "✨ First Time Chat:"
+                .to_string()
+                .truecolor(255, 255, 0)
+                .bold();
             println!("{}", first_time_msg);
         }
 
