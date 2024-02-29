@@ -3,7 +3,7 @@ use dotenv::dotenv;
 
 use ferris_twitch::commands::{
     add_chat_command, authenticate_with_twitch, get_list_announcements, get_list_commands,
-    remove_chat_command,
+    remove_chat_command, TokenStatus,
 };
 use ferris_twitch::twitch::client::TwitchClient;
 use ferris_twitch::twitch::messages::get_badges;
@@ -86,14 +86,23 @@ fn get_credentials(
         (Some(twitch_name), Some(oauth_token), Some(client_id)) => {
             Ok((twitch_name, oauth_token, client_id))
         }
-        (twitch_name, oauth_token, client_id) => {
+
+        _ => {
             let error_message = "You need to provide credentials via positional args, env vars, or by running the login command";
-            let data_dir = get_data_directory(Some("token")).expect(error_message);
-            data_dir.push("token.txt");
+            let mut data_dir = get_data_directory(Some("token")).expect(error_message);
+            data_dir.push("oath_token.txt");
+            let token_file = fs::read(data_dir)?;
+            let token_status: TokenStatus = serde_json::from_slice(&token_file)?;
 
-            let token_file = fs::read(data_dir);
-
-            Ok(("", "", ""))
+            if token_status.success {
+                Ok((
+                    token_status.username.unwrap(),
+                    format!("oauth:{}", token_status.token.unwrap()),
+                    token_status.client_id.unwrap(),
+                ))
+            } else {
+                panic!("{}", error_message);
+            }
         }
     }
 }
@@ -184,7 +193,7 @@ async fn start_login_flow() {
 #[tokio::main]
 async fn main() {
     // Load ENV vars with DotEnv
-    // dotenv().ok();
+    dotenv().ok();
 
     let cli = Cli::parse();
     match cli.commands {
@@ -193,12 +202,7 @@ async fn main() {
             oauth_token,
             client_id,
         } => {
-            // check if there's values
-
-            // if not, check for the token.txt
-            // else panic
-            let (name, token, id) = get_credentials(twitch_name, oauth_token, client_id);
-
+            let (name, token, id) = get_credentials(twitch_name, oauth_token, client_id).unwrap();
             let _ = start_chat(name, token, id).await;
         }
 

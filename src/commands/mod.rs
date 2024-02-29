@@ -13,27 +13,27 @@ const TWITCH_TOKEN_STATUS: &str = "https://twitchtokengenerator.com/api/status/[
 // const TWITCH_TOKEN_REFRESH: &str = "https://twitchtokengenerator.com/api/refresh/[REFRESH_TOKEN]";
 
 #[derive(Serialize, Deserialize, Debug)]
-struct TokenResponse {
+pub struct TokenResponse {
     success: bool,
     id: String,
     message: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct TokenStatus {
-    success: bool,
-    id: String,
+pub struct TokenStatus {
+    pub success: bool,
+    pub id: String,
 
     // Success field
-    scopes: Option<Vec<String>>,
-    token: Option<String>,
-    refresh: Option<String>,
-    username: Option<String>,
-    client_id: Option<String>,
+    pub scopes: Option<Vec<String>>,
+    pub token: Option<String>,
+    pub refresh: Option<String>,
+    pub username: Option<String>,
+    pub client_id: Option<String>,
 
     // Error fields
-    message: Option<String>,
-    error: Option<usize>,
+    pub message: Option<String>,
+    pub error: Option<usize>,
 }
 
 pub fn add_chat_command(
