@@ -171,7 +171,7 @@ impl TwitchClient {
         if let Ok(list) = &commands_list {
             for item in list {
                 let command = format!("!{}", item);
-                if message.contains(&command) {
+                if message == command {
                     let _ = self.output_chat_command(item, channel);
                 }
             }
