@@ -177,7 +177,6 @@ async fn parse_privmsg(irc_message: Message) -> Result<TwitchMessage, Box<dyn Er
                 "display-name" => {
                     if let Some(value) = value {
                         display_name = value.trim().to_string();
-                        println!("display name is '{}'", display_name);
                     }
                 }
                 "first-msg" => {
