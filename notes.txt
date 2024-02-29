@@ -1,39 +1,34 @@
 Feature List:
-Start Chat Client
+Start Chat Client - done
 - ferris_twitch chat name? token? client_id?
 
-List Chat Commands
+List Chat Commands  - done
 - ferris_twitch cmds list
 
-Add Chat Command
+Add Chat Command - done
 - ferris_twitch cmds add font "Berkeley Mono"
     !font => "Berkeley Mono" 
 
-Remove Chat Command
+Remove Chat Command - done
 - ferris_twitch cmds remove font
 
-Send Message
+Send Message - do not want anymore
 - ferris_twitch send "A chat message"
 
-Send Announcements
+Send Announcements - done
 - ferris_twitch announce -t 10m -n main "This is a scheduled announcement"
 
-List Announcement
+List Announcement - done
 - ferris_twitch announce list
     main: "This is a scheduled announcement" (10m)
     event: "This is another announcement" (15m)
 
-Remove Announcement
+Remove Announcement - done
 - ferris_twitch announce remove event
 
 
 TODO:
-Fix this panic:
-  thread 'main' panicked at src/twitch/messages.rs:23:55:
-  called `Result::unwrap()` on an `Err` value: "hexcode is empty."
-  note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-
-Handle all of these message tags:
+Handle all of these message tags: - I don't think I need to do this
   badge-info
   client-nonce
   emote-only
