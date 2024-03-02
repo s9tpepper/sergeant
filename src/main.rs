@@ -60,13 +60,12 @@ enum Cmds {
         cmd: SubCmds,
     },
 
-    /// Send a chat message
-    SendMessage {
-        /// The message body
-        #[arg(long, short)]
-        message: String,
-    },
-
+    // Send a chat message
+    // SendMessage {
+    //     /// The message body
+    //     #[arg(long, short)]
+    //     message: String,
+    // },
     /// Login to Twitch and get a token
     Login,
 }
@@ -222,10 +221,9 @@ async fn main() {
             }
         },
 
-        Cmds::SendMessage { message } => {
-            send_message(&message);
-        }
-
+        // Cmds::SendMessage { message } => {
+        //     send_message(&message);
+        // }
         Cmds::Login => {
             start_login_flow().await;
         }
