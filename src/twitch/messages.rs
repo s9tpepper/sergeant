@@ -308,6 +308,28 @@ async fn add_badges(badges: &[String]) -> Result<String, Box<dyn Error>> {
     Ok(badges_list)
 }
 
+/// Tmux sucks.
+fn is_tmux() -> bool {
+    let term = std::env::var("TERM").unwrap();
+    term.contains("tmux") || term.contains("screen")
+}
+
+fn get_emote_prefix() -> String {
+    if is_tmux() {
+        return format!("{0}Ptmux;{0}{0}]", ESCAPE);
+    }
+
+    format!("{ESCAPE}]")
+}
+
+fn get_emote_suffix() -> String {
+    if is_tmux() {
+        return format!("{}{}\\.", BELL, ESCAPE);
+    }
+
+    BELL.to_string()
+}
+
 async fn add_emotes(message: &mut String, emotes: &mut [Emote]) -> Result<(), Box<dyn Error>> {
     for emote in emotes.iter_mut() {
         let range = emote.start..=emote.end;
@@ -316,7 +338,6 @@ async fn add_emotes(message: &mut String, emotes: &mut [Emote]) -> Result<(), Bo
         emote.name = emote_name.unwrap_or("").to_string();
     }
 
-    // let mut offset = 0;
     for emote in emotes.iter() {
         let file_bytes: Vec<u8> = reqwest::get(&emote.url).await?.bytes().await?.to_vec();
 
@@ -326,24 +347,14 @@ async fn add_emotes(message: &mut String, emotes: &mut [Emote]) -> Result<(), Bo
         img_data.write_to(&mut Cursor::new(&mut buffer), image::ImageOutputFormat::Png)?;
         let base64_emote = BASE64_STANDARD.encode(&buffer);
 
-        //ESC]1337;File=size=FILESIZEINBYTES;inline=1:base-64 encoded file contents^G
-        // works in iTerm
         let encoded_image = format!(
-            "\x1b]1337;File=inline=1;height=20px;preserveAspectRatio=1:{}\x07",
-            base64_emote.as_str()
+            "{}1337;File=inline=1;height=20px;width=20px;preserveAspectRatio=1:{}{}",
+            get_emote_prefix(),
+            base64_emote.as_str(),
+            get_emote_suffix()
         );
 
-        // TODO: Figure out the right encoding to make emotes work in tmux
-        // let encoded_image = format!(" \x1b]tmux;\x1b]\x1b]1337;File=size={};inline=1;preserveAspectRatio=1:{}\x07", size, base64_emote.as_str());
-
         *message = message.replace(&emote.name, encoded_image.as_str());
-        // message.replace_range(0..=message.len(), &msg);
-
-        //     let start = emote.start + offset;
-        //     let end = emote.end + offset;
-        //     message.replace_range(start..=end, &encoded_image);
-        //
-        //     offset += encoded_image.len() - (end - start);
     }
 
     Ok(())
