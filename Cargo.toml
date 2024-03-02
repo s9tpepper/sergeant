@@ -6,6 +6,7 @@ description = "Sergeant is a terminal based Twitch chat widget and bot in one. I
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/s9tpepper/sergeant"
 keywords = ["twitch", "chat", "bot"]
+categories = ["command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
