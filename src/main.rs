@@ -1,13 +1,13 @@
 use clap::{Parser, Subcommand};
 use dotenv::dotenv;
 
-use sarge::commands::{
+use sergeant::commands::{
     add_chat_command, authenticate_with_twitch, get_list_announcements, get_list_commands,
     remove_chat_command, TokenStatus,
 };
-use sarge::twitch::client::TwitchClient;
-use sarge::twitch::messages::get_badges;
-use sarge::utils::get_data_directory;
+use sergeant::twitch::client::TwitchClient;
+use sergeant::twitch::messages::get_badges;
+use sergeant::utils::get_data_directory;
 use std::error::Error;
 use std::fs;
 use std::process::exit;

@@ -1555,26 +1555,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f98d2aa92eebf49b69786be48e4477826b256916e84a57ff2a4f21923b48eb4c"
 
 [[package]]
-name = "sarge"
-version = "0.1.0"
-dependencies = [
- "base64",
- "clap 4.5.0",
- "colored",
- "directories",
- "dotenv",
- "futures-util",
- "hex-rgb",
- "image",
- "irc",
- "openssl",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
 name = "schannel"
 version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1669,6 +1649,26 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "sergeant"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "clap 4.5.0",
+ "colored",
+ "directories",
+ "dotenv",
+ "futures-util",
+ "hex-rgb",
+ "image",
+ "irc",
+ "openssl",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
