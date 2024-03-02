@@ -114,7 +114,7 @@ async fn start_chat(
 ) -> AsyncResult<()> {
     get_badges(&oauth_token, &client_id).await?;
 
-    let mut twitch_client = TwitchClient::new(twitch_name, oauth_token, vec![]).await?;
+    let mut twitch_client = TwitchClient::new(twitch_name, oauth_token, client_id, vec![]).await?;
 
     // TODO: Add a flag here to toggle announcements on/off
     let mut announcements = twitch_client.get_announcements()?;

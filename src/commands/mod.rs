@@ -8,7 +8,7 @@ use crate::utils::get_data_directory;
 
 const TWITCH_CREATE_TOKEN: &str = "https://twitchtokengenerator.com/api/create/[APP_NAME]/[SCOPES]";
 const TWITCH_SCOPES: &str =
-    "chat:read+chat:edit+channel:moderate+channel:read:redemptions+channel:bot+user:write:chat";
+    "chat:read+chat:edit+channel:moderate+channel:read:redemptions+channel:bot+user:write:chat+moderator:manage:shoutouts";
 const TWITCH_TOKEN_STATUS: &str = "https://twitchtokengenerator.com/api/status/[ID]";
 // const TWITCH_TOKEN_REFRESH: &str = "https://twitchtokengenerator.com/api/refresh/[REFRESH_TOKEN]";
 
