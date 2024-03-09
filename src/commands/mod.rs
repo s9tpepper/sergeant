@@ -6,10 +6,25 @@ use base64::prelude::*;
 
 use crate::utils::get_data_directory;
 
+const TWITCH_SCOPES: [&str; 12] = [
+    "channel:read:subscriptions",
+    "chat:read",
+    "chat:edit",
+    "channel:moderate",
+    "channel:read:redemptions",
+    "channel:bot",
+    "user:write:chat",
+    "moderator:manage:shoutouts",
+    "user_read",
+    "chat_login",
+    "bits:read",
+    "channel:moderate",
+];
+
 const TWITCH_CREATE_TOKEN: &str = "https://twitchtokengenerator.com/api/create/[APP_NAME]/[SCOPES]";
-const TWITCH_SCOPES: &str =
-    "chat:read+chat:edit+channel:moderate+channel:read:redemptions+channel:bot+user:write:chat+moderator:manage:shoutouts";
 const TWITCH_TOKEN_STATUS: &str = "https://twitchtokengenerator.com/api/status/[ID]";
+
+// TODO: Implement token refreshes for when tokens expire
 // const TWITCH_TOKEN_REFRESH: &str = "https://twitchtokengenerator.com/api/refresh/[REFRESH_TOKEN]";
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -121,7 +136,7 @@ pub async fn authenticate_with_twitch() -> Result<(), Box<dyn Error>> {
     let app_name = BASE64_STANDARD.encode(clap::crate_name!());
     let url = TWITCH_CREATE_TOKEN
         .replace("[APP_NAME]", &app_name)
-        .replace("[SCOPES]", TWITCH_SCOPES);
+        .replace("[SCOPES]", &TWITCH_SCOPES.join("+"));
 
     let token_response = reqwest::get(url).await?.json::<TokenResponse>().await?;
     println!(
