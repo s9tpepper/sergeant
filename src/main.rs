@@ -1,5 +1,8 @@
 use clap::{Parser, Subcommand};
 use dotenv::dotenv;
+use sergeant::commands::add_reward;
+use sergeant::commands::list_rewards;
+use sergeant::commands::remove_reward;
 use sergeant::twitch::pubsub::connect_to_pub_sub;
 use std::fs;
 use std::thread;
@@ -26,6 +29,7 @@ enum SubCmds {
     Add {
         /// The name of the command
         name: String,
+
         /// The message to send for the command
         message: String,
 
@@ -36,6 +40,27 @@ enum SubCmds {
     /// Remove a command
     Remove {
         /// The name of the command to remove
+        name: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum RewardSubCmds {
+    /// List rewards
+    List,
+
+    /// Add a reward command
+    Add {
+        /// The name of the reward as it is named on Twitch
+        name: String,
+
+        /// The cli command to execute for the reward
+        cli: String,
+    },
+
+    /// Remove a command
+    Remove {
+        /// The name of the reward to remove
         name: String,
     },
 }
@@ -61,6 +86,12 @@ enum Cmds {
     Commands {
         #[command(subcommand)]
         cmd: SubCmds,
+    },
+
+    /// Manage chat rewards
+    Rewards {
+        #[command(subcommand)]
+        cmd: RewardSubCmds,
     },
 
     // Send a chat message
@@ -233,6 +264,18 @@ async fn main() {
             }
             SubCmds::Remove { name } => {
                 remove_command(&name);
+            }
+        },
+
+        Cmds::Rewards { cmd } => match cmd {
+            RewardSubCmds::List => {
+                let _ = list_rewards();
+            }
+            RewardSubCmds::Add { name, cli } => {
+                let _ = add_reward(&name, &cli);
+            }
+            RewardSubCmds::Remove { name } => {
+                let _ = remove_reward(&name);
             }
         },
 

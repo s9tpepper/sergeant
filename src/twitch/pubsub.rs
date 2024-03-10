@@ -1,10 +1,12 @@
-use std::{error::Error, sync::Arc};
+use std::{error::Error, process::Command, sync::Arc};
 
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tungstenite::connect;
 use tungstenite::Message::Text;
+
+use crate::commands::get_reward;
 
 use super::{client::User, messages::TwitchApiResponse};
 
@@ -82,7 +84,7 @@ pub struct UserReference {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Redemption {
     pub user: UserReference,
-    // user_input: String,
+    pub user_input: String,
     pub status: String,
     pub reward: Reward,
 }
@@ -152,6 +154,14 @@ pub fn connect_to_pub_sub(
                             );
 
                             println!("{}", message.to_string().green().bold());
+
+                            if let Ok(command_name) =
+                                get_reward(&sub_message.redemption.reward.title)
+                            {
+                                let _ = Command::new(command_name)
+                                    .arg(sub_message.redemption.user_input)
+                                    .output();
+                            }
                         }
 
                         SubMessage::Sub(sub_message) => {

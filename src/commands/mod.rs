@@ -78,8 +78,8 @@ pub fn add_chat_command(
     Ok(())
 }
 
-pub fn get_list_commands() -> Result<Vec<String>, Box<dyn Error>> {
-    let command_path = get_data_directory(Some("chat_commands"))?;
+fn get_list(directory: &str) -> Result<Vec<String>, Box<dyn Error>> {
+    let command_path = get_data_directory(Some(directory))?;
     let mut commands = vec![];
     let dir_entries = fs::read_dir(command_path)?;
 
@@ -95,6 +95,10 @@ pub fn get_list_commands() -> Result<Vec<String>, Box<dyn Error>> {
     }
 
     Ok(commands)
+}
+
+pub fn get_list_commands() -> Result<Vec<String>, Box<dyn Error>> {
+    get_list("chat_commands")
 }
 
 pub fn remove_chat_command(command_name: &str) -> Result<(), Box<dyn Error>> {
@@ -189,4 +193,56 @@ fn store_token(token_status: TokenStatus) -> Result<(), Box<dyn Error>> {
     fs::write(token_dir, serde_json::to_string(&token_status)?)?;
 
     Ok(())
+}
+
+pub fn add_reward(reward_name: &str, cli: &str) -> Result<(), Box<dyn Error>> {
+    let target_dir = "chat_rewards";
+    let file_contents = cli.to_string();
+
+    let mut reward_path = get_data_directory(Some(target_dir))?;
+
+    if !reward_path.exists() {
+        std::fs::create_dir_all(&reward_path)?;
+    }
+
+    reward_path.push(reward_name);
+
+    fs::write(reward_path, file_contents)?;
+
+    Ok(())
+}
+
+pub fn remove_reward(reward_name: &str) -> Result<(), Box<dyn Error>> {
+    let mut reward_path = get_data_directory(Some("chat_rewards"))?;
+    reward_path.push(reward_name);
+    if reward_path.exists() {
+        return Ok(fs::remove_file(reward_path)?);
+    }
+
+    Ok(())
+}
+
+pub fn list_rewards() {
+    if let Ok(list) = get_list("chat_rewards") {
+        if list.is_empty() {
+            println!("Currently no chat rewards have been added.");
+        }
+
+        println!("Available chat rewards:");
+        for item in list {
+            println!("- {}", item);
+        }
+    }
+}
+
+pub fn get_reward(reward_name: &str) -> Result<String, Box<dyn Error>> {
+    let mut reward_path = get_data_directory(Some("chat_rewards"))?;
+    reward_path.push(reward_name);
+
+    if reward_path.exists() {
+        let command_name = fs::read_to_string(reward_path)?;
+        return Ok(command_name);
+    }
+
+    Err("No reward found".into())
 }
