@@ -84,7 +84,7 @@ pub struct UserReference {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Redemption {
     pub user: UserReference,
-    pub user_input: String,
+    pub user_input: Option<String>,
     pub status: String,
     pub reward: Reward,
 }
@@ -158,9 +158,9 @@ pub fn connect_to_pub_sub(
                             if let Ok(command_name) =
                                 get_reward(&sub_message.redemption.reward.title)
                             {
-                                let _ = Command::new(command_name)
-                                    .arg(sub_message.redemption.user_input)
-                                    .output();
+                                if let Some(user_input) = sub_message.redemption.user_input {
+                                    let _ = Command::new(command_name).arg(user_input).output();
+                                }
                             }
                         }
 
