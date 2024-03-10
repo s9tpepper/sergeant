@@ -1,27 +1,19 @@
 use clap::{Parser, Subcommand};
-use colored::Colorize;
 use dotenv::dotenv;
-use serde::Deserialize;
-use serde::Serialize;
-use serde_json::Value;
-use std::any::type_name;
+use sergeant::twitch::pubsub::connect_to_pub_sub;
 use std::fs;
 use std::thread;
-use tungstenite::Message::Text;
 
-use serde_json::json;
 use sergeant::commands::{
     add_chat_command, authenticate_with_twitch, get_list_announcements, get_list_commands,
     remove_chat_command, TokenStatus,
 };
-use sergeant::twitch::client::{TwitchClient, User};
-use sergeant::twitch::messages::{get_badges, TwitchApiResponse};
+use sergeant::twitch::client::TwitchClient;
+use sergeant::twitch::messages::get_badges;
 use sergeant::utils::get_data_directory;
 use std::error::Error;
 use std::process::exit;
 use std::sync::Arc;
-
-use tungstenite::connect;
 
 type AsyncResult<T> = Result<T, Box<dyn Error>>;
 
@@ -118,186 +110,6 @@ fn get_credentials(
     }
 }
 
-#[derive(Deserialize, Serialize)]
-struct SocketMessage {
-    r#type: String,
-    data: SocketMessageData,
-}
-
-#[derive(Deserialize, Serialize)]
-struct SocketMessageData {
-    topic: String,
-    message: String,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-struct MessageData {
-    pub data: SubMessage,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(untagged)]
-enum SubMessage {
-    Points(Box<ChannelPointsData>),
-    Sub(SubscribeEvent),
-    Bits(BitsEvent),
-    // Bits {},
-    // BitsUnlocks {},
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-struct BitsEvent {
-    pub is_anonymous: bool,
-    pub message_type: String,
-    pub data: BitsEventData,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-struct BitsEventData {
-    pub user_name: String,
-    pub chat_message: String,
-    pub bits_used: u64,
-    pub total_bits_used: u64,
-    pub context: String, // cheer
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-struct SubscribeEvent {
-    pub topic: String,
-    pub message: SubscribeMessage,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-struct SubscribeMessage {
-    pub display_name: String,   // some_person
-    pub cumulative_months: u64, // 9
-    pub streak_months: u64,     // 3
-    pub context: String,        // subgift, resub
-    pub sub_message: String,    // A message, possibly with emotes
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-struct ChannelPointsData {
-    pub timestamp: String,
-    pub redemption: Redemption,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-struct UserReference {
-    pub id: String,
-    pub login: String,
-    pub display_name: String,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-struct Redemption {
-    pub user: UserReference,
-    // user_input: String,
-    pub status: String,
-    pub reward: Reward,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-struct Reward {
-    pub title: String,
-    pub prompt: String,
-    pub cost: u64,
-}
-
-fn connect_to_pub_sub(
-    _twitch_name: Arc<String>,
-    oauth_token: Arc<String>,
-    client_id: Arc<String>,
-) -> Result<(), Box<dyn Error>> {
-    let get_users_url = "https://api.twitch.tv/helix/users";
-    let mut response = reqwest::blocking::Client::new()
-        .get(get_users_url)
-        .header(
-            "Authorization",
-            format!("Bearer {}", oauth_token.replace("oauth:", "")),
-        )
-        .header("Client-Id", client_id.to_string())
-        .send()?
-        .json::<TwitchApiResponse<Vec<User>>>()?;
-
-    let user = response.data.swap_remove(0);
-    let twitch_pub_sub = "wss://pubsub-edge.twitch.tv";
-
-    match connect(twitch_pub_sub) {
-        Ok((mut socket, _response)) => {
-            let channel_bits = "channel-bits-events-v2.".to_string() + &user.id;
-            // let channel_bits_unlocks = "channel-bits-badge-unlocks.".to_string() + &user.id;
-            let channel_points = "channel-points-channel-v1.".to_string() + &user.id;
-            let channel_subscribe = "channel-subscribe-events-v1.".to_string() + &user.id;
-
-            let auth_token = oauth_token.to_string().replace("oauth:", "");
-
-            let topics_message = json!({
-                "type": "LISTEN",
-                "nonce": "182947398358192374",
-                "data": {
-                    "auth_token": auth_token,
-                    "topics": [channel_bits, channel_points, channel_subscribe]
-                }
-            });
-
-            socket.send(topics_message.to_string().into()).unwrap();
-
-            loop {
-                if let Ok(Text(message)) = socket.read() {
-                    if !message.contains("MESSAGE") {
-                        continue;
-                    }
-
-                    let socket_message: SocketMessage = serde_json::from_str(&message.to_string())?;
-                    let sub_message = &socket_message.data.message;
-                    let sub_message: MessageData = serde_json::from_str(sub_message)?;
-
-                    match sub_message.data {
-                        SubMessage::Points(sub_message) => {
-                            let message = format!(
-                                "{} redeemed {} for {}",
-                                sub_message.redemption.user.display_name,
-                                sub_message.redemption.reward.title,
-                                sub_message.redemption.reward.cost
-                            );
-
-                            println!("{}", message.to_string().green().bold());
-                        }
-
-                        SubMessage::Sub(sub_message) => {
-                            let message = format!(
-                                "{} has subscribed for {} months, currently on a {} month steak.",
-                                sub_message.message.display_name,
-                                sub_message.message.cumulative_months,
-                                sub_message.message.streak_months
-                            );
-
-                            println!("{}", message.to_string().blue().bold());
-                        }
-
-                        SubMessage::Bits(sub_message) => {
-                            let message = format!(
-                                "{} has cheered {} bits",
-                                sub_message.data.user_name, sub_message.data.bits_used
-                            );
-
-                            println!("{}", message.to_string().white().on_green().bold());
-                        }
-                    }
-                }
-            }
-        }
-
-        Err(error) => {
-            println!("I got an error...");
-            println!("{}", error);
-        }
-    }
-
-    Ok(())
-}
-
 async fn start_chat(
     twitch_name: Arc<String>,
     oauth_token: Arc<String>,
@@ -305,11 +117,10 @@ async fn start_chat(
 ) -> AsyncResult<()> {
     get_badges(&oauth_token, &client_id).await?;
 
-    let name = twitch_name.clone();
     let token = oauth_token.clone();
     let id = client_id.clone();
     thread::spawn(|| {
-        connect_to_pub_sub(name, token, id).unwrap();
+        connect_to_pub_sub(token, id).unwrap();
     });
 
     let mut twitch_client = TwitchClient::new(twitch_name, oauth_token, client_id, vec![]).await?;
@@ -376,10 +187,10 @@ fn list_announcements() {
     }
 }
 
-fn send_message(message: &str) {
-    println!("Send message {}", message);
-    todo!();
-}
+// fn send_message(message: &str) {
+//     println!("Send message {}", message);
+//     todo!();
+// }
 
 async fn start_login_flow() {
     let result = authenticate_with_twitch().await;
