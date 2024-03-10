@@ -5,6 +5,7 @@ use irc::client::{prelude::Client, ClientStream, Sender};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fs;
+use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use crate::commands::get_list_commands;
@@ -21,22 +22,22 @@ pub struct TwitchClient {
     sender: Sender,
     stream: ClientStream,
     channels: Vec<String>,
-    twitch_name: String,
-    oauth_token: String,
-    client_id: String,
+    twitch_name: Arc<String>,
+    oauth_token: Arc<String>,
+    client_id: Arc<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct GetUsersResponse {
-    id: String,
-    login: String,
-    display_name: String,
-    r#type: String,
-    broadcaster_type: String,
-    description: String,
-    profile_image_url: String,
-    offline_image_url: String,
-    created_at: String,
+pub struct User {
+    pub id: String,
+    pub login: String,
+    pub display_name: String,
+    pub r#type: String,
+    pub broadcaster_type: String,
+    pub description: String,
+    pub profile_image_url: String,
+    pub offline_image_url: String,
+    pub created_at: String,
 }
 
 pub struct Announcement {
@@ -47,9 +48,9 @@ pub struct Announcement {
 
 impl TwitchClient {
     pub async fn new(
-        twitch_name: String,
-        oauth_token: String,
-        client_id: String,
+        twitch_name: Arc<String>,
+        oauth_token: Arc<String>,
+        client_id: Arc<String>,
         mut channels: Vec<String>,
     ) -> Result<TwitchClient, Box<dyn Error>> {
         // If channels are not defined then default to the twitch user's channel
@@ -58,9 +59,9 @@ impl TwitchClient {
         }
 
         let config = Config {
-            nickname: Some(twitch_name.to_owned()),
-            username: Some(twitch_name.to_owned()),
-            password: Some(oauth_token.to_owned()),
+            nickname: Some(twitch_name.to_string().to_owned()),
+            username: Some(twitch_name.to_string().to_owned()),
+            password: Some(oauth_token.to_string().to_owned()),
             server: Some(TWITCH_IRC_SERVER.to_string()),
             port: Some(6697),
             channels: channels.clone(),
@@ -87,7 +88,7 @@ impl TwitchClient {
         Ok(twitch_client)
     }
 
-    async fn get_user_id(&self) -> Result<GetUsersResponse, Box<dyn Error>> {
+    async fn get_user_id(&self) -> Result<User, Box<dyn Error>> {
         let get_users_url = "https://api.twitch.tv/helix/users";
         let client_id = &self.client_id;
         let mut response = reqwest::Client::new()
@@ -96,10 +97,10 @@ impl TwitchClient {
                 "Authorization",
                 format!("Bearer {}", self.oauth_token.replace("oauth:", "")),
             )
-            .header("Client-Id", client_id)
+            .header("Client-Id", client_id.to_string())
             .send()
             .await?
-            .json::<TwitchApiResponse<Vec<GetUsersResponse>>>()
+            .json::<TwitchApiResponse<Vec<User>>>()
             .await?;
 
         let user = response.data.swap_remove(0);
@@ -180,7 +181,7 @@ impl TwitchClient {
     async fn send_shoutout(
         &self,
         raid_user_id: &str,
-        users_response: &GetUsersResponse,
+        users_response: &User,
     ) -> Result<(), Box<dyn Error>> {
         let shoutout_api = "https://api.twitch.tv/helix/chat/shoutouts";
         let broadcaster_id = &users_response.id;
@@ -188,7 +189,7 @@ impl TwitchClient {
         let _response = reqwest::Client::new()
             .post(shoutout_api)
             .header("Authorization", bearer)
-            .header("Client-Id", &self.client_id)
+            .header("Client-Id", &self.client_id.to_string())
             .query(&[
                 ("from_broadcaster_id", broadcaster_id),
                 ("to_broadcaster_id", &raid_user_id.to_string()),
@@ -202,7 +203,7 @@ impl TwitchClient {
     async fn print_raid_message(
         &self,
         twitch_message: &TwitchMessage,
-        users_response: &GetUsersResponse,
+        users_response: &User,
     ) -> Result<(), Box<dyn Error>> {
         if let TwitchMessage::RaidMessage {
             raid_notice,
