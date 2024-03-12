@@ -96,17 +96,11 @@ pub struct Reward {
     pub cost: u64,
 }
 
-pub fn connect_to_pub_sub(
-    oauth_token: Arc<String>,
-    client_id: Arc<String>,
-) -> Result<(), Box<dyn Error>> {
+pub fn connect_to_pub_sub(oauth_token: Arc<String>, client_id: Arc<String>) -> Result<(), Box<dyn Error>> {
     let get_users_url = "https://api.twitch.tv/helix/users";
     let mut response = reqwest::blocking::Client::new()
         .get(get_users_url)
-        .header(
-            "Authorization",
-            format!("Bearer {}", oauth_token.replace("oauth:", "")),
-        )
+        .header("Authorization", format!("Bearer {}", oauth_token.replace("oauth:", "")))
         .header("Client-Id", client_id.to_string())
         .send()?
         .json::<TwitchApiResponse<Vec<User>>>()?;
@@ -140,9 +134,15 @@ pub fn connect_to_pub_sub(
                         continue;
                     }
 
-                    let socket_message: SocketMessage = serde_json::from_str(&message.to_string())?;
+                    let socket_message = serde_json::from_str::<SocketMessage>(&message.to_string());
+                    let Ok(socket_message) = socket_message else {
+                        continue;
+                    };
+
                     let sub_message = &socket_message.data.message;
-                    let sub_message: MessageData = serde_json::from_str(sub_message)?;
+                    let Ok(sub_message) = serde_json::from_str::<MessageData>(sub_message) else {
+                        continue;
+                    };
 
                     match sub_message.data {
                         SubMessage::Points(sub_message) => {
@@ -155,9 +155,7 @@ pub fn connect_to_pub_sub(
 
                             println!("{}", message.to_string().green().bold());
 
-                            if let Ok(command_name) =
-                                get_reward(&sub_message.redemption.reward.title)
-                            {
+                            if let Ok(command_name) = get_reward(&sub_message.redemption.reward.title) {
                                 if let Some(user_input) = sub_message.redemption.user_input {
                                     let _ = Command::new(command_name).arg(user_input).output();
                                 }
