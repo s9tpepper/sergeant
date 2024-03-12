@@ -1,4 +1,4 @@
-use std::{error::Error, process::Command, sync::Arc};
+use std::{error::Error, fs::OpenOptions, io::Write, process::Command, sync::Arc};
 
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
@@ -6,17 +6,17 @@ use serde_json::json;
 use tungstenite::connect;
 use tungstenite::Message::Text;
 
-use crate::commands::get_reward;
+use crate::{commands::get_reward, utils::get_data_directory};
 
 use super::{client::User, messages::TwitchApiResponse};
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct SocketMessage {
     r#type: String,
     data: SocketMessageData,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct SocketMessageData {
     topic: String,
     message: String,
@@ -96,6 +96,14 @@ pub struct Reward {
     pub cost: u64,
 }
 
+fn send_to_error_log(log: String) {
+    let mut error_log = get_data_directory(Some("error_log")).unwrap();
+    error_log.push("log.txt");
+
+    let mut file = OpenOptions::new().append(true).open(error_log).unwrap();
+    let _ = file.write_all(log.as_bytes());
+}
+
 pub fn connect_to_pub_sub(oauth_token: Arc<String>, client_id: Arc<String>) -> Result<(), Box<dyn Error>> {
     let get_users_url = "https://api.twitch.tv/helix/users";
     let mut response = reqwest::blocking::Client::new()
@@ -136,11 +144,14 @@ pub fn connect_to_pub_sub(oauth_token: Arc<String>, client_id: Arc<String>) -> R
 
                     let socket_message = serde_json::from_str::<SocketMessage>(&message.to_string());
                     let Ok(socket_message) = socket_message else {
+                        let log = socket_message.unwrap_err().to_string();
+                        send_to_error_log(log);
                         continue;
                     };
 
                     let sub_message = &socket_message.data.message;
                     let Ok(sub_message) = serde_json::from_str::<MessageData>(sub_message) else {
+                        send_to_error_log(sub_message.to_string());
                         continue;
                     };
 
