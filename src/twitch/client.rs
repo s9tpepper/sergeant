@@ -107,11 +107,7 @@ impl TwitchClient {
         Ok(user)
     }
 
-    pub async fn start_receiving(
-        &mut self,
-        announcements: &mut Vec<Announcement>,
-    ) -> Result<(), Box<dyn Error>> {
-        let mut start = SystemTime::now();
+    pub async fn start_receiving(&mut self) -> Result<(), Box<dyn Error>> {
         // Ask Twitch for more capabilities so we can receive message tags
         self.sender
             .send("CAP REQ :twitch.tv/commands twitch.tv/tags")?;
@@ -123,7 +119,6 @@ impl TwitchClient {
                 self.print_message(&parsed_message);
                 self.print_raid_message(&parsed_message, &users_response)
                     .await?;
-                let _ = self.check_for_announcements(announcements, &mut start);
             }
         }
 
@@ -158,7 +153,7 @@ impl TwitchClient {
         Ok(announcements)
     }
 
-    fn check_for_announcements(
+    pub fn check_for_announcements(
         &self,
         announcements: &mut Vec<Announcement>,
         start: &mut SystemTime,

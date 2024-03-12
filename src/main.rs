@@ -3,6 +3,7 @@ use dotenv::dotenv;
 use sergeant::commands::add_reward;
 use sergeant::commands::list_rewards;
 use sergeant::commands::remove_reward;
+use sergeant::twitch::announcements::start_announcements;
 use sergeant::twitch::pubsub::connect_to_pub_sub;
 use std::fs;
 use std::thread;
@@ -154,12 +155,18 @@ async fn start_chat(
         connect_to_pub_sub(token, id).unwrap();
     });
 
+    // NOTE: Come back to this after removing IRC crate and refactoring to Tungstenite
+    // let name = twitch_name.clone();
+    // let token = oauth_token.clone();
+    // let id = client_id.clone();
+    // thread::spawn(async || -> Result<(), Box<dyn Error>> {
+    //     start_announcements(name.into(), token.into(), id.into()).await?;
+    //
+    //     Ok(())
+    // });
+
     let mut twitch_client = TwitchClient::new(twitch_name, oauth_token, client_id, vec![]).await?;
-
-    // TODO: Add a flag here to toggle announcements on/off
-    let mut announcements = twitch_client.get_announcements()?;
-
-    twitch_client.start_receiving(&mut announcements).await?;
+    twitch_client.start_receiving().await?;
 
     Ok(())
 }
