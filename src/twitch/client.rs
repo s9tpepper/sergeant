@@ -22,7 +22,7 @@ pub struct TwitchClient {
     sender: Sender,
     stream: ClientStream,
     channels: Vec<String>,
-    twitch_name: Arc<String>,
+    // twitch_name: Arc<String>,
     oauth_token: Arc<String>,
     client_id: Arc<String>,
 }
@@ -80,7 +80,7 @@ impl TwitchClient {
             sender,
             stream,
             channels,
-            twitch_name,
+            // twitch_name,
             oauth_token,
             client_id,
         };

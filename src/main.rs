@@ -3,7 +3,7 @@ use dotenv::dotenv;
 use sergeant::commands::add_reward;
 use sergeant::commands::list_rewards;
 use sergeant::commands::remove_reward;
-use sergeant::twitch::announcements::start_announcements;
+// use sergeant::twitch::announcements::start_announcements;
 use sergeant::twitch::pubsub::connect_to_pub_sub;
 use std::fs;
 use std::thread;
@@ -276,7 +276,7 @@ async fn main() {
 
         Cmds::Rewards { cmd } => match cmd {
             RewardSubCmds::List => {
-                let _ = list_rewards();
+                list_rewards();
             }
             RewardSubCmds::Add { name, cli } => {
                 let _ = add_reward(&name, &cli);
