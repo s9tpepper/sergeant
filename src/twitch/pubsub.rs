@@ -96,7 +96,8 @@ pub struct Reward {
     pub cost: u64,
 }
 
-fn send_to_error_log(log: String) {
+fn send_to_error_log(err: String, json: String) {
+    let log = format!("{}: {}\n", err, json);
     let mut error_log = get_data_directory(Some("error_log")).unwrap();
     error_log.push("log.txt");
 
@@ -145,13 +146,13 @@ pub fn connect_to_pub_sub(oauth_token: Arc<String>, client_id: Arc<String>) -> R
                     let socket_message = serde_json::from_str::<SocketMessage>(&message.to_string());
                     let Ok(socket_message) = socket_message else {
                         let log = socket_message.unwrap_err().to_string();
-                        send_to_error_log(log);
+                        send_to_error_log(log, message.to_string());
                         continue;
                     };
 
                     let sub_message = &socket_message.data.message;
                     let Ok(sub_message) = serde_json::from_str::<MessageData>(sub_message) else {
-                        send_to_error_log(sub_message.to_string());
+                        send_to_error_log(sub_message.to_string(), message.to_string());
                         continue;
                     };
 
