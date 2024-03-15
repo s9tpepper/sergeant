@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fs;
 use std::sync::Arc;
-use std::time::{Duration, SystemTime};
 
 use crate::commands::get_list_commands;
 use crate::utils::get_data_directory;
@@ -21,7 +20,7 @@ pub struct TwitchClient {
     client: Client,
     sender: Sender,
     stream: ClientStream,
-    channels: Vec<String>,
+    // channels: Vec<String>,
     // twitch_name: Arc<String>,
     oauth_token: Arc<String>,
     client_id: Arc<String>,
@@ -38,12 +37,6 @@ pub struct User {
     pub profile_image_url: String,
     pub offline_image_url: String,
     pub created_at: String,
-}
-
-pub struct Announcement {
-    pub timing: Duration,
-    pub message: String,
-    pub start: SystemTime,
 }
 
 impl TwitchClient {
@@ -79,7 +72,7 @@ impl TwitchClient {
             client,
             sender,
             stream,
-            channels,
+            // channels,
             // twitch_name,
             oauth_token,
             client_id,
@@ -109,75 +102,21 @@ impl TwitchClient {
 
     pub async fn start_receiving(&mut self) -> Result<(), Box<dyn Error>> {
         // Ask Twitch for more capabilities so we can receive message tags
-        self.sender
-            .send("CAP REQ :twitch.tv/commands twitch.tv/tags")?;
+        self.sender.send("CAP REQ :twitch.tv/commands twitch.tv/tags")?;
 
         let users_response = self.get_user_id().await?;
 
         while let Some(message) = self.stream.next().await.transpose()? {
             if let Ok(parsed_message) = parse(message).await {
                 self.print_message(&parsed_message);
-                self.print_raid_message(&parsed_message, &users_response)
-                    .await?;
+                self.print_raid_message(&parsed_message, &users_response).await?;
             }
         }
 
         Ok(())
     }
 
-    pub fn get_announcements(&mut self) -> Result<Vec<Announcement>, Box<dyn Error>> {
-        let announcements_dir = get_data_directory(Some("chat_announcements"))?;
-
-        let mut announcements = vec![];
-        let dir_entries = fs::read_dir(announcements_dir)?;
-        for entry in dir_entries {
-            let entry = entry?;
-            let path = entry.path();
-            if path.is_file() {
-                let file_contents = fs::read_to_string(&path)?;
-                if let Some((timing, message)) = file_contents.split_once('\n') {
-                    let timing = Duration::from_secs(timing.parse::<u64>()? * 60);
-                    let start = SystemTime::now();
-                    let message = message.to_string();
-                    let announcement = Announcement {
-                        timing,
-                        message,
-                        start,
-                    };
-
-                    announcements.push(announcement);
-                }
-            }
-        }
-
-        Ok(announcements)
-    }
-
-    pub fn check_for_announcements(
-        &self,
-        announcements: &mut Vec<Announcement>,
-        start: &mut SystemTime,
-    ) -> Result<(), Box<dyn Error>> {
-        let channel = &self.channels[0];
-        for announcement in announcements {
-            if let Ok(elapsed) = start.elapsed() {
-                let time_to_announce = elapsed > announcement.timing;
-
-                if time_to_announce {
-                    announcement.start = SystemTime::now();
-                    self.client.send_privmsg(channel, &announcement.message)?;
-                };
-            }
-        }
-
-        Ok(())
-    }
-
-    async fn send_shoutout(
-        &self,
-        raid_user_id: &str,
-        users_response: &User,
-    ) -> Result<(), Box<dyn Error>> {
+    async fn send_shoutout(&self, raid_user_id: &str, users_response: &User) -> Result<(), Box<dyn Error>> {
         let shoutout_api = "https://api.twitch.tv/helix/chat/shoutouts";
         let broadcaster_id = &users_response.id;
         let bearer = format!("Bearer {}", &self.oauth_token.replace("oauth:", ""));
@@ -200,11 +139,7 @@ impl TwitchClient {
         twitch_message: &TwitchMessage,
         users_response: &User,
     ) -> Result<(), Box<dyn Error>> {
-        if let TwitchMessage::RaidMessage {
-            raid_notice,
-            user_id,
-        } = twitch_message
-        {
+        if let TwitchMessage::RaidMessage { raid_notice, user_id } = twitch_message {
             let first_time_msg = "🪂 Raid!:".to_string().truecolor(255, 255, 0).bold();
             println!("{}", first_time_msg);
             println!("{}", raid_notice.replace("\\s", " "));
@@ -227,10 +162,7 @@ impl TwitchClient {
         let final_message = format!("{nick}: {}", message.message);
 
         if message.first_msg {
-            let first_time_msg = "✨ First Time Chat:"
-                .to_string()
-                .truecolor(255, 255, 0)
-                .bold();
+            let first_time_msg = "✨ First Time Chat:".to_string().truecolor(255, 255, 0).bold();
             println!("{}", first_time_msg);
         }
 
@@ -257,9 +189,7 @@ impl TwitchClient {
 
         let message = fs::read_to_string(data_dir)?;
 
-        let _ = self
-            .client
-            .send_privmsg(channel, format!("[bot] {}", message));
+        let _ = self.client.send_privmsg(channel, format!("[bot] {}", message));
 
         Ok(())
     }

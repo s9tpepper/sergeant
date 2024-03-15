@@ -3,14 +3,16 @@ use dotenv::dotenv;
 use sergeant::commands::add_reward;
 use sergeant::commands::list_rewards;
 use sergeant::commands::remove_reward;
+use sergeant::twitch::announcements::start_announcements;
+use sergeant::twitch::irc::TwitchIRC;
 // use sergeant::twitch::announcements::start_announcements;
 use sergeant::twitch::pubsub::connect_to_pub_sub;
 use std::fs;
 use std::thread;
 
 use sergeant::commands::{
-    add_chat_command, authenticate_with_twitch, get_list_announcements, get_list_commands,
-    remove_chat_command, TokenStatus,
+    add_chat_command, authenticate_with_twitch, get_list_announcements, get_list_commands, remove_chat_command,
+    TokenStatus,
 };
 use sergeant::twitch::client::TwitchClient;
 use sergeant::twitch::messages::get_badges;
@@ -117,12 +119,11 @@ fn get_credentials(
     client_id: Option<String>,
 ) -> Result<(String, String, String), Box<dyn Error>> {
     match (twitch_name, oauth_token, client_id) {
-        (Some(twitch_name), Some(oauth_token), Some(client_id)) => {
-            Ok((twitch_name, oauth_token, client_id))
-        }
+        (Some(twitch_name), Some(oauth_token), Some(client_id)) => Ok((twitch_name, oauth_token, client_id)),
 
         _ => {
-            let error_message = "You need to provide credentials via positional args, env vars, or by running the login command";
+            let error_message =
+                "You need to provide credentials via positional args, env vars, or by running the login command";
             let mut data_dir = get_data_directory(Some("token")).expect(error_message);
             data_dir.push("oath_token.txt");
             let token_file = fs::read_to_string(data_dir)?;
@@ -142,11 +143,7 @@ fn get_credentials(
     }
 }
 
-async fn start_chat(
-    twitch_name: Arc<String>,
-    oauth_token: Arc<String>,
-    client_id: Arc<String>,
-) -> AsyncResult<()> {
+async fn start_chat(twitch_name: Arc<String>, oauth_token: Arc<String>, client_id: Arc<String>) -> AsyncResult<()> {
     get_badges(&oauth_token, &client_id).await?;
 
     let token = oauth_token.clone();
@@ -155,15 +152,12 @@ async fn start_chat(
         connect_to_pub_sub(token, id).unwrap();
     });
 
-    // NOTE: Come back to this after removing IRC crate and refactoring to Tungstenite
-    // let name = twitch_name.clone();
-    // let token = oauth_token.clone();
+    let name = twitch_name.clone();
+    let token = oauth_token.clone();
     // let id = client_id.clone();
-    // thread::spawn(async || -> Result<(), Box<dyn Error>> {
-    //     start_announcements(name.into(), token.into(), id.into()).await?;
-    //
-    //     Ok(())
-    // });
+    thread::spawn(|| {
+        let _ = start_announcements(name, token);
+    });
 
     let mut twitch_client = TwitchClient::new(twitch_name, oauth_token, client_id, vec![]).await?;
     twitch_client.start_receiving().await?;
@@ -262,11 +256,7 @@ async fn main() {
             SubCmds::List => {
                 list_commands();
             }
-            SubCmds::Add {
-                name,
-                message,
-                timing,
-            } => {
+            SubCmds::Add { name, message, timing } => {
                 add_command(&name, &message, timing);
             }
             SubCmds::Remove { name } => {
