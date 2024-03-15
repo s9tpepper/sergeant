@@ -4,8 +4,6 @@ use sergeant::commands::add_reward;
 use sergeant::commands::list_rewards;
 use sergeant::commands::remove_reward;
 use sergeant::twitch::announcements::start_announcements;
-use sergeant::twitch::irc::TwitchIRC;
-// use sergeant::twitch::announcements::start_announcements;
 use sergeant::twitch::pubsub::connect_to_pub_sub;
 use std::fs;
 use std::thread;
