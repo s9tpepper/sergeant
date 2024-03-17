@@ -1,6 +1,7 @@
 use std::{error::Error, fs::OpenOptions, io::Write, process::Command, sync::Arc};
 
 use colored::Colorize;
+use irc::client::conn;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tungstenite::connect;
@@ -225,12 +226,9 @@ pub fn connect_to_pub_sub(oauth_token: Arc<String>, client_id: Arc<String>) -> R
         }
 
         Err(error) => {
-            println!("I got an error...");
-            println!("{}", error);
+            send_to_error_log(error.to_string(), "Could not connect to pub sub".to_string());
+
+            connect_to_pub_sub(oauth_token, client_id)
         }
     }
-
-    send_to_error_log("We are out of the loop somehow".to_string(), "".to_string());
-
-    Ok(())
 }
