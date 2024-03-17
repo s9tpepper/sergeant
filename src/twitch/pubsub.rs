@@ -4,7 +4,7 @@ use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tungstenite::connect;
-use tungstenite::Message::{self, Close, Text};
+use tungstenite::Message::{self, Close, Ping, Text};
 
 use crate::{commands::get_reward, utils::get_data_directory};
 
@@ -138,7 +138,14 @@ fn handle_message(message: Message) -> Result<(), Box<dyn Error>> {
 
                     if let Ok(command_name) = get_reward(&sub_message.redemption.reward.title) {
                         if let Some(user_input) = sub_message.redemption.user_input {
-                            let _ = Command::new(command_name).arg(user_input).output();
+                            let Ok(_) = Command::new(&command_name).arg(&user_input).output() else {
+                                send_to_error_log(
+                                    command_name.to_string(),
+                                    format!("Error running reward command with input: {}", user_input.to_string()),
+                                );
+
+                                return Ok(());
+                            };
                         }
 
                         return Ok(());
@@ -171,7 +178,10 @@ fn handle_message(message: Message) -> Result<(), Box<dyn Error>> {
                 }
             }
         }
-        _ => Err("Not a message".into()),
+        other => {
+            send_to_error_log(other.to_string(), "Unknown Error".into());
+            Err("Not a message".into())
+        }
     }
 }
 
@@ -217,7 +227,14 @@ pub fn connect_to_pub_sub(oauth_token: Arc<String>, client_id: Arc<String>) -> R
 
                             return connect_to_pub_sub(oauth_token, client_id);
                         }
-                        _ => {}
+
+                        Ping(_) => {}
+
+                        wtf => {
+                            send_to_error_log("HOW? Why are we here???".to_string(), wtf.to_string());
+
+                            return connect_to_pub_sub(oauth_token, client_id);
+                        }
                     }
                 }
             }
