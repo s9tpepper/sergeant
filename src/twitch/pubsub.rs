@@ -101,7 +101,7 @@ fn send_to_error_log(err: String, json: String) {
     let mut error_log = get_data_directory(Some("error_log")).unwrap();
     error_log.push("log.txt");
 
-    let mut file = OpenOptions::new().append(true).open(error_log).unwrap();
+    let mut file = OpenOptions::new().create(true).append(true).open(error_log).unwrap();
     let _ = file.write_all(log.as_bytes());
 }
 
