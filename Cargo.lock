@@ -1754,7 +1754,7 @@ dependencies = [
 
 [[package]]
 name = "sergeant"
-version = "0.2.4"
+version = "0.3.1"
 dependencies = [
  "base64",
  "clap 4.5.2",

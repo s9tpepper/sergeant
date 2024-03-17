@@ -4,7 +4,7 @@ use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tungstenite::connect;
-use tungstenite::Message::Text;
+use tungstenite::Message::{self, Close, Text};
 
 use crate::{commands::get_reward, utils::get_data_directory};
 
@@ -105,6 +105,76 @@ fn send_to_error_log(err: String, json: String) {
     let _ = file.write_all(log.as_bytes());
 }
 
+fn handle_message(message: Message) -> Result<(), Box<dyn Error>> {
+    match message {
+        Message::Text(message) => {
+            if !message.contains("MESSAGE") {
+                return Err("Not a message".into());
+            }
+
+            let socket_message = serde_json::from_str::<SocketMessage>(&message.to_string());
+            let Ok(socket_message) = socket_message else {
+                let log = socket_message.unwrap_err().to_string();
+                send_to_error_log(log, message.to_string());
+                return Err("Not a message".into());
+            };
+
+            let sub_message = &socket_message.data.message;
+            let Ok(sub_message) = serde_json::from_str::<MessageData>(sub_message) else {
+                send_to_error_log(sub_message.to_string(), message.to_string());
+                return Err("Not a message".into());
+            };
+
+            match sub_message.data {
+                SubMessage::Points(sub_message) => {
+                    let message = format!(
+                        "{} redeemed {} for {}",
+                        sub_message.redemption.user.display_name,
+                        sub_message.redemption.reward.title,
+                        sub_message.redemption.reward.cost
+                    );
+
+                    println!("{}", message.to_string().green().bold());
+
+                    if let Ok(command_name) = get_reward(&sub_message.redemption.reward.title) {
+                        if let Some(user_input) = sub_message.redemption.user_input {
+                            let _ = Command::new(command_name).arg(user_input).output();
+                        }
+
+                        return Ok(());
+                    }
+
+                    Ok(())
+                }
+
+                SubMessage::Sub(sub_message) => {
+                    let message = format!(
+                        "{} has subscribed for {} months, currently on a {} month steak.",
+                        sub_message.message.display_name,
+                        sub_message.message.cumulative_months,
+                        sub_message.message.streak_months
+                    );
+
+                    println!("{}", message.to_string().blue().bold());
+
+                    Ok(())
+                }
+
+                SubMessage::Bits(sub_message) => {
+                    let message = format!(
+                        "{} has cheered {} bits",
+                        sub_message.data.user_name, sub_message.data.bits_used
+                    );
+
+                    println!("{}", message.to_string().white().on_green().bold());
+                    Ok(())
+                }
+            }
+        }
+        _ => Err("Not a message".into()),
+    }
+}
+
 pub fn connect_to_pub_sub(oauth_token: Arc<String>, client_id: Arc<String>) -> Result<(), Box<dyn Error>> {
     let get_users_url = "https://api.twitch.tv/helix/users";
     let mut response = reqwest::blocking::Client::new()
@@ -138,61 +208,17 @@ pub fn connect_to_pub_sub(oauth_token: Arc<String>, client_id: Arc<String>) -> R
             socket.send(topics_message.to_string().into()).unwrap();
 
             loop {
-                if let Ok(Text(message)) = socket.read() {
-                    if !message.contains("MESSAGE") {
-                        continue;
-                    }
-
-                    let socket_message = serde_json::from_str::<SocketMessage>(&message.to_string());
-                    let Ok(socket_message) = socket_message else {
-                        let log = socket_message.unwrap_err().to_string();
-                        send_to_error_log(log, message.to_string());
-                        continue;
-                    };
-
-                    let sub_message = &socket_message.data.message;
-                    let Ok(sub_message) = serde_json::from_str::<MessageData>(sub_message) else {
-                        send_to_error_log(sub_message.to_string(), message.to_string());
-                        continue;
-                    };
-
-                    match sub_message.data {
-                        SubMessage::Points(sub_message) => {
-                            let message = format!(
-                                "{} redeemed {} for {}",
-                                sub_message.redemption.user.display_name,
-                                sub_message.redemption.reward.title,
-                                sub_message.redemption.reward.cost
-                            );
-
-                            println!("{}", message.to_string().green().bold());
-
-                            if let Ok(command_name) = get_reward(&sub_message.redemption.reward.title) {
-                                if let Some(user_input) = sub_message.redemption.user_input {
-                                    let _ = Command::new(command_name).arg(user_input).output();
-                                }
-                            }
+                if let Ok(message) = socket.read() {
+                    match message {
+                        Text(message) => {
+                            let _ = handle_message(Message::Text(message));
                         }
+                        Close(_) => {
+                            send_to_error_log("We got a close message, reconnecting...".to_string(), "".to_string());
 
-                        SubMessage::Sub(sub_message) => {
-                            let message = format!(
-                                "{} has subscribed for {} months, currently on a {} month steak.",
-                                sub_message.message.display_name,
-                                sub_message.message.cumulative_months,
-                                sub_message.message.streak_months
-                            );
-
-                            println!("{}", message.to_string().blue().bold());
+                            return connect_to_pub_sub(oauth_token, client_id);
                         }
-
-                        SubMessage::Bits(sub_message) => {
-                            let message = format!(
-                                "{} has cheered {} bits",
-                                sub_message.data.user_name, sub_message.data.bits_used
-                            );
-
-                            println!("{}", message.to_string().white().on_green().bold());
-                        }
+                        _ => {}
                     }
                 }
             }
@@ -203,6 +229,8 @@ pub fn connect_to_pub_sub(oauth_token: Arc<String>, client_id: Arc<String>) -> R
             println!("{}", error);
         }
     }
+
+    send_to_error_log("We are out of the loop somehow".to_string(), "".to_string());
 
     Ok(())
 }
