@@ -1,6 +1,6 @@
 [package]
 name = "sergeant"
-version = "0.3.4"
+version = "0.3.5"
 edition = "2021"
 description = "Sergeant is a terminal based Twitch chat widget and bot in one. It will display the Twitch chat from your channel in terminal while also allowing you to add chat bot commands."
 license = "MIT OR Apache-2.0"
