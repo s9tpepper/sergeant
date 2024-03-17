@@ -1,7 +1,6 @@
 use std::{error::Error, fs::OpenOptions, io::Write, process::Command, sync::Arc};
 
 use colored::Colorize;
-use irc::client::conn;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tungstenite::connect;
@@ -199,7 +198,6 @@ pub fn connect_to_pub_sub(oauth_token: Arc<String>, client_id: Arc<String>) -> R
 
             let topics_message = json!({
                 "type": "LISTEN",
-                "nonce": "182947398358192374",
                 "data": {
                     "auth_token": auth_token,
                     "topics": [channel_bits, channel_points, channel_subscribe]
