@@ -96,7 +96,7 @@ pub struct Reward {
     pub cost: u64,
 }
 
-fn send_to_error_log(err: String, json: String) {
+pub fn send_to_error_log(err: String, json: String) {
     let log = format!("{}: {}\n", err, json);
     let mut error_log = get_data_directory(Some("error_log")).unwrap();
     error_log.push("log.txt");
