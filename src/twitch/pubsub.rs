@@ -1,9 +1,12 @@
+use std::io::ErrorKind;
+use std::time::Duration;
 use std::{error::Error, fs::OpenOptions, io::Write, process::Command, sync::Arc};
 
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tungstenite::connect;
+use tungstenite::Error::{AlreadyClosed, ConnectionClosed, Io};
 use tungstenite::Message::{self, Close, Ping, Text};
 
 use crate::{commands::get_reward, utils::get_data_directory};
@@ -141,7 +144,7 @@ fn handle_message(message: Message) -> Result<(), Box<dyn Error>> {
                             let Ok(_) = Command::new(&command_name).arg(&user_input).output() else {
                                 send_to_error_log(
                                     command_name.to_string(),
-                                    format!("Error running reward command with input: {}", user_input.to_string()),
+                                    format!("Error running reward command with input: {}", user_input),
                                 );
 
                                 return Ok(());
@@ -216,9 +219,28 @@ pub fn connect_to_pub_sub(oauth_token: Arc<String>, client_id: Arc<String>) -> R
 
             socket.send(topics_message.to_string().into()).unwrap();
 
+            let stream = socket.get_ref();
+            let timeout_duration = Duration::new(60 * 4, 0);
+            match stream {
+                tungstenite::stream::MaybeTlsStream::Plain(stream) => {
+                    let _ = stream.set_read_timeout(Some(timeout_duration));
+                }
+
+                tungstenite::stream::MaybeTlsStream::NativeTls(stream) => {
+                    match stream.get_ref().set_read_timeout(Some(timeout_duration)) {
+                        Ok(it) => it,
+                        Err(_err) => {}
+                    }
+                }
+
+                _ => {}
+            }
+
             loop {
-                if let Ok(message) = socket.read() {
-                    match message {
+                let _ = socket.send("PING".into());
+
+                match socket.read() {
+                    Ok(message) => match message {
                         Text(message) => {
                             let _ = handle_message(Message::Text(message));
                         }
@@ -234,6 +256,23 @@ pub fn connect_to_pub_sub(oauth_token: Arc<String>, client_id: Arc<String>) -> R
                             send_to_error_log("HOW? Why are we here???".to_string(), wtf.to_string());
 
                             return connect_to_pub_sub(oauth_token, client_id);
+                        }
+                    },
+                    Err(error) => {
+                        send_to_error_log(error.to_string(), "Mistakes were made".to_string());
+
+                        match error {
+                            ConnectionClosed | AlreadyClosed => {
+                                return connect_to_pub_sub(oauth_token, client_id);
+                            }
+
+                            Io(error) => {
+                                if error.kind() != ErrorKind::WouldBlock {
+                                    return connect_to_pub_sub(oauth_token, client_id);
+                                }
+                            }
+
+                            _ => {}
                         }
                     }
                 }
