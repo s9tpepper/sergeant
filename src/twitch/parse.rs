@@ -35,6 +35,7 @@ pub struct ChatMessage {
 pub enum TwitchMessage {
     RaidMessage { user_id: String, raid_notice: String },
     PrivMessage { message: ChatMessage },
+    PingMessage { message: String },
     UnknownMessage { message: String },
 }
 
@@ -119,9 +120,15 @@ pub fn parse(message: String) -> Result<TwitchMessage, Box<dyn Error>> {
 
             Ok(parse_privmsg(irc_message, message_text, channel))
         }
+
         "USERNOTICE" => {
             let channel = message_parts.next().expect("Missing channel in message");
             Ok(parse_usernotice(irc_message, channel))
+        }
+
+        "PING" => {
+            let message: String = message_parts.collect::<Vec<&str>>().join(" ");
+            Ok(TwitchMessage::PingMessage { message })
         }
         _ => Err("Unknown message type".into()),
     }

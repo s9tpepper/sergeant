@@ -4,7 +4,7 @@ use tungstenite::{stream::MaybeTlsStream, WebSocket};
 
 use crate::{output::output, twitch::parse::parse};
 
-use super::pubsub::send_to_error_log;
+use super::{parse::TwitchMessage, pubsub::send_to_error_log};
 
 pub struct TwitchIRC {
     socket: WebSocket<MaybeTlsStream<TcpStream>>,
@@ -93,11 +93,23 @@ impl TwitchIRC {
         loop {
             if let Ok(message) = self.socket.read() {
                 match message {
-                    tungstenite::Message::Text(new_message) => {
-                        if let Ok(twitch_message) = parse(new_message) {
-                            output(twitch_message, self);
+                    tungstenite::Message::Text(new_message) => match parse(new_message) {
+                        Ok(
+                            message @ TwitchMessage::PrivMessage { .. } | message @ TwitchMessage::RaidMessage { .. },
+                        ) => {
+                            output(message, self);
                         }
-                    }
+
+                        Ok(TwitchMessage::PingMessage { message }) => {
+                            let _ = self.socket.send(format!("PONG {message}").into());
+                        }
+
+                        Ok(TwitchMessage::UnknownMessage { message }) => {
+                            send_to_error_log(message, "Unknown message".to_string())
+                        }
+
+                        Err(error) => send_to_error_log(error.to_string(), "Error while parsing message".to_string()),
+                    },
 
                     tungstenite::Message::Close(_) => {
                         send_to_error_log("Connection closed".to_string(), "Connection closed".to_string());
