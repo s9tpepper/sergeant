@@ -1,6 +1,6 @@
 [package]
 name = "sergeant"
-version = "0.3.5"
+version = "0.3.6"
 edition = "2021"
 description = "Sergeant is a terminal based Twitch chat widget and bot in one. It will display the Twitch chat from your channel in terminal while also allowing you to add chat bot commands."
 license = "MIT OR Apache-2.0"
@@ -16,7 +16,6 @@ clap = { version = "4.5.1", features = ["derive", "env", "cargo"] }
 colored = "2.1.0"
 directories = "5.0.1"
 dotenv = { version = "0.15.0", features = ["cli", "clap"] }
-futures-util = "0.3.30"
 hex-rgb = "0.1.1"
 image = "0.24.8"
 irc = "0.15.0"
@@ -24,7 +23,7 @@ openssl = "0.10.63"
 reqwest = { version = "0.11.24", features = ["blocking", "rustls", "json"] }
 serde = { version = "1.0.196", features = ["alloc", "derive", "serde_derive"] } 
 serde_json = "1.0.113"
-tokio = { version = "1.36.0", features = ["full"] }
 tungstenite = { version = "0.21.0", features = ["native-tls"] }
+ureq = "2.9.6"
 url = "2.5.0"
 uuid = "1.7.0"

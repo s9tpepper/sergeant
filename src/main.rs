@@ -4,6 +4,7 @@ use sergeant::commands::add_reward;
 use sergeant::commands::list_rewards;
 use sergeant::commands::remove_reward;
 use sergeant::twitch::announcements::start_announcements;
+use sergeant::twitch::irc::TwitchIRC;
 use sergeant::twitch::pubsub::connect_to_pub_sub;
 use std::fs;
 use std::thread;
@@ -12,7 +13,7 @@ use sergeant::commands::{
     add_chat_command, authenticate_with_twitch, get_list_announcements, get_list_commands, remove_chat_command,
     TokenStatus,
 };
-use sergeant::twitch::client::TwitchClient;
+
 use sergeant::twitch::messages::get_badges;
 use sergeant::utils::get_data_directory;
 use std::error::Error;
@@ -141,8 +142,8 @@ fn get_credentials(
     }
 }
 
-async fn start_chat(twitch_name: Arc<String>, oauth_token: Arc<String>, client_id: Arc<String>) -> AsyncResult<()> {
-    get_badges(&oauth_token, &client_id).await?;
+fn start_chat(twitch_name: Arc<String>, oauth_token: Arc<String>, client_id: Arc<String>) -> AsyncResult<()> {
+    get_badges(&oauth_token, &client_id)?;
 
     let token = oauth_token.clone();
     let id = client_id.clone();
@@ -157,8 +158,8 @@ async fn start_chat(twitch_name: Arc<String>, oauth_token: Arc<String>, client_i
         let _ = start_announcements(name, token);
     });
 
-    let mut twitch_client = TwitchClient::new(twitch_name, oauth_token, client_id, vec![]).await?;
-    twitch_client.start_receiving().await?;
+    let mut twitch_irc = TwitchIRC::new(twitch_name, oauth_token);
+    twitch_irc.listen();
 
     Ok(())
 }
@@ -222,15 +223,14 @@ fn list_announcements() {
 //     todo!();
 // }
 
-async fn start_login_flow() {
-    let result = authenticate_with_twitch().await;
+fn start_login_flow() {
+    let result = authenticate_with_twitch();
     if result.is_err() {
         exit(5);
     }
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
     // Load ENV vars with DotEnv
     dotenv().ok();
 
@@ -247,7 +247,7 @@ async fn main() {
             let id = Arc::new(id);
             let token = Arc::new(token);
 
-            let _ = start_chat(name, token, id).await;
+            let _ = start_chat(name, token, id);
         }
 
         Cmds::Commands { cmd } => match cmd {
@@ -278,7 +278,7 @@ async fn main() {
         //     send_message(&message);
         // }
         Cmds::Login => {
-            start_login_flow().await;
+            start_login_flow();
         }
     };
 }

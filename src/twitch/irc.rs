@@ -2,11 +2,14 @@ use std::{net::TcpStream, sync::Arc, thread::sleep, time::Duration};
 
 use tungstenite::{stream::MaybeTlsStream, WebSocket};
 
+use crate::{output::output, twitch::parse::parse};
+
 use super::pubsub::send_to_error_log;
 
 pub struct TwitchIRC {
     socket: WebSocket<MaybeTlsStream<TcpStream>>,
     nickname: String,
+    oauth_token: String,
 }
 
 const CONN_MAX_RETRIES: u8 = 3;
@@ -77,6 +80,7 @@ impl TwitchIRC {
         TwitchIRC {
             socket,
             nickname: twitch_name.to_string(),
+            oauth_token: oauth_token.to_string(),
         }
     }
 
@@ -90,16 +94,21 @@ impl TwitchIRC {
             if let Ok(message) = self.socket.read() {
                 match message {
                     tungstenite::Message::Text(new_message) => {
-                        // TODO: Start parsing messages and apply colors/emotes/etc
-                        println!("{}", new_message);
+                        if let Ok(twitch_message) = parse(new_message) {
+                            output(twitch_message, self);
+                        }
                     }
 
-                    // TODO: Reconnect?
-                    // tungstenite::Message::Close(_) => todo!(),
-                    _ => {
-                        // TODO: fix the panic
-                        panic!("YE YE YE");
+                    tungstenite::Message::Close(_) => {
+                        send_to_error_log("Connection closed".to_string(), "Connection closed".to_string());
+
+                        let name: Arc<String> = Arc::new(self.nickname.clone());
+                        let token: Arc<String> = Arc::new(self.oauth_token.clone());
+
+                        connect(&name, &token, 0);
                     }
+
+                    unknown => send_to_error_log(unknown.to_string(), "Unhandled error from socket.read()".to_string()),
                 }
             }
         }

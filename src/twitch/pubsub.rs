@@ -11,7 +11,20 @@ use tungstenite::Message::{self, Close, Ping, Text};
 
 use crate::{commands::get_reward, utils::get_data_directory};
 
-use super::{client::User, messages::TwitchApiResponse};
+use super::messages::TwitchApiResponse;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct User {
+    pub id: String,
+    pub login: String,
+    pub display_name: String,
+    pub r#type: String,
+    pub broadcaster_type: String,
+    pub description: String,
+    pub profile_image_url: String,
+    pub offline_image_url: String,
+    pub created_at: String,
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct SocketMessage {

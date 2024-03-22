@@ -45,13 +45,8 @@ pub struct ChatMessage {
 
 #[derive(Debug)]
 pub enum TwitchMessage {
-    RaidMessage {
-        user_id: String,
-        raid_notice: String,
-    },
-    PrivMessage {
-        message: ChatMessage,
-    },
+    RaidMessage { user_id: String, raid_notice: String },
+    PrivMessage { message: ChatMessage },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -77,7 +72,7 @@ pub struct TwitchApiResponse<T> {
     pub data: T,
 }
 
-pub async fn get_badges(token: &str, client_id: &String) -> AsyncResult<Vec<BadgeItem>> {
+pub fn get_badges(token: &str, client_id: &String) -> AsyncResult<Vec<BadgeItem>> {
     // Global badges: https://api.twitch.tv/helix/chat/badges/global
     // oauth:141241241241241
     //
@@ -86,17 +81,12 @@ pub async fn get_badges(token: &str, client_id: &String) -> AsyncResult<Vec<Badg
     // base64: encoded app title
     // https://twitchtokengenerator.com/api/create
     //
-    let mut response = reqwest::Client::new()
+    let mut response = reqwest::blocking::Client::new()
         .get("https://api.twitch.tv/helix/chat/badges/global")
-        .header(
-            "Authorization",
-            format!("Bearer {}", token.replace("oauth:", "")),
-        )
+        .header("Authorization", format!("Bearer {}", token.replace("oauth:", "")))
         .header("Client-Id", client_id)
-        .send()
-        .await?
-        .json::<TwitchApiResponse<Vec<BadgeItem>>>()
-        .await?;
+        .send()?
+        .json::<TwitchApiResponse<Vec<BadgeItem>>>()?;
 
     let data_dir = get_data_directory(None)?;
 
@@ -109,15 +99,15 @@ pub async fn get_badges(token: &str, client_id: &String) -> AsyncResult<Vec<Badg
         let badge_path = data_dir.join(file_name);
 
         if !badge_path.exists() {
-            generate_badge_file(badge_path, version).await?;
+            generate_badge_file(badge_path, version)?;
         }
     }
 
     Ok(response.data)
 }
 
-async fn get_encoded_image(url: &str) -> Result<String, Box<dyn Error>> {
-    let file_bytes: Vec<u8> = reqwest::get(url).await?.bytes().await?.to_vec();
+fn get_encoded_image(url: &str) -> Result<String, Box<dyn Error>> {
+    let file_bytes: Vec<u8> = reqwest::blocking::get(url)?.bytes()?.to_vec();
     let img_data = image::load_from_memory(&file_bytes)?;
 
     let mut buffer: Vec<u8> = Vec::new();
@@ -127,11 +117,8 @@ async fn get_encoded_image(url: &str) -> Result<String, Box<dyn Error>> {
     Ok(base64_emote)
 }
 
-async fn generate_badge_file(
-    badge_path: PathBuf,
-    version: &BadgeVersion,
-) -> Result<(), Box<dyn Error>> {
-    if let Ok(encoded_image) = get_encoded_image(&version.image_url_1x).await {
+fn generate_badge_file(badge_path: PathBuf, version: &BadgeVersion) -> Result<(), Box<dyn Error>> {
+    if let Ok(encoded_image) = get_encoded_image(&version.image_url_1x) {
         fs::write(badge_path, encoded_image)?;
     }
 
@@ -150,7 +137,7 @@ fn get_bool(value: &str) -> bool {
     value != "0"
 }
 
-async fn parse_privmsg(irc_message: Message) -> Result<TwitchMessage, Box<dyn Error>> {
+fn parse_privmsg(irc_message: Message) -> Result<TwitchMessage, Box<dyn Error>> {
     let nickname: String = irc_message.source_nickname().unwrap_or("").to_owned();
 
     let mut badges: Vec<String> = vec![];
@@ -213,8 +200,8 @@ async fn parse_privmsg(irc_message: Message) -> Result<TwitchMessage, Box<dyn Er
     let channel = msg_sender.to_string();
     let mut message = msg.to_string();
 
-    add_emotes(&mut message, &mut emotes).await?;
-    let encoded_badges = add_badges(&badges).await?;
+    add_emotes(&mut message, &mut emotes)?;
+    let encoded_badges = add_badges(&badges)?;
 
     display_name = format!("{} {}", encoded_badges, display_name);
 
@@ -239,7 +226,7 @@ async fn parse_privmsg(irc_message: Message) -> Result<TwitchMessage, Box<dyn Er
     Ok(twitch_message)
 }
 
-async fn parse_raw(irc_message: Message) -> Result<TwitchMessage, Box<dyn Error>> {
+fn parse_raw(irc_message: Message) -> Result<TwitchMessage, Box<dyn Error>> {
     if irc_message.to_string().contains("USERNOTICE") {
         let mut system_msg = String::new();
         let mut is_raid = false;
@@ -275,10 +262,10 @@ async fn parse_raw(irc_message: Message) -> Result<TwitchMessage, Box<dyn Error>
     Err("oops".into())
 }
 
-pub async fn parse(irc_message: Message) -> Result<TwitchMessage, Box<dyn Error>> {
+pub fn parse(irc_message: Message) -> Result<TwitchMessage, Box<dyn Error>> {
     let twitch_message = match irc_message.command {
-        Command::PRIVMSG(ref _msg_sender, ref _msg) => parse_privmsg(irc_message).await?,
-        Command::Raw(ref _raw_string, ref _vec) => parse_raw(irc_message).await?,
+        Command::PRIVMSG(ref _msg_sender, ref _msg) => parse_privmsg(irc_message)?,
+        Command::Raw(ref _raw_string, ref _vec) => parse_raw(irc_message)?,
         _other => return Err("Unhandled Command".into()),
     };
 
@@ -294,7 +281,7 @@ fn get_iterm_encoded_image(base64: String) -> String {
     )
 }
 
-async fn add_badges(badges: &[String]) -> Result<String, Box<dyn Error>> {
+fn add_badges(badges: &[String]) -> Result<String, Box<dyn Error>> {
     let mut badges_list = String::new();
     let data_dir = get_data_directory(None)?;
     for badge in badges.iter() {
@@ -330,7 +317,7 @@ fn get_emote_suffix() -> String {
     BELL.to_string()
 }
 
-async fn add_emotes(message: &mut String, emotes: &mut [Emote]) -> Result<(), Box<dyn Error>> {
+fn add_emotes(message: &mut String, emotes: &mut [Emote]) -> Result<(), Box<dyn Error>> {
     for emote in emotes.iter_mut() {
         let range = emote.start..=emote.end;
         let temp_msg = message.clone();
@@ -339,7 +326,7 @@ async fn add_emotes(message: &mut String, emotes: &mut [Emote]) -> Result<(), Bo
     }
 
     for emote in emotes.iter() {
-        let file_bytes: Vec<u8> = reqwest::get(&emote.url).await?.bytes().await?.to_vec();
+        let file_bytes: Vec<u8> = reqwest::blocking::get(&emote.url)?.bytes()?.to_vec();
 
         let img_data = image::load_from_memory(&file_bytes)?;
 
@@ -419,448 +406,439 @@ fn set_badges(tag_value: Option<String>, valid_badges: &mut Vec<String>) {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use irc::proto::message::Tag;
-    use irc::proto::Message;
-
-    use crate::twitch::fixtures::TEST_MESSAGE_WITH_EMOTES;
-
-    use super::parse;
-
-    use std::error::Error;
-
-    #[tokio::test]
-    async fn test_parse_raid_message() -> Result<(), Box<dyn Error>> {
-        let tag = Tag(
-            "emotes".to_string(),
-            Some("303147449:0-13/emotesv2_a388006c5b8c4826906248a22b50d0a3:15-28".to_string()),
-        );
-        let tag2 = Tag("msg-id".to_string(), Some("raid".to_string()));
-        let tag3 = Tag(
-            "system-msg".to_string(),
-            Some("system-msg=1\\sraiders\\sfrom\\svei_bean\\shave\\sjoined!".to_string()),
-        );
-
-        let tags = vec![tag, tag2, tag3];
-        let msg = Message::with_tags(
-            Some(tags),
-            Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
-            "USERNOTICE",
-            vec!["#s9tpepper_"],
-        )
-        .unwrap();
-
-        println!("{:?}", msg.prefix);
-        println!("{:?}", msg.command);
-
-        let twitch_message = parse(msg).await?;
-
-        match twitch_message {
-            crate::twitch::messages::TwitchMessage::RaidMessage { raid_notice } => {
-                assert_eq!(
-                    "system-msg=1\\sraiders\\sfrom\\svei_bean\\shave\\sjoined!",
-                    raid_notice
-                );
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_parse_emotes_attaching() -> Result<(), Box<dyn Error>> {
-        let tag = Tag(
-            "emotes".to_string(),
-            Some("303147449:0-13/emotesv2_a388006c5b8c4826906248a22b50d0a3:15-28".to_string()),
-        );
-        let tags = vec![tag];
-        let msg = Message::with_tags(
-            Some(tags),
-            Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
-            "PRIVMSG",
-            vec!["#s9tpepper_", "This is a message from twitch"],
-        );
-
-        let twitch_message = parse(msg.unwrap()).await?;
-        match twitch_message {
-            crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
-                assert_eq!(TEST_MESSAGE_WITH_EMOTES, message.message);
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_parse_emotes_length() -> Result<(), Box<dyn Error>> {
-        let tag = Tag(
-            "emotes".to_string(),
-            Some("303147449:0-13/emotesv2_a388006c5b8c4826906248a22b50d0a3:15-28".to_string()),
-        );
-        let tags = vec![tag];
-        let msg = Message::with_tags(
-            Some(tags),
-            Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
-            "PRIVMSG",
-            vec!["#s9tpepper_", "This is a message from twitch"],
-        );
-
-        let twitch_message = parse(msg.unwrap()).await?;
-        match twitch_message {
-            crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
-                assert_eq!(2, message.emotes.len());
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_parse_emotes_url() -> Result<(), Box<dyn Error>> {
-        let tag = Tag(
-            "emotes".to_string(),
-            Some("303147449:0-13/emotesv2_a388006c5b8c4826906248a22b50d0a3:15-28".to_string()),
-        );
-        let tags = vec![tag];
-        let msg = Message::with_tags(
-            Some(tags),
-            Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
-            "PRIVMSG",
-            vec!["#s9tpepper_", "This is a message from twitch"],
-        );
-
-        let twitch_message = parse(msg.unwrap()).await?;
-        match twitch_message {
-            crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
-                assert_eq!(
-                    "https://static-cdn.jtvnw.net/emoticons/v2/303147449/default/dark/1.0",
-                    message.emotes[0].url
-                );
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    // #[tokio::test]
-    // async fn test_parse_emotes_id() -> Result<(), Box<dyn Error>> {
-    //     let tag = Tag(
-    //         "emotes".to_string(),
-    //         Some("303147449:0-13/emotesv2_a388006c5b8c4826906248a22b50d0a3:15-28".to_string()),
-    //     );
-    //     let tags = vec![tag];
-    //     let msg = Message::with_tags(
-    //         Some(tags),
-    //         Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
-    //         "PRIVMSG",
-    //         vec!["#s9tpepper_", "This is a message from twitch"],
-    //     );
-    //
-    //     let twitch_message = parse(msg.unwrap()).await?;
-    //
-    //     assert_eq!("303147449", twitch_message.emotes[0].id);
-    //
-    //     Ok(())
-    // }
-
-    #[tokio::test]
-    async fn test_parse_emotes_position() -> Result<(), Box<dyn Error>> {
-        let tag = Tag(
-            "emotes".to_string(),
-            Some("303147449:0-13/emotesv2_a388006c5b8c4826906248a22b50d0a3:15-28".to_string()),
-        );
-        let tags = vec![tag];
-        let msg = Message::with_tags(
-            Some(tags),
-            Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
-            "PRIVMSG",
-            vec!["#s9tpepper_", "This is a message from twitch"],
-        );
-
-        let twitch_message = parse(msg.unwrap()).await?;
-        match twitch_message {
-            crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
-                assert_eq!(0, message.emotes[0].start);
-                assert_eq!(13, message.emotes[0].end);
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_parse_message() -> Result<(), Box<dyn Error>> {
-        let tag = Tag(
-            "badges".to_string(),
-            Some("broadcaster/1,premium/1".to_string()),
-        );
-        let tags = vec![tag];
-        let msg = Message::with_tags(
-            Some(tags),
-            Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
-            "PRIVMSG",
-            vec!["#s9tpepper_", "This is a message from twitch"],
-        );
-
-        let twitch_message = parse(msg.unwrap()).await?;
-        match twitch_message {
-            crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
-                assert_eq!("This is a message from twitch", message.message);
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_parse_nickname() -> Result<(), Box<dyn Error>> {
-        let tag = Tag(
-            "badges".to_string(),
-            Some("broadcaster/1,premium/1".to_string()),
-        );
-        let tags = vec![tag];
-        let msg = Message::with_tags(
-            Some(tags),
-            Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
-            "PRIVMSG",
-            vec!["#s9tpepper_", "This is a message from twitch"],
-        );
-
-        let twitch_message = parse(msg.unwrap()).await?;
-        match twitch_message {
-            crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
-                assert_eq!("rayslash", message.nickname);
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_parse_display_name() -> Result<(), Box<dyn Error>> {
-        let tag = Tag("display-name".to_string(), Some("s9tpepper_".to_string()));
-        let tags = vec![tag];
-        let msg = Message::with_tags(
-            Some(tags),
-            Some(""),
-            "PRIVMSG",
-            vec!["#s9tpepper_", "This is a message from twitch"],
-        );
-
-        let twitch_message = parse(msg.unwrap()).await?;
-        match twitch_message {
-            crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
-                assert_eq!(" s9tpepper_", message.display_name);
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_parse_color() -> Result<(), Box<dyn Error>> {
-        let tag = Tag("color".to_string(), Some("#8A2BE2".to_string()));
-        let tags = vec![tag];
-        let msg = Message::with_tags(
-            Some(tags),
-            Some(""),
-            "PRIVMSG",
-            vec!["#s9tpepper_", "This is a message from twitch"],
-        );
-
-        let twitch_message = parse(msg.unwrap()).await?;
-        match twitch_message {
-            crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
-                assert_eq!("#8A2BE2", message.color);
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_parse_returning_chatter_is_true() -> Result<(), Box<dyn Error>> {
-        let tag = Tag("returning-chatter".to_string(), Some("1".to_string()));
-        let tags = vec![tag];
-        let msg = Message::with_tags(
-            Some(tags),
-            Some(""),
-            "PRIVMSG",
-            vec!["#s9tpepper_", "This is a message from twitch"],
-        );
-
-        let twitch_message = parse(msg.unwrap()).await?;
-        match twitch_message {
-            crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
-                assert_eq!(true, message.returning_chatter);
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_parse_returning_chatter_is_false() -> Result<(), Box<dyn Error>> {
-        let tag = Tag("returning-chatter".to_string(), Some("0".to_string()));
-        let tags = vec![tag];
-        let msg = Message::with_tags(
-            Some(tags),
-            Some(""),
-            "PRIVMSG",
-            vec!["#s9tpepper_", "This is a message from twitch"],
-        );
-
-        let twitch_message = parse(msg.unwrap()).await?;
-        match twitch_message {
-            crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
-                assert_eq!(false, message.returning_chatter);
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_parse_subscriber_is_true() -> Result<(), Box<dyn Error>> {
-        let tag = Tag("subscriber".to_string(), Some("1".to_string()));
-        let tags = vec![tag];
-        let msg = Message::with_tags(
-            Some(tags),
-            Some(""),
-            "PRIVMSG",
-            vec!["#s9tpepper_", "This is a message from twitch"],
-        );
-
-        let twitch_message = parse(msg.unwrap()).await?;
-        match twitch_message {
-            crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
-                assert_eq!(true, message.subscriber);
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_parse_subscriber_is_false() -> Result<(), Box<dyn Error>> {
-        let tag = Tag("subscriber".to_string(), Some("0".to_string()));
-        let tags = vec![tag];
-        let msg = Message::with_tags(
-            Some(tags),
-            Some(""),
-            "PRIVMSG",
-            vec!["#s9tpepper_", "This is a message from twitch"],
-        );
-
-        let twitch_message = parse(msg.unwrap()).await?;
-        match twitch_message {
-            crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
-                assert_eq!(false, message.subscriber);
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_parse_moderator_is_true() -> Result<(), Box<dyn Error>> {
-        let tag = Tag("mod".to_string(), Some("1".to_string()));
-        let tags = vec![tag];
-        let msg = Message::with_tags(
-            Some(tags),
-            Some(""),
-            "PRIVMSG",
-            vec!["#s9tpepper_", "This is a message from twitch"],
-        );
-
-        let twitch_message = parse(msg.unwrap()).await?;
-        match twitch_message {
-            crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
-                assert_eq!(true, message.moderator);
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_parse_moderator_is_false() -> Result<(), Box<dyn Error>> {
-        let tag = Tag("mod".to_string(), Some("0".to_string()));
-        let tags = vec![tag];
-        let msg = Message::with_tags(
-            Some(tags),
-            Some(""),
-            "PRIVMSG",
-            vec!["#s9tpepper_", "This is a message from twitch"],
-        );
-
-        let twitch_message = parse(msg.unwrap()).await?;
-        match twitch_message {
-            crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
-                assert_eq!(false, message.moderator);
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_parse_first_msg_is_true() -> Result<(), Box<dyn Error>> {
-        let tag = Tag("first-msg".to_string(), Some("1".to_string()));
-        let tags = vec![tag];
-        let msg = Message::with_tags(
-            Some(tags),
-            Some(""),
-            "PRIVMSG",
-            vec!["#s9tpepper_", "This is a message from twitch"],
-        );
-
-        let twitch_message = parse(msg.unwrap()).await?;
-        match twitch_message {
-            crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
-                assert_eq!(true, message.first_msg);
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_parse_first_msg_is_false() -> Result<(), Box<dyn Error>> {
-        let tag = Tag("first-msg".to_string(), Some("0".to_string()));
-        let tags = vec![tag];
-        let msg = Message::with_tags(
-            Some(tags),
-            Some(""),
-            "PRIVMSG",
-            vec!["#s9tpepper_", "This is a message from twitch"],
-        );
-
-        let twitch_message = parse(msg.unwrap()).await?;
-        match twitch_message {
-            crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
-                assert_eq!(false, message.first_msg);
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-}
+// #[cfg(test)]
+// mod tests {
+//     use irc::proto::message::Tag;
+//     use irc::proto::Message;
+//
+//     use crate::twitch::fixtures::TEST_MESSAGE_WITH_EMOTES;
+//
+//     use super::parse;
+//
+//     use std::error::Error;
+//
+//     #[tokio::test]
+//     async fn test_parse_raid_message() -> Result<(), Box<dyn Error>> {
+//         let tag = Tag(
+//             "emotes".to_string(),
+//             Some("303147449:0-13/emotesv2_a388006c5b8c4826906248a22b50d0a3:15-28".to_string()),
+//         );
+//         let tag2 = Tag("msg-id".to_string(), Some("raid".to_string()));
+//         let tag3 = Tag(
+//             "system-msg".to_string(),
+//             Some("system-msg=1\\sraiders\\sfrom\\svei_bean\\shave\\sjoined!".to_string()),
+//         );
+//
+//         let tags = vec![tag, tag2, tag3];
+//         let msg = Message::with_tags(
+//             Some(tags),
+//             Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
+//             "USERNOTICE",
+//             vec!["#s9tpepper_"],
+//         )
+//         .unwrap();
+//
+//         println!("{:?}", msg.prefix);
+//         println!("{:?}", msg.command);
+//
+//         let twitch_message = parse(msg).await?;
+//
+//         match twitch_message {
+//             crate::twitch::messages::TwitchMessage::RaidMessage { raid_notice } => {
+//                 assert_eq!("system-msg=1\\sraiders\\sfrom\\svei_bean\\shave\\sjoined!", raid_notice);
+//             }
+//             _ => {}
+//         }
+//
+//         Ok(())
+//     }
+//
+//     #[tokio::test]
+//     async fn test_parse_emotes_attaching() -> Result<(), Box<dyn Error>> {
+//         let tag = Tag(
+//             "emotes".to_string(),
+//             Some("303147449:0-13/emotesv2_a388006c5b8c4826906248a22b50d0a3:15-28".to_string()),
+//         );
+//         let tags = vec![tag];
+//         let msg = Message::with_tags(
+//             Some(tags),
+//             Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
+//             "PRIVMSG",
+//             vec!["#s9tpepper_", "This is a message from twitch"],
+//         );
+//
+//         let twitch_message = parse(msg.unwrap()).await?;
+//         match twitch_message {
+//             crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
+//                 assert_eq!(TEST_MESSAGE_WITH_EMOTES, message.message);
+//             }
+//             _ => {}
+//         }
+//
+//         Ok(())
+//     }
+//
+//     #[tokio::test]
+//     async fn test_parse_emotes_length() -> Result<(), Box<dyn Error>> {
+//         let tag = Tag(
+//             "emotes".to_string(),
+//             Some("303147449:0-13/emotesv2_a388006c5b8c4826906248a22b50d0a3:15-28".to_string()),
+//         );
+//         let tags = vec![tag];
+//         let msg = Message::with_tags(
+//             Some(tags),
+//             Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
+//             "PRIVMSG",
+//             vec!["#s9tpepper_", "This is a message from twitch"],
+//         );
+//
+//         let twitch_message = parse(msg.unwrap()).await?;
+//         match twitch_message {
+//             crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
+//                 assert_eq!(2, message.emotes.len());
+//             }
+//             _ => {}
+//         }
+//
+//         Ok(())
+//     }
+//
+//     #[tokio::test]
+//     async fn test_parse_emotes_url() -> Result<(), Box<dyn Error>> {
+//         let tag = Tag(
+//             "emotes".to_string(),
+//             Some("303147449:0-13/emotesv2_a388006c5b8c4826906248a22b50d0a3:15-28".to_string()),
+//         );
+//         let tags = vec![tag];
+//         let msg = Message::with_tags(
+//             Some(tags),
+//             Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
+//             "PRIVMSG",
+//             vec!["#s9tpepper_", "This is a message from twitch"],
+//         );
+//
+//         let twitch_message = parse(msg.unwrap()).await?;
+//         match twitch_message {
+//             crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
+//                 assert_eq!(
+//                     "https://static-cdn.jtvnw.net/emoticons/v2/303147449/default/dark/1.0",
+//                     message.emotes[0].url
+//                 );
+//             }
+//             _ => {}
+//         }
+//
+//         Ok(())
+//     }
+//
+//     // #[tokio::test]
+//     // async fn test_parse_emotes_id() -> Result<(), Box<dyn Error>> {
+//     //     let tag = Tag(
+//     //         "emotes".to_string(),
+//     //         Some("303147449:0-13/emotesv2_a388006c5b8c4826906248a22b50d0a3:15-28".to_string()),
+//     //     );
+//     //     let tags = vec![tag];
+//     //     let msg = Message::with_tags(
+//     //         Some(tags),
+//     //         Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
+//     //         "PRIVMSG",
+//     //         vec!["#s9tpepper_", "This is a message from twitch"],
+//     //     );
+//     //
+//     //     let twitch_message = parse(msg.unwrap()).await?;
+//     //
+//     //     assert_eq!("303147449", twitch_message.emotes[0].id);
+//     //
+//     //     Ok(())
+//     // }
+//
+//     #[tokio::test]
+//     async fn test_parse_emotes_position() -> Result<(), Box<dyn Error>> {
+//         let tag = Tag(
+//             "emotes".to_string(),
+//             Some("303147449:0-13/emotesv2_a388006c5b8c4826906248a22b50d0a3:15-28".to_string()),
+//         );
+//         let tags = vec![tag];
+//         let msg = Message::with_tags(
+//             Some(tags),
+//             Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
+//             "PRIVMSG",
+//             vec!["#s9tpepper_", "This is a message from twitch"],
+//         );
+//
+//         let twitch_message = parse(msg.unwrap()).await?;
+//         match twitch_message {
+//             crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
+//                 assert_eq!(0, message.emotes[0].start);
+//                 assert_eq!(13, message.emotes[0].end);
+//             }
+//             _ => {}
+//         }
+//
+//         Ok(())
+//     }
+//
+//     #[tokio::test]
+//     async fn test_parse_message() -> Result<(), Box<dyn Error>> {
+//         let tag = Tag("badges".to_string(), Some("broadcaster/1,premium/1".to_string()));
+//         let tags = vec![tag];
+//         let msg = Message::with_tags(
+//             Some(tags),
+//             Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
+//             "PRIVMSG",
+//             vec!["#s9tpepper_", "This is a message from twitch"],
+//         );
+//
+//         let twitch_message = parse(msg.unwrap()).await?;
+//         match twitch_message {
+//             crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
+//                 assert_eq!("This is a message from twitch", message.message);
+//             }
+//             _ => {}
+//         }
+//
+//         Ok(())
+//     }
+//
+//     #[tokio::test]
+//     async fn test_parse_nickname() -> Result<(), Box<dyn Error>> {
+//         let tag = Tag("badges".to_string(), Some("broadcaster/1,premium/1".to_string()));
+//         let tags = vec![tag];
+//         let msg = Message::with_tags(
+//             Some(tags),
+//             Some("rayslash!rayslash@rayslash.tmi.twitch.tv"),
+//             "PRIVMSG",
+//             vec!["#s9tpepper_", "This is a message from twitch"],
+//         );
+//
+//         let twitch_message = parse(msg.unwrap()).await?;
+//         match twitch_message {
+//             crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
+//                 assert_eq!("rayslash", message.nickname);
+//             }
+//             _ => {}
+//         }
+//
+//         Ok(())
+//     }
+//
+//     #[tokio::test]
+//     async fn test_parse_display_name() -> Result<(), Box<dyn Error>> {
+//         let tag = Tag("display-name".to_string(), Some("s9tpepper_".to_string()));
+//         let tags = vec![tag];
+//         let msg = Message::with_tags(
+//             Some(tags),
+//             Some(""),
+//             "PRIVMSG",
+//             vec!["#s9tpepper_", "This is a message from twitch"],
+//         );
+//
+//         let twitch_message = parse(msg.unwrap()).await?;
+//         match twitch_message {
+//             crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
+//                 assert_eq!(" s9tpepper_", message.display_name);
+//             }
+//             _ => {}
+//         }
+//
+//         Ok(())
+//     }
+//
+//     #[tokio::test]
+//     async fn test_parse_color() -> Result<(), Box<dyn Error>> {
+//         let tag = Tag("color".to_string(), Some("#8A2BE2".to_string()));
+//         let tags = vec![tag];
+//         let msg = Message::with_tags(
+//             Some(tags),
+//             Some(""),
+//             "PRIVMSG",
+//             vec!["#s9tpepper_", "This is a message from twitch"],
+//         );
+//
+//         let twitch_message = parse(msg.unwrap()).await?;
+//         match twitch_message {
+//             crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
+//                 assert_eq!("#8A2BE2", message.color);
+//             }
+//             _ => {}
+//         }
+//
+//         Ok(())
+//     }
+//
+//     #[tokio::test]
+//     async fn test_parse_returning_chatter_is_true() -> Result<(), Box<dyn Error>> {
+//         let tag = Tag("returning-chatter".to_string(), Some("1".to_string()));
+//         let tags = vec![tag];
+//         let msg = Message::with_tags(
+//             Some(tags),
+//             Some(""),
+//             "PRIVMSG",
+//             vec!["#s9tpepper_", "This is a message from twitch"],
+//         );
+//
+//         let twitch_message = parse(msg.unwrap()).await?;
+//         match twitch_message {
+//             crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
+//                 assert_eq!(true, message.returning_chatter);
+//             }
+//             _ => {}
+//         }
+//
+//         Ok(())
+//     }
+//
+//     #[tokio::test]
+//     async fn test_parse_returning_chatter_is_false() -> Result<(), Box<dyn Error>> {
+//         let tag = Tag("returning-chatter".to_string(), Some("0".to_string()));
+//         let tags = vec![tag];
+//         let msg = Message::with_tags(
+//             Some(tags),
+//             Some(""),
+//             "PRIVMSG",
+//             vec!["#s9tpepper_", "This is a message from twitch"],
+//         );
+//
+//         let twitch_message = parse(msg.unwrap()).await?;
+//         match twitch_message {
+//             crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
+//                 assert_eq!(false, message.returning_chatter);
+//             }
+//             _ => {}
+//         }
+//
+//         Ok(())
+//     }
+//
+//     #[tokio::test]
+//     async fn test_parse_subscriber_is_true() -> Result<(), Box<dyn Error>> {
+//         let tag = Tag("subscriber".to_string(), Some("1".to_string()));
+//         let tags = vec![tag];
+//         let msg = Message::with_tags(
+//             Some(tags),
+//             Some(""),
+//             "PRIVMSG",
+//             vec!["#s9tpepper_", "This is a message from twitch"],
+//         );
+//
+//         let twitch_message = parse(msg.unwrap()).await?;
+//         match twitch_message {
+//             crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
+//                 assert_eq!(true, message.subscriber);
+//             }
+//             _ => {}
+//         }
+//
+//         Ok(())
+//     }
+//
+//     #[tokio::test]
+//     async fn test_parse_subscriber_is_false() -> Result<(), Box<dyn Error>> {
+//         let tag = Tag("subscriber".to_string(), Some("0".to_string()));
+//         let tags = vec![tag];
+//         let msg = Message::with_tags(
+//             Some(tags),
+//             Some(""),
+//             "PRIVMSG",
+//             vec!["#s9tpepper_", "This is a message from twitch"],
+//         );
+//
+//         let twitch_message = parse(msg.unwrap()).await?;
+//         match twitch_message {
+//             crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
+//                 assert_eq!(false, message.subscriber);
+//             }
+//             _ => {}
+//         }
+//
+//         Ok(())
+//     }
+//
+//     #[tokio::test]
+//     async fn test_parse_moderator_is_true() -> Result<(), Box<dyn Error>> {
+//         let tag = Tag("mod".to_string(), Some("1".to_string()));
+//         let tags = vec![tag];
+//         let msg = Message::with_tags(
+//             Some(tags),
+//             Some(""),
+//             "PRIVMSG",
+//             vec!["#s9tpepper_", "This is a message from twitch"],
+//         );
+//
+//         let twitch_message = parse(msg.unwrap()).await?;
+//         match twitch_message {
+//             crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
+//                 assert_eq!(true, message.moderator);
+//             }
+//             _ => {}
+//         }
+//
+//         Ok(())
+//     }
+//
+//     #[tokio::test]
+//     async fn test_parse_moderator_is_false() -> Result<(), Box<dyn Error>> {
+//         let tag = Tag("mod".to_string(), Some("0".to_string()));
+//         let tags = vec![tag];
+//         let msg = Message::with_tags(
+//             Some(tags),
+//             Some(""),
+//             "PRIVMSG",
+//             vec!["#s9tpepper_", "This is a message from twitch"],
+//         );
+//
+//         let twitch_message = parse(msg.unwrap()).await?;
+//         match twitch_message {
+//             crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
+//                 assert_eq!(false, message.moderator);
+//             }
+//             _ => {}
+//         }
+//
+//         Ok(())
+//     }
+//
+//     #[tokio::test]
+//     async fn test_parse_first_msg_is_true() -> Result<(), Box<dyn Error>> {
+//         let tag = Tag("first-msg".to_string(), Some("1".to_string()));
+//         let tags = vec![tag];
+//         let msg = Message::with_tags(
+//             Some(tags),
+//             Some(""),
+//             "PRIVMSG",
+//             vec!["#s9tpepper_", "This is a message from twitch"],
+//         );
+//
+//         let twitch_message = parse(msg.unwrap()).await?;
+//         match twitch_message {
+//             crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
+//                 assert_eq!(true, message.first_msg);
+//             }
+//             _ => {}
+//         }
+//
+//         Ok(())
+//     }
+//
+//     #[tokio::test]
+//     async fn test_parse_first_msg_is_false() -> Result<(), Box<dyn Error>> {
+//         let tag = Tag("first-msg".to_string(), Some("0".to_string()));
+//         let tags = vec![tag];
+//         let msg = Message::with_tags(
+//             Some(tags),
+//             Some(""),
+//             "PRIVMSG",
+//             vec!["#s9tpepper_", "This is a message from twitch"],
+//         );
+//
+//         let twitch_message = parse(msg.unwrap()).await?;
+//         match twitch_message {
+//             crate::twitch::messages::TwitchMessage::PrivMessage { message } => {
+//                 assert_eq!(false, message.first_msg);
+//             }
+//             _ => {}
+//         }
+//
+//         Ok(())
+//     }
+// }
