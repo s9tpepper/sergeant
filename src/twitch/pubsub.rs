@@ -1,5 +1,5 @@
 use std::io::ErrorKind;
-use std::time::Duration;
+use std::time::{self, Duration};
 use std::{error::Error, fs::OpenOptions, io::Write, process::Command, sync::Arc};
 
 use colored::Colorize;
@@ -99,6 +99,7 @@ pub struct UserReference {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Redemption {
+    pub id: String,
     pub user: UserReference,
     pub user_input: Option<String>,
     pub status: String,
@@ -113,7 +114,9 @@ pub struct Reward {
 }
 
 pub fn send_to_error_log(err: String, json: String) {
-    let log = format!("{}: {}\n", err, json);
+    let now = time::SystemTime::now();
+
+    let log = format!("{:?} - {}: {}\n", now, err, json);
     let mut error_log = get_data_directory(Some("error_log")).unwrap();
     error_log.push("log.txt");
 
@@ -155,6 +158,8 @@ fn handle_message(message: Message) -> Result<(), Box<dyn Error>> {
                     if let Ok(command_name) = get_reward(&sub_message.redemption.reward.title) {
                         if let Some(user_input) = sub_message.redemption.user_input {
                             let Ok(_) = Command::new(&command_name).arg(&user_input).output() else {
+                                // TODO: Refund the points if the command fails
+
                                 send_to_error_log(
                                     command_name.to_string(),
                                     format!("Error running reward command with input: {}", user_input),

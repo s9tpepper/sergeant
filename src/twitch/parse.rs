@@ -60,6 +60,8 @@ pub struct BadgeItem {
 #[allow(dead_code)]
 #[derive(Serialize, Deserialize, Debug)]
 struct IrcMessage<'a> {
+    parameters: &'a str,
+    channel: &'a str,
     tags: Vec<(&'a str, &'a str)>,
     r#type: &'a str,
     sender: &'a str,
@@ -78,56 +80,68 @@ fn is_tmux() -> bool {
 //
 // @badge-info=;badges=;color=#FF4500;display-name=vei_bean;emotes=;flags=;id=4c33fcb0-9337-4e68-b7d0-3a3049ad7cfd;login=vei_bean;mod=0;msg-id=raid;msg-param-displayName=vei_bean;msg-param-login=vei_bean;msg-param-profileImageURL=https://static-cdn.jtvnw.net/jtv_user_pictures/618358c1-993a-4a2d-b0b9-a51d1827c659-profile_image-%s.png;msg-param-viewerCount=1;room-id=961536166;subscriber=0;system-msg=1\sraiders\sfrom\svei_bean\shave\sjoined!;tmi-sent-ts=1708304703515;user-id=624578741;user-type=;vip=0 :tmi.twitch.tv USERNOTICE #s9tpepper_
 
-pub fn parse(message: String) -> Result<TwitchMessage, Box<dyn Error>> {
-    let raw = message.as_str();
-    let Some((tags_str, msg)) = message.split_once(' ') else {
-        return Err("Could not parse message".into());
-    };
+pub fn parse(mut message: &str) -> Result<TwitchMessage, Box<dyn Error>> {
+    let raw = message;
 
-    let mut tags: Vec<(&str, &str)> = vec![];
-    for tag_pair in tags_str.split(';') {
-        let Some(pair) = tag_pair.split_once('=') else {
-            continue;
+    let mut tags = vec![];
+    let mut sender: &str = "";
+    let channel: &str;
+    let parameters: &str;
+
+    // Check if the message contains tags
+    if message.starts_with('@') {
+        let Some((tags_str, msg)) = message.split_once(' ') else {
+            return Err("Could not parse message".into());
         };
-        tags.push(pair);
+
+        tags = tags_str
+            .split(';')
+            .filter_map(|tag_pair| tag_pair.split_once('='))
+            .collect();
+
+        message = msg;
     }
 
-    let mut message_parts = msg.split(' ');
+    if message.starts_with(':') {
+        let Some((left, msg)) = message.split_once(' ') else {
+            return Err("Could not parse message".into());
+        };
 
-    let (mut sender, _) = message_parts.next().unwrap_or("").split_once('!').unwrap_or(("", ""));
-    sender = sender.trim_start_matches(':');
+        sender = left.trim_start_matches(':');
 
-    if let Some((_, display_name)) = tags.iter().find(|(tag, _)| *tag == "display-name") {
-        sender = display_name;
+        if let Some((_, display_name)) = tags.iter().find(|(tag, _)| *tag == "display-name") {
+            sender = display_name;
+        }
+
+        message = msg;
     }
 
-    let r#type = message_parts.next().unwrap_or("");
+    let (r#type, rest) = message.split_once(' ').unwrap_or(("", ""));
+    if rest.starts_with('#') {
+        let (c, p) = rest.split_once(' ').unwrap_or(("", ""));
+        channel = c;
+        parameters = p.trim_start_matches(':');
+    } else {
+        channel = "";
+        parameters = rest.trim_start_matches(':');
+    }
 
     let irc_message = IrcMessage {
         tags,
         sender,
         r#type,
+        channel,
+        parameters,
         raw,
     };
 
     match r#type {
-        "PRIVMSG" => {
-            let channel = message_parts.next().expect("Missing channel in message");
-            let mut message_text: String = message_parts.collect::<Vec<&str>>().join(" ");
-            if message_text.starts_with(':') {
-                message_text = message_text[1..].to_string();
-            }
+        "PRIVMSG" => Ok(parse_privmsg(irc_message)),
 
-            Ok(parse_privmsg(irc_message, message_text, channel))
-        }
-
-        "USERNOTICE" => {
-            let channel = message_parts.next().expect("Missing channel in message");
-            Ok(parse_usernotice(irc_message, channel))
-        }
+        "USERNOTICE" => Ok(parse_usernotice(irc_message)),
 
         "PING" => {
-            let message: String = message_parts.collect::<Vec<&str>>().join(" ");
+            let message: String = irc_message.parameters.to_string();
             Ok(TwitchMessage::PingMessage { message })
         }
         _ => Err("Unknown message type".into()),
@@ -265,7 +279,7 @@ fn add_badges(badges: &[String]) -> Result<String, Box<dyn Error>> {
     Ok(badges_list)
 }
 
-fn parse_privmsg(irc_message: IrcMessage, message_text: String, channel: &str) -> TwitchMessage {
+fn parse_privmsg(irc_message: IrcMessage) -> TwitchMessage {
     let mut badges: Vec<String> = vec![];
     let mut color = "#FF9912".to_string();
     let mut first_msg = false;
@@ -299,7 +313,7 @@ fn parse_privmsg(irc_message: IrcMessage, message_text: String, channel: &str) -
         }
     }
 
-    let mut message = message_text.to_string();
+    let mut message = irc_message.parameters.to_string();
     let _ = add_emotes(&mut message, &mut emotes);
     let encoded_badges = add_badges(&badges).unwrap_or("".to_string());
     let nickname = format!("{}{}", encoded_badges, irc_message.sender);
@@ -315,13 +329,13 @@ fn parse_privmsg(irc_message: IrcMessage, message_text: String, channel: &str) -
             color,
             message,
             nickname,
-            channel: channel.to_string(),
+            channel: irc_message.channel.to_string(),
             raw: irc_message.raw.to_string(),
         },
     }
 }
 
-fn parse_usernotice(message: IrcMessage, _channel: &str) -> TwitchMessage {
+fn parse_usernotice(message: IrcMessage) -> TwitchMessage {
     let mut system_msg = String::new();
     let mut is_raid = false;
     let mut user_id = String::new();

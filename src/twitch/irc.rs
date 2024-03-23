@@ -13,6 +13,7 @@ pub struct TwitchIRC {
 }
 
 const CONN_MAX_RETRIES: u8 = 3;
+const MESSAGE_DELIMITER: &str = "\r\n";
 
 fn connect(twitch_name: &Arc<String>, oauth_token: &Arc<String>, retry: u8) -> WebSocket<MaybeTlsStream<TcpStream>> {
     if retry == CONN_MAX_RETRIES {
@@ -92,8 +93,13 @@ impl TwitchIRC {
     pub fn listen(&mut self) {
         loop {
             if let Ok(message) = self.socket.read() {
-                match message {
-                    tungstenite::Message::Text(new_message) => match parse(new_message) {
+                // NOTE: Twitch could send multiple messages at once, so we need to split them
+                // The messages are separated by '\r\n'
+                let messages = message.to_text().unwrap().split(MESSAGE_DELIMITER);
+                let messages = messages.map(tungstenite::Message::from);
+
+                messages.for_each(|message| match message {
+                    tungstenite::Message::Text(new_message) => match parse(&new_message) {
                         Ok(
                             message @ TwitchMessage::PrivMessage { .. } | message @ TwitchMessage::RaidMessage { .. },
                         ) => {
@@ -101,14 +107,19 @@ impl TwitchIRC {
                         }
 
                         Ok(TwitchMessage::PingMessage { message }) => {
-                            let _ = self.socket.send(format!("PONG {message}").into());
+                            let pong_message = format!("PONG {message}");
+
+                            let _ = self.socket.send(pong_message.into());
                         }
 
                         Ok(TwitchMessage::UnknownMessage { message }) => {
                             send_to_error_log(message, "Unknown message".to_string())
                         }
 
-                        Err(error) => send_to_error_log(error.to_string(), "Error while parsing message".to_string()),
+                        Err(error) => send_to_error_log(
+                            error.to_string(),
+                            format!("Error while parsing message: {}", new_message),
+                        ),
                     },
 
                     tungstenite::Message::Close(_) => {
@@ -121,7 +132,7 @@ impl TwitchIRC {
                     }
 
                     unknown => send_to_error_log(unknown.to_string(), "Unhandled error from socket.read()".to_string()),
-                }
+                });
             }
         }
     }
