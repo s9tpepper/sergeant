@@ -11,7 +11,10 @@ use tungstenite::Message::{self, Close, Ping, Text};
 
 use crate::{commands::get_reward, utils::get_data_directory};
 
-use super::messages::TwitchApiResponse;
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TwitchApiResponse<T> {
+    pub data: T,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
@@ -208,12 +211,19 @@ fn handle_message(message: Message) -> Result<(), Box<dyn Error>> {
 
 pub fn connect_to_pub_sub(oauth_token: Arc<String>, client_id: Arc<String>) -> Result<(), Box<dyn Error>> {
     let get_users_url = "https://api.twitch.tv/helix/users";
-    let mut response = reqwest::blocking::Client::new()
-        .get(get_users_url)
-        .header("Authorization", format!("Bearer {}", oauth_token.replace("oauth:", "")))
-        .header("Client-Id", client_id.to_string())
-        .send()?
-        .json::<TwitchApiResponse<Vec<User>>>()?;
+    let response = ureq::get(get_users_url)
+        .set(
+            "Authorization",
+            &format!("Bearer {}", oauth_token.replace("oauth:", "")),
+        )
+        .set("Client-Id", &client_id.to_string())
+        .call();
+
+    let Ok(response) = response else {
+        return Err("Failed to get user data".into());
+    };
+
+    let mut response: TwitchApiResponse<Vec<User>> = serde_json::from_reader(response.into_reader())?;
 
     let user = response.data.swap_remove(0);
     let twitch_pub_sub = "wss://pubsub-edge.twitch.tv";

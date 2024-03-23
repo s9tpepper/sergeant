@@ -5,6 +5,7 @@ use sergeant::commands::list_rewards;
 use sergeant::commands::remove_reward;
 use sergeant::twitch::announcements::start_announcements;
 use sergeant::twitch::irc::TwitchIRC;
+use sergeant::twitch::parse::get_badges;
 use sergeant::twitch::pubsub::connect_to_pub_sub;
 use std::fs;
 use std::thread;
@@ -14,7 +15,6 @@ use sergeant::commands::{
     TokenStatus,
 };
 
-use sergeant::twitch::messages::get_badges;
 use sergeant::utils::get_data_directory;
 use std::error::Error;
 use std::process::exit;

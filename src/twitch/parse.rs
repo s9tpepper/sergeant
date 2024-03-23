@@ -1,9 +1,11 @@
-use std::{error::Error, fs, io::Cursor};
+use std::{error::Error, fs, io::Cursor, path::PathBuf};
 
 use base64::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::utils::get_data_directory;
+
+use super::pubsub::TwitchApiResponse;
 
 const ESCAPE: &str = "\x1b";
 const BELL: &str = "\x07";
@@ -79,6 +81,65 @@ fn is_tmux() -> bool {
 //
 //
 // @badge-info=;badges=;color=#FF4500;display-name=vei_bean;emotes=;flags=;id=4c33fcb0-9337-4e68-b7d0-3a3049ad7cfd;login=vei_bean;mod=0;msg-id=raid;msg-param-displayName=vei_bean;msg-param-login=vei_bean;msg-param-profileImageURL=https://static-cdn.jtvnw.net/jtv_user_pictures/618358c1-993a-4a2d-b0b9-a51d1827c659-profile_image-%s.png;msg-param-viewerCount=1;room-id=961536166;subscriber=0;system-msg=1\sraiders\sfrom\svei_bean\shave\sjoined!;tmi-sent-ts=1708304703515;user-id=624578741;user-type=;vip=0 :tmi.twitch.tv USERNOTICE #s9tpepper_
+//
+
+fn get_encoded_image(url: &str) -> Result<String, Box<dyn Error>> {
+    let response = ureq::get(url).call()?;
+    let length: usize = response.header("content-length").unwrap().parse()?;
+    let mut file_bytes: Vec<u8> = vec![0; length];
+    response.into_reader().read_exact(&mut file_bytes)?;
+
+    let img_data = image::load_from_memory(&file_bytes)?;
+
+    let mut buffer: Vec<u8> = Vec::new();
+    img_data.write_to(&mut Cursor::new(&mut buffer), image::ImageFormat::Png)?;
+    let base64_emote = BASE64_STANDARD.encode(&buffer);
+
+    Ok(base64_emote)
+}
+
+fn generate_badge_file(badge_path: PathBuf, version: &BadgeVersion) -> Result<(), Box<dyn Error>> {
+    if let Ok(encoded_image) = get_encoded_image(&version.image_url_1x) {
+        fs::write(badge_path, encoded_image)?;
+    }
+
+    Ok(())
+}
+
+type AsyncResult<T> = Result<T, Box<dyn Error>>;
+pub fn get_badges(token: &str, client_id: &str) -> AsyncResult<Vec<BadgeItem>> {
+    // Global badges: https://api.twitch.tv/helix/chat/badges/global
+    // oauth:141241241241241
+    //
+    // scopes:
+    // chat:read+chat:edit+channel:moderate+channel:read:redemptions+channel:bot+user:write:chat
+    // base64: encoded app title
+    // https://twitchtokengenerator.com/api/create
+    //
+    let response = ureq::get("https://api.twitch.tv/helix/chat/badges/global")
+        .set("Authorization", &format!("Bearer {}", token.replace("oauth:", "")))
+        .set("Client-Id", client_id)
+        .call()?;
+
+    let mut response: TwitchApiResponse<Vec<BadgeItem>> = serde_json::from_reader(response.into_reader())?;
+
+    let data_dir = get_data_directory(None)?;
+
+    for badge_item in response.data.iter_mut() {
+        let file_name = format!("{}.txt", badge_item.set_id);
+        let Some(ref version) = badge_item.versions.pop() else {
+            continue;
+        };
+
+        let badge_path = data_dir.join(file_name);
+
+        if !badge_path.exists() {
+            generate_badge_file(badge_path, version)?;
+        }
+    }
+
+    Ok(response.data)
+}
 
 pub fn parse(mut message: &str) -> Result<TwitchMessage, Box<dyn Error>> {
     let raw = message;
@@ -241,7 +302,7 @@ fn add_emotes(message: &mut String, emotes: &mut [Emote]) -> Result<(), Box<dyn 
         let img_data = image::load_from_memory(&file_bytes)?;
 
         let mut buffer: Vec<u8> = Vec::new();
-        img_data.write_to(&mut Cursor::new(&mut buffer), image::ImageOutputFormat::Png)?;
+        img_data.write_to(&mut Cursor::new(&mut buffer), image::ImageFormat::Png)?;
         let base64_emote = BASE64_STANDARD.encode(&buffer);
 
         let encoded_image = format!(

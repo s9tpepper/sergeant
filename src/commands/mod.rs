@@ -138,7 +138,11 @@ pub fn authenticate_with_twitch() -> Result<(), Box<dyn Error>> {
         .replace("[APP_NAME]", &app_name)
         .replace("[SCOPES]", &TWITCH_SCOPES.join("+"));
 
-    let token_response = reqwest::blocking::get(url)?.json::<TokenResponse>()?;
+    let token_response = ureq::get(&url).call();
+    if token_response.is_err() {
+        return Err("Failed to get token response".into());
+    }
+    let token_response = serde_json::from_str::<TokenResponse>(&token_response?.into_string()?)?;
     println!("Navigate to this url to grant a token: {}", token_response.message);
 
     let ten_seconds = Duration::from_secs(10);
@@ -153,19 +157,13 @@ pub fn authenticate_with_twitch() -> Result<(), Box<dyn Error>> {
             break;
         }
 
-        let token_status_response = reqwest::blocking::get(&status_url);
+        let token_status_response = ureq::get(&status_url).call();
         if token_status_response.is_err() {
-            dbg!(&token_status_response);
+            println!("Failed to get token status");
             return Err("token status response was bad".into());
         }
 
-        let token_status_serializing = token_status_response?.json::<TokenStatus>();
-        if token_status_serializing.is_err() {
-            dbg!(&token_status_serializing);
-            return Err("token serialization failed".into());
-        }
-
-        let token_status = token_status_serializing?;
+        let token_status = serde_json::from_str::<TokenStatus>(&token_status_response?.into_string()?)?;
         if token_status.success {
             store_token(token_status)?;
             break;
