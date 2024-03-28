@@ -71,11 +71,13 @@ struct IrcMessage<'a> {
     // message: Option<&'a str>,
 }
 
+// TODO: Come back to this later for fixing
+//
 /// Tmux sucks.
-fn is_tmux() -> bool {
-    let term = std::env::var("TERM").unwrap();
-    term.contains("tmux") || term.contains("screen")
-}
+// fn is_tmux() -> bool {
+//     let term = std::env::var("TERM").unwrap();
+//     term.contains("tmux") || term.contains("screen")
+// }
 
 // @badge-info=;badges=;client-nonce=b0377556cf50be6ca38957b8ca735aa8;color=#FF4500;display-name=vei_bean;emotes=;first-msg=0;flags=;id=e4c10c03-a606-47f0-b0ab-2d83d415af46;mod=0;returning-chatter=0;room-id=961536166;subscriber=0;tmi-sent-ts=1708304710278;turbo=0;user-id=624578741;user-type= :vei_bean!vei_bean@vei_bean.tmi.twitch.tv PRIVMSG #s9tpepper_ hello
 //
@@ -181,10 +183,10 @@ pub fn parse(mut message: &str) -> Result<TwitchMessage, Box<dyn Error>> {
     if rest.starts_with('#') {
         let (c, p) = rest.split_once(' ').unwrap_or(("", ""));
         channel = c;
-        parameters = p.trim_start_matches(':');
+        parameters = p.strip_prefix(':').unwrap_or(p);
     } else {
         channel = "";
-        parameters = rest.trim_start_matches(':');
+        parameters = rest.strip_prefix(':').unwrap_or(rest);
     }
 
     let irc_message = IrcMessage {
@@ -270,17 +272,17 @@ fn process_emotes(value: &str, emotes: &mut Vec<Emote>) {
 }
 
 fn get_emote_prefix() -> String {
-    if is_tmux() {
-        return format!("{0}Ptmux;{0}{0}]", ESCAPE);
-    }
+    // if is_tmux() {
+    //     return format!("{0}Ptmux;{0}{0}]", ESCAPE);
+    // }
 
     format!("{ESCAPE}]")
 }
 
 fn get_emote_suffix() -> String {
-    if is_tmux() {
-        return format!("{}{}\\.", BELL, ESCAPE);
-    }
+    // if is_tmux() {
+    //     return format!("{}{}\\", BELL, ESCAPE);
+    // }
 
     BELL.to_string()
 }
