@@ -1,15 +1,18 @@
 use std::io::ErrorKind;
+use std::sync::mpsc::Sender;
+use std::sync::Arc;
 use std::time::{self, Duration};
-use std::{error::Error, fs::OpenOptions, io::Write, process::Command, sync::Arc};
+use std::{error::Error, fs::OpenOptions, io::Write};
 
-use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tungstenite::connect;
 use tungstenite::Error::{AlreadyClosed, ConnectionClosed, Io};
 use tungstenite::Message::{self, Close, Ping, Text};
 
-use crate::{commands::get_reward, utils::get_data_directory};
+use crate::utils::get_data_directory;
+
+use super::ChannelMessages;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TwitchApiResponse<T> {
@@ -127,7 +130,7 @@ pub fn send_to_error_log(err: String, json: String) {
     let _ = file.write_all(log.as_bytes());
 }
 
-fn handle_message(message: Message) -> Result<(), Box<dyn Error>> {
+fn handle_message(message: Message, tx: &Sender<ChannelMessages>) -> Result<(), Box<dyn Error>> {
     match message {
         Message::Text(message) => {
             if !message.contains("MESSAGE") {
@@ -147,60 +150,72 @@ fn handle_message(message: Message) -> Result<(), Box<dyn Error>> {
                 return Err("Not a message".into());
             };
 
-            match sub_message.data {
-                SubMessage::Points(sub_message) => {
-                    let message = format!(
-                        "{} redeemed {} for {}",
-                        sub_message.redemption.user.display_name,
-                        sub_message.redemption.reward.title,
-                        sub_message.redemption.reward.cost
-                    );
+            // TODO: Handle SubMessage::Points Command execution once this
+            // gets to Ratatui layer
+            tx.send(ChannelMessages::MessageData(sub_message))?;
 
-                    println!("{}", message.to_string().green().bold());
+            Ok(())
 
-                    if let Ok(command_name) = get_reward(&sub_message.redemption.reward.title) {
-                        if let Some(user_input) = sub_message.redemption.user_input {
-                            let Ok(_) = Command::new(&command_name).arg(&user_input).output() else {
-                                // TODO: Refund the points if the command fails
-
-                                send_to_error_log(
-                                    command_name.to_string(),
-                                    format!("Error running reward command with input: {}", user_input),
-                                );
-
-                                return Ok(());
-                            };
-                        }
-
-                        return Ok(());
-                    }
-
-                    Ok(())
-                }
-
-                SubMessage::Sub(sub_message) => {
-                    let message = format!(
-                        "{} has subscribed for {} months, currently on a {} month steak.",
-                        sub_message.message.display_name,
-                        sub_message.message.cumulative_months,
-                        sub_message.message.streak_months
-                    );
-
-                    println!("{}", message.to_string().blue().bold());
-
-                    Ok(())
-                }
-
-                SubMessage::Bits(sub_message) => {
-                    let message = format!(
-                        "{} has cheered {} bits",
-                        sub_message.data.user_name, sub_message.data.bits_used
-                    );
-
-                    println!("{}", message.to_string().white().on_green().bold());
-                    Ok(())
-                }
-            }
+            // TODO: Move this block of message formatting data to Ratatui so it
+            // can be used for formatting the message output in the TUI
+            //
+            // match sub_message.data {
+            //     SubMessage::Points(sub_message) => {
+            //         let message = format!(
+            //             "{} redeemed {} for {}",
+            //             sub_message.redemption.user.display_name,
+            //             sub_message.redemption.reward.title,
+            //             sub_message.redemption.reward.cost
+            //         );
+            //
+            //         println!("{}", message.to_string().green().bold());
+            //
+            //         TODO: Move this command stuff to Ratatui layer so commands still work when
+            //         they are tied to a shell command, like Spotify redeems
+            //
+            //         if let Ok(command_name) = get_reward(&sub_message.redemption.reward.title) {
+            //             if let Some(user_input) = sub_message.redemption.user_input {
+            //                 let Ok(_) = Command::new(&command_name).arg(&user_input).output() else {
+            //                     // TODO: Refund the points if the command fails
+            //
+            //                     send_to_error_log(
+            //                         command_name.to_string(),
+            //                         format!("Error running reward command with input: {}", user_input),
+            //                     );
+            //
+            //                     return Ok(());
+            //                 };
+            //             }
+            //
+            //             return Ok(());
+            //         }
+            //
+            //         Ok(())
+            //     }
+            //
+            //     SubMessage::Sub(sub_message) => {
+            //         let message = format!(
+            //             "{} has subscribed for {} months, currently on a {} month steak.",
+            //             sub_message.message.display_name,
+            //             sub_message.message.cumulative_months,
+            //             sub_message.message.streak_months
+            //         );
+            //
+            //         println!("{}", message.to_string().blue().bold());
+            //
+            //         Ok(())
+            //     }
+            //
+            //     SubMessage::Bits(sub_message) => {
+            //         let message = format!(
+            //             "{} has cheered {} bits",
+            //             sub_message.data.user_name, sub_message.data.bits_used
+            //         );
+            //
+            //         println!("{}", message.to_string().white().on_green().bold());
+            //         Ok(())
+            //     }
+            // }
         }
         other => {
             send_to_error_log(other.to_string(), "Unknown Error".into());
@@ -209,7 +224,11 @@ fn handle_message(message: Message) -> Result<(), Box<dyn Error>> {
     }
 }
 
-pub fn connect_to_pub_sub(oauth_token: Arc<String>, client_id: Arc<String>) -> Result<(), Box<dyn Error>> {
+pub fn connect_to_pub_sub(
+    oauth_token: Arc<String>,
+    client_id: Arc<String>,
+    tx: Sender<ChannelMessages>,
+) -> Result<(), Box<dyn Error>> {
     let get_users_url = "https://api.twitch.tv/helix/users";
     let response = ureq::get(get_users_url)
         .set(
@@ -270,12 +289,12 @@ pub fn connect_to_pub_sub(oauth_token: Arc<String>, client_id: Arc<String>) -> R
                 match socket.read() {
                     Ok(message) => match message {
                         Text(message) => {
-                            let _ = handle_message(Message::Text(message));
+                            let _ = handle_message(Message::Text(message), &tx);
                         }
                         Close(_) => {
                             send_to_error_log("We got a close message, reconnecting...".to_string(), "".to_string());
 
-                            return connect_to_pub_sub(oauth_token, client_id);
+                            return connect_to_pub_sub(oauth_token, client_id, tx);
                         }
 
                         Ping(_) => {}
@@ -283,7 +302,7 @@ pub fn connect_to_pub_sub(oauth_token: Arc<String>, client_id: Arc<String>) -> R
                         wtf => {
                             send_to_error_log("HOW? Why are we here???".to_string(), wtf.to_string());
 
-                            return connect_to_pub_sub(oauth_token, client_id);
+                            return connect_to_pub_sub(oauth_token, client_id, tx);
                         }
                     },
                     Err(error) => {
@@ -291,12 +310,12 @@ pub fn connect_to_pub_sub(oauth_token: Arc<String>, client_id: Arc<String>) -> R
 
                         match error {
                             ConnectionClosed | AlreadyClosed => {
-                                return connect_to_pub_sub(oauth_token, client_id);
+                                return connect_to_pub_sub(oauth_token, client_id, tx);
                             }
 
                             Io(error) => {
                                 if error.kind() != ErrorKind::WouldBlock {
-                                    return connect_to_pub_sub(oauth_token, client_id);
+                                    return connect_to_pub_sub(oauth_token, client_id, tx);
                                 }
                             }
 
@@ -310,7 +329,7 @@ pub fn connect_to_pub_sub(oauth_token: Arc<String>, client_id: Arc<String>) -> R
         Err(error) => {
             send_to_error_log(error.to_string(), "Could not connect to pub sub".to_string());
 
-            connect_to_pub_sub(oauth_token, client_id)
+            connect_to_pub_sub(oauth_token, client_id, tx)
         }
     }
 }

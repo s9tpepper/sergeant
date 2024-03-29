@@ -1,19 +1,30 @@
 use std::{
     error::Error,
     fs,
-    sync::Arc,
+    sync::mpsc::Sender,
     thread::sleep,
     time::{Duration, SystemTime},
 };
 
 use crate::utils::get_data_directory;
 
-use super::irc::TwitchIRC;
+use super::ChannelMessages;
 
+#[derive(Debug)]
 pub struct Announcement {
     pub timing: Duration,
     pub message: String,
     pub start: SystemTime,
+}
+
+impl Clone for Announcement {
+    fn clone(&self) -> Self {
+        Self {
+            timing: self.timing,
+            message: self.message.clone(),
+            start: self.start,
+        }
+    }
 }
 
 pub fn get_announcements() -> Result<Vec<Announcement>, Box<dyn Error>> {
@@ -40,10 +51,10 @@ pub fn get_announcements() -> Result<Vec<Announcement>, Box<dyn Error>> {
     Ok(announcements)
 }
 
-pub fn start_announcements(twitch_name: Arc<String>, oauth_token: Arc<String>) -> Result<(), Box<dyn Error>> {
+pub fn start_announcements(tx: Sender<ChannelMessages>) -> Result<(), Box<dyn Error>> {
     // TODO: Add a flag here to toggle announcements on/off?
 
-    let mut twitch_irc = TwitchIRC::new(twitch_name, oauth_token);
+    // let mut twitch_irc = TwitchIRC::new(twitch_name, oauth_token);
 
     let mut announcements = get_announcements()?;
 
@@ -54,7 +65,9 @@ pub fn start_announcements(twitch_name: Arc<String>, oauth_token: Arc<String>) -
 
                 if time_to_announce {
                     announcement.start = SystemTime::now();
-                    twitch_irc.send_privmsg(&announcement.message);
+                    tx.send(ChannelMessages::Announcement(announcement.clone()))?;
+
+                    // twitch_irc.send_privmsg(&announcement.message);
                 };
             }
         }

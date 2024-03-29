@@ -1,12 +1,18 @@
-use std::{net::TcpStream, sync::Arc, thread::sleep, time::Duration};
+use std::{
+    net::TcpStream,
+    sync::{mpsc::Sender, Arc},
+    thread::sleep,
+    time::Duration,
+};
 
 use tungstenite::{stream::MaybeTlsStream, WebSocket};
 
-use crate::{output::output, twitch::parse::parse};
+use crate::twitch::parse::parse;
 
-use super::{parse::TwitchMessage, pubsub::send_to_error_log};
+use super::{parse::TwitchMessage, pubsub::send_to_error_log, ChannelMessages};
 
 pub struct TwitchIRC {
+    tx: Sender<ChannelMessages>,
     socket: WebSocket<MaybeTlsStream<TcpStream>>,
     nickname: String,
     oauth_token: String,
@@ -75,13 +81,14 @@ fn connect(twitch_name: &Arc<String>, oauth_token: &Arc<String>, retry: u8) -> W
 }
 
 impl TwitchIRC {
-    pub fn new(twitch_name: Arc<String>, oauth_token: Arc<String>) -> Self {
+    pub fn new(twitch_name: Arc<String>, oauth_token: Arc<String>, tx: Sender<ChannelMessages>) -> Self {
         let socket = connect(&twitch_name, &oauth_token, 0);
 
         TwitchIRC {
             socket,
             nickname: twitch_name.to_string(),
             oauth_token: oauth_token.to_string(),
+            tx,
         }
     }
 
@@ -103,7 +110,8 @@ impl TwitchIRC {
                         Ok(
                             message @ TwitchMessage::PrivMessage { .. } | message @ TwitchMessage::RaidMessage { .. },
                         ) => {
-                            output(message, self);
+                            let _ = self.tx.send(ChannelMessages::TwitchMessage(message));
+                            // output(message, self);
                         }
 
                         Ok(TwitchMessage::PingMessage { message }) => {

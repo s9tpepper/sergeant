@@ -1,9 +1,13 @@
-use std::{error::Error, fs, io::Cursor, path::PathBuf};
+use std::{collections::HashSet, error::Error, fs, io::Cursor, path::PathBuf};
 
 use base64::prelude::*;
+use ratatui::{buffer::Buffer, layout::Rect, style::Color, widgets::Widget};
 use serde::{Deserialize, Serialize};
 
-use crate::utils::get_data_directory;
+use crate::{
+    tui::{Message, Symbol},
+    utils::get_data_directory,
+};
 
 use super::pubsub::TwitchApiResponse;
 
@@ -16,6 +20,53 @@ pub struct Emote {
     end: usize,
     url: String,
     name: String,
+    encoded: Option<String>,
+}
+
+impl Emote {
+    pub fn load(&mut self) -> Result<(), Box<dyn Error>> {
+        if self.encoded.is_some() {
+            return Ok(());
+        }
+
+        let response = ureq::get(&self.url).call()?;
+        let length: usize = response.header("content-length").unwrap().parse()?;
+        let mut file_bytes: Vec<u8> = vec![0; length];
+        response.into_reader().read_exact(&mut file_bytes)?;
+
+        let img_data = image::load_from_memory(&file_bytes)?;
+
+        let mut buffer: Vec<u8> = Vec::new();
+        img_data.write_to(&mut Cursor::new(&mut buffer), image::ImageFormat::Png)?;
+        let base64_emote = BASE64_STANDARD.encode(&buffer);
+
+        let encoded_image = format!(
+            // "{}1337;File=inline=1;height=22px;width=22px;preserveAspectRatio=1:{}{}",
+            "{}1337;File=inline=1;height=22px;preserveAspectRatio=1:{}{}",
+            get_emote_prefix(),
+            base64_emote.as_str(),
+            get_emote_suffix()
+        );
+
+        // println!("Encoded: {encoded_image}");
+        // thread::sleep(std::time::Duration::from_millis(15000));
+
+        self.encoded = Some(encoded_image);
+
+        Ok(())
+    }
+}
+
+impl Clone for Emote {
+    fn clone(&self) -> Self {
+        Self {
+            start: self.start,
+            end: self.end,
+            url: self.url.clone(),
+            name: self.name.clone(),
+            encoded: self.encoded.clone(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -31,6 +82,166 @@ pub struct ChatMessage {
     pub color: String,
     pub channel: String,
     pub raw: String,
+}
+
+impl Widget for &mut ChatMessage {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let mut x_pos = area.left();
+        let mut y_pos = area.top();
+
+        let name = self.nickname.clone(); //.bold().fg(Color::Yellow);
+        name.chars().for_each(|c| {
+            // TODO: Figure out setting the right colors for the nicknames
+            buf.get_mut(x_pos, y_pos)
+                .set_symbol(&c.to_string())
+                .set_fg(Color::Yellow)
+                .set_bg(Color::Black);
+
+            x_pos += 1;
+        });
+
+        // line.style = Style::default().fg(Color::Yellow).bg(Color::Red);
+
+        // NOTE: We don't want to use render from Line widget, this will
+        // not handle the emotes properly, as we need to set the entire
+        // escape sequence plus base64 image data in a single cell, and
+        // the render function from Line will split the escape sequence
+        //
+        // line.render(area, buf);
+
+        let emote_names = self.emotes.iter().map(|e| e.name.clone()).collect::<HashSet<String>>();
+
+        let mut symbols: Vec<Symbol> = vec![];
+        let msg_length = self.message.len();
+        let mut cursor = 0;
+        for i in 0..msg_length {
+            if i < cursor {
+                continue;
+            }
+
+            let mut is_emote = false;
+            let mut emote_length = 0;
+            for emote in self.emotes.iter_mut() {
+                println!("Looping with emote: {}", emote.name);
+
+                emote_length = emote.name.len();
+
+                let mut end = cursor + emote_length;
+                if end > msg_length {
+                    end = msg_length;
+                }
+
+                let emote_range = &self.message[cursor..end];
+
+                let found_emote = emote_names.contains(emote_range);
+
+                // if cursor > 0 && found_emote {
+                //     println!("Trying to get emote from {i} to {end}");
+                //     println!("emote_range: {emote_range}");
+                //     println!("found_emote: {found_emote}");
+                //     println!("Rendering emote: {}", emote.name);
+                //     thread::sleep(std::time::Duration::from_millis(30000));
+                // }
+
+                if found_emote {
+                    symbols.push(Symbol::Emote(emote.clone()));
+                    self.emotes.remove(0);
+
+                    // cursor += emote_length;
+                    is_emote = true;
+                    break;
+                }
+            }
+
+            if is_emote {
+                cursor += emote_length;
+                continue;
+            }
+
+            let temp = self.message.chars().nth(i).unwrap_or(' ').to_string();
+            let c: &str = temp.as_str();
+            symbols.push(Symbol::Text(c.to_string()));
+            cursor += 1;
+        }
+
+        println!("Symbols: {:?}", symbols);
+        // thread::sleep(std::time::Duration::from_millis(15000));
+
+        // Collect words
+        let mut message_to_render: Vec<Message> = vec![];
+        let mut word: Vec<Symbol> = vec![];
+        symbols.iter().for_each(|s| match s {
+            Symbol::Text(character) => {
+                if character == " " {
+                    if !word.is_empty() {
+                        message_to_render.push(Message::Text(word.clone()));
+                        word.clear();
+                        message_to_render.push(Message::Text(vec![Symbol::Text(" ".to_string())]));
+                    }
+                } else {
+                    word.push(s.clone());
+                }
+            }
+            Symbol::Emote(emote) => {
+                if !word.is_empty() {
+                    message_to_render.push(Message::Text(word.clone()));
+                    word.clear();
+                    message_to_render.push(Message::Text(vec![Symbol::Text(" ".to_string())]));
+                }
+
+                message_to_render.push(Message::Emote(emote.clone()));
+            }
+        });
+
+        // Collect the last word
+        if !word.is_empty() {
+            message_to_render.push(Message::Text(word.clone()));
+        }
+        word.clear();
+
+        println!("Message to render: {:?}", message_to_render);
+        // thread::sleep(std::time::Duration::from_millis(15000));
+
+        // Render the symbols, either text or emote
+        message_to_render.iter().for_each(|s| match s {
+            Message::Text(word) => {
+                let target_x = x_pos + (word.len() as u16);
+                if target_x >= area.width {
+                    y_pos += 1;
+                    x_pos = area.left();
+                }
+
+                word.iter().for_each(|symbol| match symbol {
+                    Symbol::Text(character) => {
+                        buf.get_mut(x_pos, y_pos)
+                            .set_symbol(character)
+                            .set_fg(Color::White)
+                            .set_bg(Color::Black);
+                        x_pos += 1;
+                    }
+                    Symbol::Emote(_) => {}
+                });
+            }
+
+            Message::Emote(emote) => {
+                if x_pos + 1 > area.width {
+                    y_pos += 1;
+                    x_pos = area.left();
+                }
+
+                let encoded = emote.encoded.clone().unwrap_or_default();
+                buf.get_mut(x_pos, y_pos).set_symbol(&encoded);
+
+                // println!("Rendered emote");
+                // thread::sleep(std::time::Duration::from_millis(3000));
+
+                // NOTE: Moving position by 1 to the right, as the emote is 1 cell wide, does
+                // not allow for the second emote to be rendered, a second emote does not render
+                // unless we move the x position by 2. I don't know why.
+                x_pos += 3;
+            }
+        });
+    }
 }
 
 #[derive(Debug)]
@@ -265,7 +476,15 @@ fn process_emotes(value: &str, emotes: &mut Vec<Emote>) {
 
         let name = "".to_string();
 
-        let emote = Emote { start, end, url, name };
+        let encoded = None;
+
+        let emote = Emote {
+            start,
+            end,
+            url,
+            name,
+            encoded,
+        };
 
         emotes.push(emote);
     }

@@ -3,11 +3,17 @@ use dotenv::dotenv;
 use sergeant::commands::add_reward;
 use sergeant::commands::list_rewards;
 use sergeant::commands::remove_reward;
+use sergeant::tui::init;
+use sergeant::tui::install_hooks;
+use sergeant::tui::restore;
+use sergeant::tui::App;
 use sergeant::twitch::announcements::start_announcements;
 use sergeant::twitch::irc::TwitchIRC;
 use sergeant::twitch::parse::get_badges;
 use sergeant::twitch::pubsub::connect_to_pub_sub;
+use sergeant::twitch::ChannelMessages;
 use std::fs;
+use std::sync::mpsc::channel;
 use std::thread;
 
 use sergeant::commands::{
@@ -145,21 +151,29 @@ fn get_credentials(
 fn start_chat(twitch_name: Arc<String>, oauth_token: Arc<String>, client_id: Arc<String>) -> AsyncResult<()> {
     get_badges(&oauth_token, &client_id)?;
 
+    let (pubsub_tx, rx) = channel::<ChannelMessages>();
+    let announce_tx = pubsub_tx.clone();
+    let chat_tx = pubsub_tx.clone();
+
     let token = oauth_token.clone();
     let id = client_id.clone();
     thread::spawn(|| {
-        connect_to_pub_sub(token, id).unwrap();
+        connect_to_pub_sub(token, id, pubsub_tx).unwrap();
     });
 
-    let name = twitch_name.clone();
-    let token = oauth_token.clone();
-    // let id = client_id.clone();
     thread::spawn(|| {
-        let _ = start_announcements(name, token);
+        let _ = start_announcements(announce_tx);
     });
 
-    let mut twitch_irc = TwitchIRC::new(twitch_name, oauth_token);
-    twitch_irc.listen();
+    thread::spawn(|| {
+        let mut twitch_irc = TwitchIRC::new(twitch_name, oauth_token, chat_tx);
+        twitch_irc.listen();
+    });
+
+    install_hooks()?;
+    let mut terminal = init()?;
+    App::default().run(&mut terminal, rx)?;
+    restore()?;
 
     Ok(())
 }
