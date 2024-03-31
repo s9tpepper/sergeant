@@ -1,11 +1,22 @@
-use std::{collections::HashSet, error::Error, fs, io::Cursor, path::PathBuf};
+#![allow(dead_code)]
+
+use std::{
+    collections::HashSet,
+    error::Error,
+    fs,
+    io::Cursor,
+    path::PathBuf,
+    thread::{self, sleep},
+    time::Duration,
+};
 
 use base64::prelude::*;
+// use color_eyre::owo_colors::Color;
 use ratatui::{buffer::Buffer, layout::Rect, style::Color, widgets::Widget};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    tui::{Message, Symbol},
+    tui::{MessageParts, Symbol},
     utils::get_data_directory,
 };
 
@@ -13,8 +24,9 @@ use super::pubsub::TwitchApiResponse;
 
 const ESCAPE: &str = "\x1b";
 const BELL: &str = "\x07";
+const EMOTE_SPACE: u8 = 3;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Emote {
     start: usize,
     end: usize,
@@ -41,15 +53,11 @@ impl Emote {
         let base64_emote = BASE64_STANDARD.encode(&buffer);
 
         let encoded_image = format!(
-            // "{}1337;File=inline=1;height=22px;width=22px;preserveAspectRatio=1:{}{}",
-            "{}1337;File=inline=1;height=22px;preserveAspectRatio=1:{}{}",
+            "{}1337;File=inline=1;height=24px;width=24px;preserveAspectRatio=1;doNotMoveCursor=1:{}{}",
             get_emote_prefix(),
             base64_emote.as_str(),
             get_emote_suffix()
         );
-
-        // println!("Encoded: {encoded_image}");
-        // thread::sleep(std::time::Duration::from_millis(15000));
 
         self.encoded = Some(encoded_image);
 
@@ -69,7 +77,7 @@ impl Clone for Emote {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ChatMessage {
     pub badges: Vec<String>,
     pub emotes: Vec<Emote>,
@@ -82,164 +90,239 @@ pub struct ChatMessage {
     pub color: String,
     pub channel: String,
     pub raw: String,
+    pub area: Option<Rect>,
+}
+
+// impl ChatMessage {
+//
+// }
+
+// Place all characters and emote base64s in a vector
+fn get_message_symbols(message: &str, emotes: &mut [Emote]) -> Vec<Symbol> {
+    // Load the base64 encoded emotes
+    emotes.iter_mut().for_each(|e| {
+        e.load().unwrap();
+    });
+
+    // Place all characters and emote base64s in a vector
+    let mut symbols: Vec<Symbol> = vec![];
+    let msg_length = message.len();
+
+    let mut cursor = 0;
+    'outer: for i in 0..msg_length {
+        if i < cursor {
+            continue;
+        }
+
+        for emote in emotes.iter_mut() {
+            if emote.start == i {
+                let emote_length = emote.end - emote.start;
+                symbols.push(Symbol::Emote(emote.clone()));
+                cursor += emote_length + 1;
+                continue 'outer;
+            }
+        }
+
+        let temp = message.chars().nth(i).unwrap_or(' ').to_string();
+        let c: &str = temp.as_str();
+        symbols.push(Symbol::Text(c.to_string()));
+        cursor += 1;
+    }
+
+    symbols
+}
+
+#[test]
+fn test_get_message_symbols() {
+    let emote = Emote {
+        start: 0,
+        end: 13,
+        url: "https://static-cdn.jtvnw.net/emoticons/v2/303147449/default/light/1.0".to_string(),
+        name: "primeagenEmacs".to_string(),
+        encoded: None,
+    };
+
+    let mut emotes: Vec<Emote> = vec![emote];
+    let message = "primeagenEmacs Hello";
+    let symbols = get_message_symbols(message, &mut emotes);
+    assert_eq!(symbols, vec![]);
+}
+
+#[test]
+fn test_get_message_words() {
+    let emote = Emote {
+        start: 0,
+        end: 13,
+        url: "https://static-cdn.jtvnw.net/emoticons/v2/303147449/default/light/1.0".to_string(),
+        name: "primeagenEmacs".to_string(),
+        encoded: None,
+    };
+
+    let mut emotes: Vec<Emote> = vec![emote];
+    let message = "primeagenEmacs Hello";
+    let symbols = get_message_symbols(message, &mut emotes);
+
+    let message_parts = get_message_parts(&symbols);
+    assert_eq!(message_parts, vec![]);
+}
+
+fn get_message_parts(symbols: &[Symbol]) -> Vec<MessageParts> {
+    let mut message_to_render: Vec<MessageParts> = vec![];
+    let mut word: Vec<Symbol> = vec![];
+    symbols.iter().for_each(|s| match s {
+        Symbol::Text(character) => {
+            if character == " " {
+                if !word.is_empty() {
+                    message_to_render.push(MessageParts::Text(word.clone()));
+                    word.clear();
+                    message_to_render.push(MessageParts::Text(vec![Symbol::Text(" ".to_string())]));
+                }
+            } else {
+                word.push(s.clone());
+            }
+        }
+        Symbol::Emote(emote) => {
+            if !word.is_empty() {
+                message_to_render.push(MessageParts::Text(word.clone()));
+                word.clear();
+                message_to_render.push(MessageParts::Text(vec![Symbol::Text(" ".to_string())]));
+            }
+
+            message_to_render.push(MessageParts::Emote(emote.clone()));
+        }
+    });
+
+    // Collect the last word
+    if !word.is_empty() {
+        message_to_render.push(MessageParts::Text(word.clone()));
+    }
+    word.clear();
+
+    message_to_render
+}
+
+fn render_nickname(nickname: &str, color: &str, cursor: &mut RenderCursor, buf: &mut Buffer) {
+    let r = u8::from_str_radix(&color[1..3], 16).unwrap_or(0);
+    let g = u8::from_str_radix(&color[3..5], 16).unwrap_or(0);
+    let b = u8::from_str_radix(&color[5..7], 16).unwrap_or(0);
+
+    let nick_color = Color::Rgb(r, g, b);
+
+    nickname.chars().for_each(|c| {
+        buf.get_mut(cursor.x, cursor.y)
+            .set_symbol(&c.to_string())
+            .set_fg(nick_color);
+
+        cursor.x += 1;
+    });
+    buf.get_mut(cursor.x, cursor.y).set_char(':').set_fg(Color::White);
+    cursor.x += 1;
+    buf.get_mut(cursor.x, cursor.y).set_char(' ');
+    cursor.x += 1;
+}
+
+#[derive(Debug)]
+struct RenderCursor {
+    x: u16,
+    y: u16,
 }
 
 impl Widget for &mut ChatMessage {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let mut x_pos = area.left();
-        let mut y_pos = area.top();
+        // Initialize the cursor position
+        let mut cursor = RenderCursor {
+            x: area.left(),
+            y: area.bottom() - 1,
+        };
 
-        let name = self.nickname.clone(); //.bold().fg(Color::Yellow);
-        name.chars().for_each(|c| {
-            // TODO: Figure out setting the right colors for the nicknames
-            buf.get_mut(x_pos, y_pos)
-                .set_symbol(&c.to_string())
-                .set_fg(Color::Yellow)
-                .set_bg(Color::Black);
+        let symbols: Vec<Symbol> = get_message_symbols(&self.message, &mut self.emotes);
+        // println!("{:?}", symbols);
+        // thread::sleep(std::time::Duration::from_secs(5));
 
-            x_pos += 1;
-        });
-
-        // line.style = Style::default().fg(Color::Yellow).bg(Color::Red);
-
-        // NOTE: We don't want to use render from Line widget, this will
-        // not handle the emotes properly, as we need to set the entire
-        // escape sequence plus base64 image data in a single cell, and
-        // the render function from Line will split the escape sequence
-        //
-        // line.render(area, buf);
-
-        let emote_names = self.emotes.iter().map(|e| e.name.clone()).collect::<HashSet<String>>();
-
-        let mut symbols: Vec<Symbol> = vec![];
         let msg_length = self.message.len();
-        let mut cursor = 0;
-        for i in 0..msg_length {
-            if i < cursor {
-                continue;
-            }
-
-            let mut is_emote = false;
-            let mut emote_length = 0;
-            for emote in self.emotes.iter_mut() {
-                println!("Looping with emote: {}", emote.name);
-
-                emote_length = emote.name.len();
-
-                let mut end = cursor + emote_length;
-                if end > msg_length {
-                    end = msg_length;
-                }
-
-                let emote_range = &self.message[cursor..end];
-
-                let found_emote = emote_names.contains(emote_range);
-
-                // if cursor > 0 && found_emote {
-                //     println!("Trying to get emote from {i} to {end}");
-                //     println!("emote_range: {emote_range}");
-                //     println!("found_emote: {found_emote}");
-                //     println!("Rendering emote: {}", emote.name);
-                //     thread::sleep(std::time::Duration::from_millis(30000));
-                // }
-
-                if found_emote {
-                    symbols.push(Symbol::Emote(emote.clone()));
-                    self.emotes.remove(0);
-
-                    // cursor += emote_length;
-                    is_emote = true;
-                    break;
-                }
-            }
-
-            if is_emote {
-                cursor += emote_length;
-                continue;
-            }
-
-            let temp = self.message.chars().nth(i).unwrap_or(' ').to_string();
-            let c: &str = temp.as_str();
-            symbols.push(Symbol::Text(c.to_string()));
-            cursor += 1;
-        }
-
-        println!("Symbols: {:?}", symbols);
-        // thread::sleep(std::time::Duration::from_millis(15000));
 
         // Collect words
-        let mut message_to_render: Vec<Message> = vec![];
-        let mut word: Vec<Symbol> = vec![];
-        symbols.iter().for_each(|s| match s {
-            Symbol::Text(character) => {
-                if character == " " {
-                    if !word.is_empty() {
-                        message_to_render.push(Message::Text(word.clone()));
-                        word.clear();
-                        message_to_render.push(Message::Text(vec![Symbol::Text(" ".to_string())]));
-                    }
-                } else {
-                    word.push(s.clone());
-                }
-            }
-            Symbol::Emote(emote) => {
-                if !word.is_empty() {
-                    message_to_render.push(Message::Text(word.clone()));
-                    word.clear();
-                    message_to_render.push(Message::Text(vec![Symbol::Text(" ".to_string())]));
-                }
+        let message_parts = get_message_parts(&symbols);
 
-                message_to_render.push(Message::Emote(emote.clone()));
+        // Figure out how many lines this message is
+        let total_lines = (self.nickname.len() as u16 + msg_length as u16).div_ceil(area.width);
+
+        let mut lines: Vec<Vec<MessageParts>> = vec![];
+        let mut line: Vec<MessageParts> = vec![];
+
+        // add 2 to account for the colon and space
+        let mut line_length = self.nickname.len() + 2;
+
+        let mut index = 0;
+        message_parts.iter().for_each(|part| {
+            let section_length = match part {
+                // TODO: Run the word through a fn to get the real length
+                // from the chars() and the emotes
+                MessageParts::Text(word) => word.len(),
+                MessageParts::Emote(_) => EMOTE_SPACE as usize,
+            };
+
+            let next_line_length = line_length + section_length;
+            if next_line_length > (area.width - 1) as usize {
+                lines.push(line.clone());
+                line.clear();
+
+                line_length = section_length;
+            } else {
+                line_length += section_length;
+            }
+
+            line.push(part.clone());
+
+            index += 1;
+            if index == message_parts.len() {
+                // Gather the last line
+                if !line.is_empty() {
+                    lines.push(line.clone());
+                }
             }
         });
 
-        // Collect the last word
-        if !word.is_empty() {
-            message_to_render.push(Message::Text(word.clone()));
-        }
-        word.clear();
+        cursor.y -= lines.len() as u16 - 1;
+        render_nickname(&self.nickname, &self.color, &mut cursor, buf);
 
-        println!("Message to render: {:?}", message_to_render);
-        // thread::sleep(std::time::Duration::from_millis(15000));
-
-        // Render the symbols, either text or emote
-        message_to_render.iter().for_each(|s| match s {
-            Message::Text(word) => {
-                let target_x = x_pos + (word.len() as u16);
-                if target_x >= area.width {
-                    y_pos += 1;
-                    x_pos = area.left();
+        lines.iter().for_each(|line| {
+            line.iter().for_each(|s| match s {
+                MessageParts::Text(word) => {
+                    word.iter().for_each(|symbol| match symbol {
+                        Symbol::Text(character) => {
+                            buf.get_mut(cursor.x, cursor.y)
+                                .set_symbol(character)
+                                .set_fg(Color::White);
+                            cursor.x += 1;
+                        }
+                        Symbol::Emote(_) => {}
+                    });
                 }
 
-                word.iter().for_each(|symbol| match symbol {
-                    Symbol::Text(character) => {
-                        buf.get_mut(x_pos, y_pos)
-                            .set_symbol(character)
-                            .set_fg(Color::White)
-                            .set_bg(Color::Black);
-                        x_pos += 1;
+                MessageParts::Emote(emote) => {
+                    for i in 0..3 {
+                        buf.get_mut(cursor.x + i, cursor.y).set_char(' ');
                     }
-                    Symbol::Emote(_) => {}
-                });
-            }
 
-            Message::Emote(emote) => {
-                if x_pos + 1 > area.width {
-                    y_pos += 1;
-                    x_pos = area.left();
+                    let encoded = emote.encoded.clone().unwrap_or_default();
+                    buf.get_mut(cursor.x, cursor.y).set_symbol(&encoded);
+                    cursor.x += EMOTE_SPACE as u16;
                 }
+            });
 
-                let encoded = emote.encoded.clone().unwrap_or_default();
-                buf.get_mut(x_pos, y_pos).set_symbol(&encoded);
+            cursor.x = area.left();
+            cursor.y += 1;
+        });
 
-                // println!("Rendered emote");
-                // thread::sleep(std::time::Duration::from_millis(3000));
+        cursor.y -= lines.len() as u16 - 1;
 
-                // NOTE: Moving position by 1 to the right, as the emote is 1 cell wide, does
-                // not allow for the second emote to be rendered, a second emote does not render
-                // unless we move the x position by 2. I don't know why.
-                x_pos += 3;
-            }
+        // Update the area this message takes
+        self.area = Some(Rect {
+            x: 0,
+            y: cursor.y,
+            width: area.width,
+            height: total_lines,
         });
     }
 }
@@ -449,6 +532,7 @@ fn get_bool(value: &str) -> bool {
 // id: text-position-for-emote
 // https://static-cdn.jtvnw.net/emoticons/v2/303147449/default/dark/1.0
 fn process_emotes(value: &str, emotes: &mut Vec<Emote>) {
+    // Some("81274:0-5,7-12,14-19/30259:21-27")
     for emote_data in value.split('/') {
         let mut emote_parts = emote_data.split(':');
         let emote_id = emote_parts.next();
@@ -457,36 +541,35 @@ fn process_emotes(value: &str, emotes: &mut Vec<Emote>) {
         };
 
         let positions = emote_parts.next();
-        let Some(mut emote_position_data) = positions else {
+        let Some(emote_position_data) = positions else {
             continue;
         };
 
-        if let Some((a, _)) = emote_position_data.split_once(',') {
-            emote_position_data = a;
-        }
+        // TODO: Refactor the Emote struct so that it carries multiple positions
+        // and prevent the same url from being loaded more than once
+        emote_position_data.split(',').for_each(|position| {
+            let (s, e) = position.split_once('-').unwrap();
+            let start = s.to_string().parse().unwrap();
+            let end = e.to_string().parse().unwrap();
 
-        let (s, e) = emote_position_data.split_once('-').unwrap();
-        let start = s.to_string().parse::<usize>().unwrap();
-        let end = e.to_string().parse::<usize>().unwrap();
+            let url = format!(
+                "https://static-cdn.jtvnw.net/emoticons/v2/{}/default/dark/1.0",
+                emote_id
+            );
 
-        let url = format!(
-            "https://static-cdn.jtvnw.net/emoticons/v2/{}/default/dark/1.0",
-            emote_id
-        );
+            let name = "".to_string();
+            let encoded = None;
 
-        let name = "".to_string();
+            let emote = Emote {
+                start,
+                end,
+                url,
+                name,
+                encoded,
+            };
 
-        let encoded = None;
-
-        let emote = Emote {
-            start,
-            end,
-            url,
-            name,
-            encoded,
-        };
-
-        emotes.push(emote);
+            emotes.push(emote);
+        });
     }
 }
 
@@ -506,6 +589,8 @@ fn get_emote_suffix() -> String {
     BELL.to_string()
 }
 
+// TODO: This needs to go away, still here for reference as we move the
+// encoded emotes logic to the TUI renderer
 fn add_emotes(message: &mut String, emotes: &mut [Emote]) -> Result<(), Box<dyn Error>> {
     for emote in emotes.iter_mut() {
         let range = emote.start..=emote.end;
@@ -528,7 +613,7 @@ fn add_emotes(message: &mut String, emotes: &mut [Emote]) -> Result<(), Box<dyn 
 
         let encoded_image = format!(
             // "{}1337;File=inline=1;height=22px;width=22px;preserveAspectRatio=1:{}{}",
-            "{}1337;File=inline=1;height=22px;preserveAspectRatio=1:{}{}",
+            "{}1337;File=inline=1;height=23px;width=23px;preserveAspectRatio=1:{}{}",
             get_emote_prefix(),
             base64_emote.as_str(),
             get_emote_suffix()
@@ -547,6 +632,8 @@ fn get_iterm_encoded_image(base64: String) -> String {
     format!("{ESCAPE}]1337;File=inline=1;preserveAspectRatio=1:{base64_str}{BELL}")
 }
 
+// TODO: This needs to go away, still here for reference as we move the
+// encoded badges logic to the TUI renderer
 fn add_badges(badges: &[String]) -> Result<String, Box<dyn Error>> {
     let mut badges_list = String::new();
     let data_dir = get_data_directory(None)?;
@@ -595,10 +682,9 @@ fn parse_privmsg(irc_message: IrcMessage) -> TwitchMessage {
         }
     }
 
-    let mut message = irc_message.parameters.to_string();
-    let _ = add_emotes(&mut message, &mut emotes);
-    let encoded_badges = add_badges(&badges).unwrap_or("".to_string());
-    let nickname = format!("{}{}", encoded_badges, irc_message.sender);
+    // let _ = add_emotes(&mut message, &mut emotes);
+    // let encoded_badges = add_badges(&badges).unwrap_or("".to_string());
+    // let nickname = format!("{}{}", encoded_badges, irc_message.sender);
 
     TwitchMessage::PrivMessage {
         message: ChatMessage {
@@ -609,10 +695,11 @@ fn parse_privmsg(irc_message: IrcMessage) -> TwitchMessage {
             subscriber,
             moderator,
             color,
-            message,
-            nickname,
+            message: irc_message.parameters.to_string(),
+            nickname: irc_message.sender.to_string(),
             channel: irc_message.channel.to_string(),
             raw: irc_message.raw.to_string(),
+            area: None,
         },
     }
 }
