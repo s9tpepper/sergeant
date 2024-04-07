@@ -17,6 +17,7 @@ use color_eyre::{eyre::Result, eyre::WrapErr};
 
 use crate::tui;
 use crate::twitch::parse::Emote;
+use crate::twitch::parse::Text;
 use crate::twitch::ChannelMessages;
 use crate::{
     twitch::{
@@ -37,7 +38,7 @@ pub struct App {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Symbol {
-    Text(String),
+    Text(Text),
     Emote(Emote),
 }
 
@@ -130,6 +131,7 @@ impl Widget for &mut App {
                 ChannelMessages::TwitchMessage(message) => match message {
                     TwitchMessage::PrivMessage { message } => {
                         // println!("available area: {:?}", available_area);
+
                         message.render(available_area, buf);
 
                         message.area
@@ -146,7 +148,7 @@ impl Widget for &mut App {
             };
 
             if let Some(message_area) = message_area {
-                available_area.height -= message_area.height;
+                available_area.height = available_area.height.saturating_sub(message_area.height);
             }
         });
     }

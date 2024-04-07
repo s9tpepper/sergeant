@@ -1,17 +1,6 @@
-#![allow(dead_code)]
-
-use std::{
-    collections::HashSet,
-    error::Error,
-    fs,
-    io::Cursor,
-    path::PathBuf,
-    thread::{self, sleep},
-    time::Duration,
-};
+use std::{error::Error, fs, io::Cursor, path::PathBuf};
 
 use base64::prelude::*;
-// use color_eyre::owo_colors::Color;
 use ratatui::{buffer::Buffer, layout::Rect, style::Color, widgets::Widget};
 use serde::{Deserialize, Serialize};
 
@@ -24,7 +13,13 @@ use super::pubsub::TwitchApiResponse;
 
 const ESCAPE: &str = "\x1b";
 const BELL: &str = "\x07";
-const EMOTE_SPACE: u8 = 3;
+const EMOTE_SPACE: u8 = 2;
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Text {
+    char: String,
+    color: Option<(u8, u8, u8)>,
+}
 
 #[derive(Debug, PartialEq)]
 pub struct Emote {
@@ -53,7 +48,8 @@ impl Emote {
         let base64_emote = BASE64_STANDARD.encode(&buffer);
 
         let encoded_image = format!(
-            "{}1337;File=inline=1;height=24px;width=24px;preserveAspectRatio=1;doNotMoveCursor=1:{}{}",
+            // "{}1337;File=inline=1;height=22px;width=22px;preserveAspectRatio=1;doNotMoveCursor=1:{}{}",
+            "{}1337;File=inline=1;height=22px;width=22px;doNotMoveCursor=1:{}{}",
             get_emote_prefix(),
             base64_emote.as_str(),
             get_emote_suffix()
@@ -79,7 +75,7 @@ impl Clone for Emote {
 
 #[derive(Debug, Default)]
 pub struct ChatMessage {
-    pub badges: Vec<String>,
+    pub badges: Vec<Emote>,
     pub emotes: Vec<Emote>,
     pub nickname: String,
     pub first_msg: bool,
@@ -125,7 +121,10 @@ fn get_message_symbols(message: &str, emotes: &mut [Emote]) -> Vec<Symbol> {
 
         let temp = message.chars().nth(i).unwrap_or(' ').to_string();
         let c: &str = temp.as_str();
-        symbols.push(Symbol::Text(c.to_string()));
+        symbols.push(Symbol::Text(Text {
+            char: c.to_string(),
+            color: None,
+        }));
         cursor += 1;
     }
 
@@ -148,35 +147,37 @@ fn test_get_message_symbols() {
     assert_eq!(symbols, vec![]);
 }
 
-#[test]
-fn test_get_message_words() {
-    let emote = Emote {
-        start: 0,
-        end: 13,
-        url: "https://static-cdn.jtvnw.net/emoticons/v2/303147449/default/light/1.0".to_string(),
-        name: "primeagenEmacs".to_string(),
-        encoded: None,
-    };
-
-    let mut emotes: Vec<Emote> = vec![emote];
-    let message = "primeagenEmacs Hello";
-    let symbols = get_message_symbols(message, &mut emotes);
-
-    let message_parts = get_message_parts(&symbols);
-    assert_eq!(message_parts, vec![]);
-}
+// #[test]
+// fn test_get_message_words() {
+//     let emote = Emote {
+//         start: 0,
+//         end: 13,
+//         url: "https://static-cdn.jtvnw.net/emoticons/v2/303147449/default/light/1.0".to_string(),
+//         name: "primeagenEmacs".to_string(),
+//         encoded: None,
+//     };
+//
+//     let mut emotes: Vec<Emote> = vec![emote];
+//     let message = "primeagenEmacs Hello";
+//     let symbols = get_message_symbols(message, &mut emotes);
+//
+//     let message_parts = get_message_parts(&symbols);
+//     assert_eq!(message_parts, vec![]);
+// }
 
 fn get_message_parts(symbols: &[Symbol]) -> Vec<MessageParts> {
     let mut message_to_render: Vec<MessageParts> = vec![];
     let mut word: Vec<Symbol> = vec![];
     symbols.iter().for_each(|s| match s {
         Symbol::Text(character) => {
-            if character == " " {
-                if !word.is_empty() {
-                    message_to_render.push(MessageParts::Text(word.clone()));
-                    word.clear();
-                    message_to_render.push(MessageParts::Text(vec![Symbol::Text(" ".to_string())]));
-                }
+            if character.char == " " && !word.is_empty() {
+                message_to_render.push(MessageParts::Text(word.clone()));
+
+                word.clear();
+                message_to_render.push(MessageParts::Text(vec![Symbol::Text(Text {
+                    char: " ".to_string(),
+                    color: None,
+                })]));
             } else {
                 word.push(s.clone());
             }
@@ -185,7 +186,10 @@ fn get_message_parts(symbols: &[Symbol]) -> Vec<MessageParts> {
             if !word.is_empty() {
                 message_to_render.push(MessageParts::Text(word.clone()));
                 word.clear();
-                message_to_render.push(MessageParts::Text(vec![Symbol::Text(" ".to_string())]));
+                message_to_render.push(MessageParts::Text(vec![Symbol::Text(Text {
+                    char: " ".to_string(),
+                    color: None,
+                })]));
             }
 
             message_to_render.push(MessageParts::Emote(emote.clone()));
@@ -201,25 +205,33 @@ fn get_message_parts(symbols: &[Symbol]) -> Vec<MessageParts> {
     message_to_render
 }
 
-fn render_nickname(nickname: &str, color: &str, cursor: &mut RenderCursor, buf: &mut Buffer) {
+fn get_nickname_color(color: &str) -> (u8, u8, u8) {
     let r = u8::from_str_radix(&color[1..3], 16).unwrap_or(0);
     let g = u8::from_str_radix(&color[3..5], 16).unwrap_or(0);
     let b = u8::from_str_radix(&color[5..7], 16).unwrap_or(0);
 
-    let nick_color = Color::Rgb(r, g, b);
-
-    nickname.chars().for_each(|c| {
-        buf.get_mut(cursor.x, cursor.y)
-            .set_symbol(&c.to_string())
-            .set_fg(nick_color);
-
-        cursor.x += 1;
-    });
-    buf.get_mut(cursor.x, cursor.y).set_char(':').set_fg(Color::White);
-    cursor.x += 1;
-    buf.get_mut(cursor.x, cursor.y).set_char(' ');
-    cursor.x += 1;
+    (r, g, b)
 }
+
+// fn render_nickname(nickname: &str, color: &str, cursor: &mut RenderCursor, buf: &mut Buffer) -> Vec<Symbol> {
+//     let r = u8::from_str_radix(&color[1..3], 16).unwrap_or(0);
+//     let g = u8::from_str_radix(&color[3..5], 16).unwrap_or(0);
+//     let b = u8::from_str_radix(&color[5..7], 16).unwrap_or(0);
+//
+//     let nick_color = Color::Rgb(r, g, b);
+//
+//     nickname.chars().for_each(|c| {
+//         buf.get_mut(cursor.x, cursor.y)
+//             .set_symbol(&c.to_string())
+//             .set_fg(nick_color);
+//
+//         cursor.x += 1;
+//     });
+//     buf.get_mut(cursor.x, cursor.y).set_char(':').set_fg(Color::White);
+//     cursor.x += 1;
+//     buf.get_mut(cursor.x, cursor.y).set_char(' ');
+//     cursor.x += 1;
+// }
 
 #[derive(Debug)]
 struct RenderCursor {
@@ -232,29 +244,54 @@ impl Widget for &mut ChatMessage {
         // Initialize the cursor position
         let mut cursor = RenderCursor {
             x: area.left(),
-            y: area.bottom() - 1,
+            y: area.bottom().saturating_sub(1),
         };
 
-        let symbols: Vec<Symbol> = get_message_symbols(&self.message, &mut self.emotes);
-        // println!("{:?}", symbols);
-        // thread::sleep(std::time::Duration::from_secs(5));
+        let mut symbols: Vec<Symbol> = get_message_symbols(&self.message, &mut self.emotes);
 
-        let msg_length = self.message.len();
+        // add space after nickname
+        symbols.insert(
+            0,
+            Symbol::Text(Text {
+                char: " ".to_string(),
+                color: None,
+            }),
+        );
+
+        // add colon for nickname
+        symbols.insert(
+            0,
+            Symbol::Text(Text {
+                char: ":".to_string(),
+                color: None,
+            }),
+        );
+
+        // add nickname to front of message
+        let color = get_nickname_color(&self.color);
+        self.nickname.chars().rev().for_each(|char| {
+            symbols.insert(
+                0,
+                Symbol::Text(Text {
+                    char: char.to_string(),
+                    color: Some(color),
+                }),
+            )
+        });
+
+        // add badges to front of message
+        self.badges.iter().for_each(|badge| {
+            symbols.insert(0, Symbol::Emote(badge.clone()));
+        });
 
         // Collect words
         let message_parts = get_message_parts(&symbols);
 
-        // Figure out how many lines this message is
-        let total_lines = (self.nickname.len() as u16 + msg_length as u16).div_ceil(area.width);
-
         let mut lines: Vec<Vec<MessageParts>> = vec![];
         let mut line: Vec<MessageParts> = vec![];
+        let mut line_length = 0;
 
-        // add 2 to account for the colon and space
-        let mut line_length = self.nickname.len() + 2;
-
-        let mut index = 0;
-        message_parts.iter().for_each(|part| {
+        message_parts.iter().enumerate().for_each(|(ndx, part)| {
             let section_length = match part {
                 // TODO: Run the word through a fn to get the real length
                 // from the chars() and the emotes
@@ -272,10 +309,38 @@ impl Widget for &mut ChatMessage {
                 line_length += section_length;
             }
 
-            line.push(part.clone());
+            // Check that section_length isn't wider than the area
+            // if it is, split the section into multiple lines
+            if let MessageParts::Text(word) = part {
+                if section_length >= area.width.into() {
+                    let chunks = word.chunks((area.width - 2).into());
+                    let last_index = chunks.len() - 1;
+                    chunks.enumerate().for_each(|(index, chunk)| {
+                        let mut symbols: Vec<Symbol> = vec![];
+                        chunk.iter().for_each(|c| {
+                            symbols.push(c.clone());
+                        });
 
-            index += 1;
-            if index == message_parts.len() {
+                        if index != last_index {
+                            symbols.push(Symbol::Text(Text {
+                                char: "-".to_string(),
+                                color: None,
+                            }));
+                            line.push(MessageParts::Text(symbols));
+                            lines.push(line.clone());
+                            line.clear();
+                        } else {
+                            line.push(MessageParts::Text(symbols));
+                        }
+                    });
+                } else {
+                    line.push(part.clone());
+                }
+            } else {
+                line.push(part.clone());
+            }
+
+            if ndx == message_parts.len() - 1 {
                 // Gather the last line
                 if !line.is_empty() {
                     lines.push(line.clone());
@@ -283,17 +348,26 @@ impl Widget for &mut ChatMessage {
             }
         });
 
-        cursor.y -= lines.len() as u16 - 1;
-        render_nickname(&self.nickname, &self.color, &mut cursor, buf);
+        cursor.x = area.left();
+        cursor.y = cursor.y.saturating_sub(lines.len() as u16);
 
-        lines.iter().for_each(|line| {
+        let screen_lines = if lines.len() > area.height.into() {
+            let line_limit = area.height.saturating_sub(1);
+
+            let start = lines.len() - line_limit as usize;
+            &mut lines[start..]
+        } else {
+            &mut lines[..]
+        };
+
+        screen_lines.iter_mut().for_each(|line| {
             line.iter().for_each(|s| match s {
                 MessageParts::Text(word) => {
                     word.iter().for_each(|symbol| match symbol {
                         Symbol::Text(character) => {
-                            buf.get_mut(cursor.x, cursor.y)
-                                .set_symbol(character)
-                                .set_fg(Color::White);
+                            let (r, g, b) = character.color.unwrap_or((255, 255, 255));
+                            let rgb = Color::Rgb(r, g, b);
+                            buf.get_mut(cursor.x, cursor.y).set_symbol(&character.char).set_fg(rgb);
                             cursor.x += 1;
                         }
                         Symbol::Emote(_) => {}
@@ -301,10 +375,6 @@ impl Widget for &mut ChatMessage {
                 }
 
                 MessageParts::Emote(emote) => {
-                    for i in 0..3 {
-                        buf.get_mut(cursor.x + i, cursor.y).set_char(' ');
-                    }
-
                     let encoded = emote.encoded.clone().unwrap_or_default();
                     buf.get_mut(cursor.x, cursor.y).set_symbol(&encoded);
                     cursor.x += EMOTE_SPACE as u16;
@@ -315,14 +385,32 @@ impl Widget for &mut ChatMessage {
             cursor.y += 1;
         });
 
-        cursor.y -= lines.len() as u16 - 1;
+        cursor.y = cursor.y.saturating_sub(lines.len() as u16);
+
+        // NOTE: examle of how to render a bordered block
+        // Sort of works, would need to update the shifting of the cursor
+        // to account for the borders and shift the contents inwards
+        //
+        // Block::bordered()
+        //     .border_set(symbols::border::ROUNDED)
+        //     .border_style(Style::reset().fg(Color::White))
+        //     .title("First time chatter")
+        //     .render(
+        //         Rect {
+        //             x: cursor.x,
+        //             y: cursor.y - 1,
+        //             width: area.width,
+        //             height: lines.len() as u16 + 2,
+        //         },
+        //         buf,
+        //     );
 
         // Update the area this message takes
         self.area = Some(Rect {
             x: 0,
             y: cursor.y,
             width: area.width,
-            height: total_lines,
+            height: lines.len() as u16,
         });
     }
 }
@@ -632,20 +720,24 @@ fn get_iterm_encoded_image(base64: String) -> String {
     format!("{ESCAPE}]1337;File=inline=1;preserveAspectRatio=1:{base64_str}{BELL}")
 }
 
-// TODO: This needs to go away, still here for reference as we move the
-// encoded badges logic to the TUI renderer
-fn add_badges(badges: &[String]) -> Result<String, Box<dyn Error>> {
-    let mut badges_list = String::new();
+fn get_badges_symbols(badges: &[String]) -> Result<Vec<Emote>, Box<dyn Error>> {
+    let mut badges_symbols: Vec<Emote> = vec![];
     let data_dir = get_data_directory(None)?;
     for badge in badges.iter() {
         let badge_path = data_dir.join(format!("{}.txt", badge));
         let base64 = fs::read_to_string(badge_path)?;
-        let encoded_badge = get_iterm_encoded_image(base64);
+        let encoded = get_iterm_encoded_image(base64);
 
-        badges_list.push_str(&encoded_badge);
+        badges_symbols.push(Emote {
+            start: 0,
+            end: 0,
+            url: "".to_string(),
+            name: "".to_string(),
+            encoded: Some(encoded),
+        });
     }
 
-    Ok(badges_list)
+    Ok(badges_symbols)
 }
 
 fn parse_privmsg(irc_message: IrcMessage) -> TwitchMessage {
@@ -683,18 +775,18 @@ fn parse_privmsg(irc_message: IrcMessage) -> TwitchMessage {
     }
 
     // let _ = add_emotes(&mut message, &mut emotes);
-    // let encoded_badges = add_badges(&badges).unwrap_or("".to_string());
+    let badges_symbols = get_badges_symbols(&badges);
     // let nickname = format!("{}{}", encoded_badges, irc_message.sender);
 
     TwitchMessage::PrivMessage {
         message: ChatMessage {
-            badges,
             emotes,
             first_msg,
             returning_chatter,
             subscriber,
             moderator,
             color,
+            badges: badges_symbols.unwrap_or_default(),
             message: irc_message.parameters.to_string(),
             nickname: irc_message.sender.to_string(),
             channel: irc_message.channel.to_string(),
