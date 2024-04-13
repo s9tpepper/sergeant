@@ -214,26 +214,6 @@ fn get_nickname_color(color: &str) -> (u8, u8, u8) {
     (r, g, b)
 }
 
-// fn render_nickname(nickname: &str, color: &str, cursor: &mut RenderCursor, buf: &mut Buffer) -> Vec<Symbol> {
-//     let r = u8::from_str_radix(&color[1..3], 16).unwrap_or(0);
-//     let g = u8::from_str_radix(&color[3..5], 16).unwrap_or(0);
-//     let b = u8::from_str_radix(&color[5..7], 16).unwrap_or(0);
-//
-//     let nick_color = Color::Rgb(r, g, b);
-//
-//     nickname.chars().for_each(|c| {
-//         buf.get_mut(cursor.x, cursor.y)
-//             .set_symbol(&c.to_string())
-//             .set_fg(nick_color);
-//
-//         cursor.x += 1;
-//     });
-//     buf.get_mut(cursor.x, cursor.y).set_char(':').set_fg(Color::White);
-//     cursor.x += 1;
-//     buf.get_mut(cursor.x, cursor.y).set_char(' ');
-//     cursor.x += 1;
-// }
-
 #[derive(Debug)]
 struct RenderCursor {
     x: u16,
@@ -351,6 +331,7 @@ impl Widget for &mut RedeemMessage {
             y: area.bottom().saturating_sub(1),
         };
 
+        // Render the messages in green
         let symbols: Vec<Symbol> = get_message_symbols(&self.message, &mut [], Some((0, 255, 0)));
         let mut lines: Vec<Vec<MessageParts>> = get_lines(&symbols, &area);
 

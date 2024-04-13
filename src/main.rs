@@ -161,8 +161,10 @@ fn start_chat(twitch_name: Arc<String>, oauth_token: Arc<String>, client_id: Arc
         connect_to_pub_sub(token, id, pubsub_tx).unwrap();
     });
 
+    let token = oauth_token.clone();
+    let name = twitch_name.clone();
     thread::spawn(|| {
-        let _ = start_announcements(announce_tx);
+        let _ = start_announcements(name, token, announce_tx);
     });
 
     thread::spawn(|| {

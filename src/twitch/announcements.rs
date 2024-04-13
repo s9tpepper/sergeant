@@ -1,20 +1,23 @@
 use std::{
     error::Error,
     fs,
-    sync::mpsc::Sender,
+    sync::{mpsc::Sender, Arc},
     thread::sleep,
     time::{Duration, SystemTime},
 };
 
+use ratatui::layout::Rect;
+
 use crate::utils::get_data_directory;
 
-use super::ChannelMessages;
+use super::{irc::TwitchIRC, ChannelMessages};
 
 #[derive(Debug)]
 pub struct Announcement {
     pub timing: Duration,
     pub message: String,
     pub start: SystemTime,
+    pub area: Option<Rect>,
 }
 
 impl Clone for Announcement {
@@ -23,6 +26,7 @@ impl Clone for Announcement {
             timing: self.timing,
             message: self.message.clone(),
             start: self.start,
+            area: self.area,
         }
     }
 }
@@ -41,7 +45,13 @@ pub fn get_announcements() -> Result<Vec<Announcement>, Box<dyn Error>> {
                 let timing = Duration::from_secs(timing.parse::<u64>()? * 60);
                 let start = SystemTime::now();
                 let message = message.to_string();
-                let announcement = Announcement { timing, message, start };
+                let area = None;
+                let announcement = Announcement {
+                    timing,
+                    message,
+                    start,
+                    area,
+                };
 
                 announcements.push(announcement);
             }
@@ -51,10 +61,14 @@ pub fn get_announcements() -> Result<Vec<Announcement>, Box<dyn Error>> {
     Ok(announcements)
 }
 
-pub fn start_announcements(tx: Sender<ChannelMessages>) -> Result<(), Box<dyn Error>> {
+pub fn start_announcements(
+    twitch_name: Arc<String>,
+    oauth_token: Arc<String>,
+    tx: Sender<ChannelMessages>,
+) -> Result<(), Box<dyn Error>> {
     // TODO: Add a flag here to toggle announcements on/off?
 
-    // let mut twitch_irc = TwitchIRC::new(twitch_name, oauth_token);
+    let mut twitch_irc = TwitchIRC::new(twitch_name, oauth_token, tx);
 
     let mut announcements = get_announcements()?;
 
@@ -65,9 +79,8 @@ pub fn start_announcements(tx: Sender<ChannelMessages>) -> Result<(), Box<dyn Er
 
                 if time_to_announce {
                     announcement.start = SystemTime::now();
-                    tx.send(ChannelMessages::Announcement(announcement.clone()))?;
 
-                    // twitch_irc.send_privmsg(&announcement.message);
+                    twitch_irc.send_privmsg(&announcement.message);
                 };
             }
         }

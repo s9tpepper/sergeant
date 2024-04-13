@@ -88,10 +88,13 @@ impl App {
                             let redeem_message = TwitchMessage::RedeemMessage { message: rm };
                             self.chat_log.insert(0, ChannelMessages::TwitchMessage(redeem_message));
                         }
-                        SubMessage::Sub(_) => todo!(),
-                        SubMessage::Bits(_) => todo!(),
+
+                        // TODO: Handle sub messages and bits messages
+                        SubMessage::Sub(_) => {}
+                        SubMessage::Bits(_) => {}
                     },
-                    ChannelMessages::Announcement(_) => todo!(),
+
+                    ChannelMessages::Announcement(_) => {}
                 }
             }
 
