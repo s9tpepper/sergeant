@@ -1,4 +1,5 @@
 use std::io::ErrorKind;
+use std::process::Command;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::time::{self, Duration};
@@ -10,6 +11,7 @@ use tungstenite::connect;
 use tungstenite::Error::{AlreadyClosed, ConnectionClosed, Io};
 use tungstenite::Message::{self, Close, Ping, Text};
 
+use crate::commands::get_reward;
 use crate::utils::get_data_directory;
 
 use super::ChannelMessages;
@@ -150,72 +152,59 @@ fn handle_message(message: Message, tx: &Sender<ChannelMessages>) -> Result<(), 
                 return Err("Not a message".into());
             };
 
-            // TODO: Handle SubMessage::Points Command execution once this
-            // gets to Ratatui layer
+            'commands: {
+                match sub_message.data {
+                    SubMessage::Points(ref sub_message) => {
+                        let Ok(command_name) = get_reward(&sub_message.redemption.reward.title) else {
+                            break 'commands;
+                        };
+
+                        let Some(user_input) = &sub_message.redemption.user_input else {
+                            break 'commands;
+                        };
+
+                        let command_result = Command::new(&command_name).arg(user_input).output();
+                        match command_result {
+                            Ok(_) => {}
+                            Err(_) => {
+                                // TODO: Refund the points if the command fails
+
+                                send_to_error_log(
+                                    command_name.to_string(),
+                                    format!("Error running reward command with input: {}", user_input),
+                                );
+                            }
+                        }
+                    }
+
+                    SubMessage::Sub(ref _sub_message) => {
+                        // let message = format!(
+                        //     "{} has subscribed for {} months, currently on a {} month steak.",
+                        //     sub_message.message.display_name,
+                        //     sub_message.message.cumulative_months,
+                        //     sub_message.message.streak_months
+                        // );
+                        //
+                        // println!("{}", message.to_string().blue().bold());
+                        //
+                        // Ok(())
+                    }
+
+                    SubMessage::Bits(ref _sub_message) => {
+                        // let message = format!(
+                        //     "{} has cheered {} bits",
+                        //     sub_message.data.user_name, sub_message.data.bits_used
+                        // );
+                        //
+                        // println!("{}", message.to_string().white().on_green().bold());
+                        // Ok(())
+                    }
+                }
+            }
+
             tx.send(ChannelMessages::MessageData(sub_message))?;
 
             Ok(())
-
-            // TODO: Move this block of message formatting data to Ratatui so it
-            // can be used for formatting the message output in the TUI
-            //
-            // match sub_message.data {
-            //     SubMessage::Points(sub_message) => {
-            //         let message = format!(
-            //             "{} redeemed {} for {}",
-            //             sub_message.redemption.user.display_name,
-            //             sub_message.redemption.reward.title,
-            //             sub_message.redemption.reward.cost
-            //         );
-            //
-            //         println!("{}", message.to_string().green().bold());
-            //
-            //         TODO: Move this command stuff to Ratatui layer so commands still work when
-            //         they are tied to a shell command, like Spotify redeems
-            //
-            //         if let Ok(command_name) = get_reward(&sub_message.redemption.reward.title) {
-            //             if let Some(user_input) = sub_message.redemption.user_input {
-            //                 let Ok(_) = Command::new(&command_name).arg(&user_input).output() else {
-            //                     // TODO: Refund the points if the command fails
-            //
-            //                     send_to_error_log(
-            //                         command_name.to_string(),
-            //                         format!("Error running reward command with input: {}", user_input),
-            //                     );
-            //
-            //                     return Ok(());
-            //                 };
-            //             }
-            //
-            //             return Ok(());
-            //         }
-            //
-            //         Ok(())
-            //     }
-            //
-            //     SubMessage::Sub(sub_message) => {
-            //         let message = format!(
-            //             "{} has subscribed for {} months, currently on a {} month steak.",
-            //             sub_message.message.display_name,
-            //             sub_message.message.cumulative_months,
-            //             sub_message.message.streak_months
-            //         );
-            //
-            //         println!("{}", message.to_string().blue().bold());
-            //
-            //         Ok(())
-            //     }
-            //
-            //     SubMessage::Bits(sub_message) => {
-            //         let message = format!(
-            //             "{} has cheered {} bits",
-            //             sub_message.data.user_name, sub_message.data.bits_used
-            //         );
-            //
-            //         println!("{}", message.to_string().white().on_green().bold());
-            //         Ok(())
-            //     }
-            // }
         }
         other => {
             send_to_error_log(other.to_string(), "Unknown Error".into());

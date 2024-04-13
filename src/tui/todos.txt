@@ -1,4 +1,2 @@
-- add channel redemption messages styling
 - add logic for border decorations
-- test commands rendering in TUI
 

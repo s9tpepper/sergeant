@@ -341,6 +341,13 @@ impl Widget for &mut RedeemMessage {
         let mut screen_lines = get_screen_lines(&mut lines, &area);
 
         write_to_buffer(&mut screen_lines, buf, &mut cursor, &area);
+
+        self.area = Some(Rect {
+            x: 0,
+            y: cursor.y,
+            width: area.width,
+            height: lines.len() as u16,
+        });
     }
 }
 
