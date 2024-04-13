@@ -239,6 +239,110 @@ struct RenderCursor {
     y: u16,
 }
 
+fn get_lines(symbols: &[Symbol], area: &Rect) -> Vec<Vec<MessageParts>> {
+    let message_parts = get_message_parts(symbols);
+    let mut lines: Vec<Vec<MessageParts>> = vec![];
+    let mut line: Vec<MessageParts> = vec![];
+    let mut line_length = 0;
+
+    message_parts.iter().enumerate().for_each(|(ndx, part)| {
+        let section_length = match part {
+            // TODO: Run the word through a fn to get the real length
+            // from the chars() and the emotes
+            MessageParts::Text(word) => word.len(),
+            MessageParts::Emote(_) => EMOTE_SPACE as usize,
+        };
+
+        let next_line_length = line_length + section_length;
+        if next_line_length > (area.width - 1) as usize {
+            lines.push(line.clone());
+            line.clear();
+
+            line_length = section_length;
+        } else {
+            line_length += section_length;
+        }
+
+        // Check that section_length isn't wider than the area
+        // if it is, split the section into multiple lines
+        if let MessageParts::Text(word) = part {
+            if section_length >= area.width.into() {
+                let chunks = word.chunks((area.width - 2).into());
+                let last_index = chunks.len() - 1;
+                chunks.enumerate().for_each(|(index, chunk)| {
+                    let mut symbols: Vec<Symbol> = vec![];
+                    chunk.iter().for_each(|c| {
+                        symbols.push(c.clone());
+                    });
+
+                    if index != last_index {
+                        symbols.push(Symbol::Text(Text {
+                            char: "-".to_string(),
+                            color: None,
+                        }));
+                        line.push(MessageParts::Text(symbols));
+                        lines.push(line.clone());
+                        line.clear();
+                    } else {
+                        line.push(MessageParts::Text(symbols));
+                    }
+                });
+            } else {
+                line.push(part.clone());
+            }
+        } else {
+            line.push(part.clone());
+        }
+
+        if ndx == message_parts.len() - 1 {
+            // Gather the last line
+            if !line.is_empty() {
+                lines.push(line.clone());
+            }
+        }
+    });
+
+    lines
+}
+
+fn get_screen_lines(lines: &mut [Vec<MessageParts>], area: &Rect) -> Vec<Vec<MessageParts>> {
+    if lines.len() > area.height.into() {
+        let line_limit = area.height.saturating_sub(1);
+
+        let start = lines.len() - line_limit as usize;
+        lines[start..].to_vec()
+    } else {
+        lines[..].to_vec()
+    }
+}
+
+fn write_to_buffer(lines: &mut [Vec<MessageParts>], buf: &mut Buffer, cursor: &mut RenderCursor, area: &Rect) {
+    lines.iter_mut().for_each(|line| {
+        line.iter().for_each(|s| match s {
+            MessageParts::Text(word) => {
+                word.iter().for_each(|symbol| match symbol {
+                    Symbol::Text(character) => {
+                        let (r, g, b) = character.color.unwrap_or((255, 255, 255));
+                        let rgb = Color::Rgb(r, g, b);
+                        buf.get_mut(cursor.x, cursor.y).set_symbol(&character.char).set_fg(rgb);
+                        cursor.x += 1;
+                    }
+                    Symbol::Emote(_) => {}
+                });
+            }
+
+            MessageParts::Emote(emote) => {
+                let encoded = emote.encoded.clone().unwrap_or_default();
+                buf.get_mut(cursor.x, cursor.y).set_symbol(&encoded);
+                cursor.x += EMOTE_SPACE as u16;
+            }
+        });
+
+        cursor.x = area.left();
+        cursor.y += 1;
+    });
+}
+
 impl Widget for &mut ChatMessage {
     fn render(self, area: Rect, buf: &mut Buffer) {
         // Initialize the cursor position
@@ -284,108 +388,18 @@ impl Widget for &mut ChatMessage {
             symbols.insert(0, Symbol::Emote(badge.clone()));
         });
 
-        // Collect words
-        let message_parts = get_message_parts(&symbols);
-
-        let mut lines: Vec<Vec<MessageParts>> = vec![];
-        let mut line: Vec<MessageParts> = vec![];
-        let mut line_length = 0;
-
-        message_parts.iter().enumerate().for_each(|(ndx, part)| {
-            let section_length = match part {
-                // TODO: Run the word through a fn to get the real length
-                // from the chars() and the emotes
-                MessageParts::Text(word) => word.len(),
-                MessageParts::Emote(_) => EMOTE_SPACE as usize,
-            };
-
-            let next_line_length = line_length + section_length;
-            if next_line_length > (area.width - 1) as usize {
-                lines.push(line.clone());
-                line.clear();
-
-                line_length = section_length;
-            } else {
-                line_length += section_length;
-            }
-
-            // Check that section_length isn't wider than the area
-            // if it is, split the section into multiple lines
-            if let MessageParts::Text(word) = part {
-                if section_length >= area.width.into() {
-                    let chunks = word.chunks((area.width - 2).into());
-                    let last_index = chunks.len() - 1;
-                    chunks.enumerate().for_each(|(index, chunk)| {
-                        let mut symbols: Vec<Symbol> = vec![];
-                        chunk.iter().for_each(|c| {
-                            symbols.push(c.clone());
-                        });
-
-                        if index != last_index {
-                            symbols.push(Symbol::Text(Text {
-                                char: "-".to_string(),
-                                color: None,
-                            }));
-                            line.push(MessageParts::Text(symbols));
-                            lines.push(line.clone());
-                            line.clear();
-                        } else {
-                            line.push(MessageParts::Text(symbols));
-                        }
-                    });
-                } else {
-                    line.push(part.clone());
-                }
-            } else {
-                line.push(part.clone());
-            }
-
-            if ndx == message_parts.len() - 1 {
-                // Gather the last line
-                if !line.is_empty() {
-                    lines.push(line.clone());
-                }
-            }
-        });
+        let mut lines: Vec<Vec<MessageParts>> = get_lines(&symbols, &area);
 
         cursor.x = area.left();
         cursor.y = cursor.y.saturating_sub(lines.len() as u16);
 
-        let screen_lines = if lines.len() > area.height.into() {
-            let line_limit = area.height.saturating_sub(1);
+        let mut screen_lines = get_screen_lines(&mut lines, &area);
 
-            let start = lines.len() - line_limit as usize;
-            &mut lines[start..]
-        } else {
-            &mut lines[..]
-        };
+        write_to_buffer(&mut screen_lines, buf, &mut cursor, &area);
 
-        screen_lines.iter_mut().for_each(|line| {
-            line.iter().for_each(|s| match s {
-                MessageParts::Text(word) => {
-                    word.iter().for_each(|symbol| match symbol {
-                        Symbol::Text(character) => {
-                            let (r, g, b) = character.color.unwrap_or((255, 255, 255));
-                            let rgb = Color::Rgb(r, g, b);
-                            buf.get_mut(cursor.x, cursor.y).set_symbol(&character.char).set_fg(rgb);
-                            cursor.x += 1;
-                        }
-                        Symbol::Emote(_) => {}
-                    });
-                }
-
-                MessageParts::Emote(emote) => {
-                    let encoded = emote.encoded.clone().unwrap_or_default();
-                    buf.get_mut(cursor.x, cursor.y).set_symbol(&encoded);
-                    cursor.x += EMOTE_SPACE as u16;
-                }
-            });
-
-            cursor.x = area.left();
-            cursor.y += 1;
-        });
-
-        cursor.y = cursor.y.saturating_sub(lines.len() as u16);
+        // NOTE: This used to subtract lines.len(), I think that was wrong
+        // so it was switched to screen_lines.len()
+        cursor.y = cursor.y.saturating_sub(screen_lines.len() as u16);
 
         // NOTE: examle of how to render a bordered block
         // Sort of works, would need to update the shifting of the cursor
@@ -417,6 +431,7 @@ impl Widget for &mut ChatMessage {
 
 #[derive(Debug)]
 pub enum TwitchMessage {
+    RedeemMessage { message: String },
     RaidMessage { user_id: String, raid_notice: String },
     PrivMessage { message: ChatMessage },
     PingMessage { message: String },
@@ -675,42 +690,6 @@ fn get_emote_suffix() -> String {
     // }
 
     BELL.to_string()
-}
-
-// TODO: This needs to go away, still here for reference as we move the
-// encoded emotes logic to the TUI renderer
-fn add_emotes(message: &mut String, emotes: &mut [Emote]) -> Result<(), Box<dyn Error>> {
-    for emote in emotes.iter_mut() {
-        let range = emote.start..=emote.end;
-        let temp_msg = message.clone();
-        let emote_name = temp_msg.get(range);
-        emote.name = emote_name.unwrap_or("").to_string();
-    }
-
-    for emote in emotes.iter() {
-        let response = ureq::get(&emote.url).call()?;
-        let length: usize = response.header("content-length").unwrap().parse()?;
-        let mut file_bytes: Vec<u8> = vec![0; length];
-        response.into_reader().read_exact(&mut file_bytes)?;
-
-        let img_data = image::load_from_memory(&file_bytes)?;
-
-        let mut buffer: Vec<u8> = Vec::new();
-        img_data.write_to(&mut Cursor::new(&mut buffer), image::ImageFormat::Png)?;
-        let base64_emote = BASE64_STANDARD.encode(&buffer);
-
-        let encoded_image = format!(
-            // "{}1337;File=inline=1;height=22px;width=22px;preserveAspectRatio=1:{}{}",
-            "{}1337;File=inline=1;height=23px;width=23px;preserveAspectRatio=1:{}{}",
-            get_emote_prefix(),
-            base64_emote.as_str(),
-            get_emote_suffix()
-        );
-
-        *message = message.replace(&emote.name, encoded_image.as_str());
-    }
-
-    Ok(())
 }
 
 fn get_iterm_encoded_image(base64: String) -> String {

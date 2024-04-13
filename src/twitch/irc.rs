@@ -108,7 +108,9 @@ impl TwitchIRC {
                 messages.for_each(|message| match message {
                     tungstenite::Message::Text(new_message) => match parse(&new_message) {
                         Ok(
-                            message @ TwitchMessage::PrivMessage { .. } | message @ TwitchMessage::RaidMessage { .. },
+                            message @ TwitchMessage::RedeemMessage { .. }
+                            | message @ TwitchMessage::PrivMessage { .. }
+                            | message @ TwitchMessage::RaidMessage { .. },
                         ) => {
                             let _ = self.tx.send(ChannelMessages::TwitchMessage(message));
                             // output(message, self);

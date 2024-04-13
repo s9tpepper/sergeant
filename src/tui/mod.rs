@@ -18,6 +18,7 @@ use color_eyre::{eyre::Result, eyre::WrapErr};
 use crate::tui;
 use crate::twitch::parse::Emote;
 use crate::twitch::parse::Text;
+use crate::twitch::pubsub::SubMessage;
 use crate::twitch::ChannelMessages;
 use crate::{
     twitch::{
@@ -68,9 +69,29 @@ impl App {
     pub fn run(&mut self, terminal: &mut tui::Tui, rx: Receiver<ChannelMessages>) -> Result<()> {
         while !self.exit {
             if let Ok(message) = rx.try_recv() {
-                // TODO: check the message type before just inserting blindly
-                self.chat_log.insert(0, message);
-                self.truncate();
+                match message {
+                    ChannelMessages::TwitchMessage(message) => {
+                        self.chat_log.insert(0, ChannelMessages::TwitchMessage(message));
+                        self.truncate();
+                    }
+
+                    ChannelMessages::MessageData(message) => match message.data {
+                        SubMessage::Points(points_message) => {
+                            let message = format!(
+                                "{} redeemed {} for {}",
+                                points_message.redemption.user.display_name,
+                                points_message.redemption.reward.title,
+                                points_message.redemption.reward.cost
+                            );
+
+                            let redeem_message = TwitchMessage::RedeemMessage { message };
+                            self.chat_log.insert(0, ChannelMessages::TwitchMessage(redeem_message));
+                        }
+                        SubMessage::Sub(_) => todo!(),
+                        SubMessage::Bits(_) => todo!(),
+                    },
+                    ChannelMessages::Announcement(_) => todo!(),
+                }
             }
 
             terminal.draw(|frame| self.render(frame))?;
@@ -136,6 +157,8 @@ impl Widget for &mut App {
 
                         message.area
                     }
+
+                    TwitchMessage::RedeemMessage { .. } => Some(Rect::new(0, 0, 0, 0)),
 
                     TwitchMessage::RaidMessage { .. } => Some(Rect::new(0, 0, 0, 0)),
 
