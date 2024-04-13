@@ -94,7 +94,7 @@ pub struct ChatMessage {
 // }
 
 // Place all characters and emote base64s in a vector
-fn get_message_symbols(message: &str, emotes: &mut [Emote]) -> Vec<Symbol> {
+fn get_message_symbols(message: &str, emotes: &mut [Emote], color: Option<(u8, u8, u8)>) -> Vec<Symbol> {
     // Load the base64 encoded emotes
     emotes.iter_mut().for_each(|e| {
         e.load().unwrap();
@@ -123,8 +123,9 @@ fn get_message_symbols(message: &str, emotes: &mut [Emote]) -> Vec<Symbol> {
         let c: &str = temp.as_str();
         symbols.push(Symbol::Text(Text {
             char: c.to_string(),
-            color: None,
+            color,
         }));
+
         cursor += 1;
     }
 
@@ -143,7 +144,7 @@ fn test_get_message_symbols() {
 
     let mut emotes: Vec<Emote> = vec![emote];
     let message = "primeagenEmacs Hello";
-    let symbols = get_message_symbols(message, &mut emotes);
+    let symbols = get_message_symbols(message, &mut emotes, None);
     assert_eq!(symbols, vec![]);
 }
 
@@ -343,6 +344,25 @@ fn write_to_buffer(lines: &mut [Vec<MessageParts>], buf: &mut Buffer, cursor: &m
     });
 }
 
+impl Widget for &mut RedeemMessage {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let mut cursor = RenderCursor {
+            x: area.left(),
+            y: area.bottom().saturating_sub(1),
+        };
+
+        let symbols: Vec<Symbol> = get_message_symbols(&self.message, &mut [], Some((0, 255, 0)));
+        let mut lines: Vec<Vec<MessageParts>> = get_lines(&symbols, &area);
+
+        cursor.x = area.left();
+        cursor.y = cursor.y.saturating_sub(lines.len() as u16);
+
+        let mut screen_lines = get_screen_lines(&mut lines, &area);
+
+        write_to_buffer(&mut screen_lines, buf, &mut cursor, &area);
+    }
+}
+
 impl Widget for &mut ChatMessage {
     fn render(self, area: Rect, buf: &mut Buffer) {
         // Initialize the cursor position
@@ -351,7 +371,7 @@ impl Widget for &mut ChatMessage {
             y: area.bottom().saturating_sub(1),
         };
 
-        let mut symbols: Vec<Symbol> = get_message_symbols(&self.message, &mut self.emotes);
+        let mut symbols: Vec<Symbol> = get_message_symbols(&self.message, &mut self.emotes, None);
 
         // add space after nickname
         symbols.insert(
@@ -431,11 +451,17 @@ impl Widget for &mut ChatMessage {
 
 #[derive(Debug)]
 pub enum TwitchMessage {
-    RedeemMessage { message: String },
+    RedeemMessage { message: RedeemMessage },
     RaidMessage { user_id: String, raid_notice: String },
     PrivMessage { message: ChatMessage },
     PingMessage { message: String },
     UnknownMessage { message: String },
+}
+
+#[derive(Debug)]
+pub struct RedeemMessage {
+    pub message: String,
+    pub area: Option<Rect>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

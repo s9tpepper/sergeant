@@ -16,8 +16,8 @@ use ratatui::backend::CrosstermBackend;
 use color_eyre::{eyre::Result, eyre::WrapErr};
 
 use crate::tui;
-use crate::twitch::parse::Emote;
 use crate::twitch::parse::Text;
+use crate::twitch::parse::{Emote, RedeemMessage};
 use crate::twitch::pubsub::SubMessage;
 use crate::twitch::ChannelMessages;
 use crate::{
@@ -84,7 +84,8 @@ impl App {
                                 points_message.redemption.reward.cost
                             );
 
-                            let redeem_message = TwitchMessage::RedeemMessage { message };
+                            let rm = RedeemMessage { message, area: None };
+                            let redeem_message = TwitchMessage::RedeemMessage { message: rm };
                             self.chat_log.insert(0, ChannelMessages::TwitchMessage(redeem_message));
                         }
                         SubMessage::Sub(_) => todo!(),
@@ -158,8 +159,15 @@ impl Widget for &mut App {
                         message.area
                     }
 
-                    TwitchMessage::RedeemMessage { .. } => Some(Rect::new(0, 0, 0, 0)),
+                    TwitchMessage::RedeemMessage { message } => {
+                        // println!("available area: {:?}", available_area);
 
+                        message.render(available_area, buf);
+
+                        message.area
+                    }
+
+                    // TwitchMessage::RedeemMessage { message } => message.render(),
                     TwitchMessage::RaidMessage { .. } => Some(Rect::new(0, 0, 0, 0)),
 
                     _ => Some(Rect::new(0, 0, 0, 0)),
