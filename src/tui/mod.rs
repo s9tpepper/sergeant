@@ -118,8 +118,6 @@ impl App {
     }
 
     fn handle_events(&mut self) -> Result<()> {
-        // NOTE: This is a blocking call, so it will wait until an event happens,
-        // this should be replaced with event::poll() in a real application.
         let available = event::poll(time::Duration::from_millis(0))?;
         if available {
             match event::read()? {
