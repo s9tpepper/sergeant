@@ -1,7 +1,13 @@
 use std::{error::Error, fs, io::Cursor, path::PathBuf};
 
 use base64::prelude::*;
-use ratatui::{buffer::Buffer, layout::Rect, style::Color, widgets::Widget};
+use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
+    style::{Color, Style},
+    symbols,
+    widgets::{Block, Borders, Widget},
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -297,7 +303,9 @@ fn get_screen_lines(lines: &mut [Vec<MessageParts>], area: &Rect) -> Vec<Vec<Mes
     }
 }
 
-fn write_to_buffer(lines: &mut [Vec<MessageParts>], buf: &mut Buffer, cursor: &mut RenderCursor, area: &Rect) {
+fn write_to_buffer(lines: &mut [Vec<MessageParts>], buf: &mut Buffer, cursor: &mut RenderCursor) {
+    let left = cursor.x;
+
     lines.iter_mut().for_each(|line| {
         line.iter().for_each(|s| match s {
             MessageParts::Text(word) => {
@@ -319,7 +327,7 @@ fn write_to_buffer(lines: &mut [Vec<MessageParts>], buf: &mut Buffer, cursor: &m
             }
         });
 
-        cursor.x = area.left();
+        cursor.x = left;
         cursor.y += 1;
     });
 }
@@ -340,7 +348,7 @@ impl Widget for &mut RedeemMessage {
 
         let mut screen_lines = get_screen_lines(&mut lines, &area);
 
-        write_to_buffer(&mut screen_lines, buf, &mut cursor, &area);
+        write_to_buffer(&mut screen_lines, buf, &mut cursor);
 
         self.area = Some(Rect {
             x: 0,
@@ -353,6 +361,9 @@ impl Widget for &mut RedeemMessage {
 
 impl Widget for &mut ChatMessage {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        // TODO: Remove this, for testing borders only
+        self.first_msg = true;
+
         // Initialize the cursor position
         let mut cursor = RenderCursor {
             x: area.left(),
@@ -398,41 +409,62 @@ impl Widget for &mut ChatMessage {
 
         let mut lines: Vec<Vec<MessageParts>> = get_lines(&symbols, &area);
 
-        cursor.x = area.left();
+        cursor.x = if self.first_msg { area.left() + 1 } else { area.left() };
         cursor.y = cursor.y.saturating_sub(lines.len() as u16);
 
         let mut screen_lines = get_screen_lines(&mut lines, &area);
 
-        write_to_buffer(&mut screen_lines, buf, &mut cursor, &area);
+        let mut writeable_area = area;
+        writeable_area.width = if self.first_msg { area.width - 2 } else { area.width };
+        writeable_area.height = if self.first_msg {
+            screen_lines.len() as u16 + 2
+        } else {
+            screen_lines.len() as u16
+        };
+
+        let incomplete_borders = Borders::LEFT | Borders::RIGHT | Borders::BOTTOM;
+        let incomplete_message = cursor.y < screen_lines.len() as u16;
+
+        write_to_buffer(&mut screen_lines, buf, &mut cursor);
+        cursor.x = 0;
 
         // NOTE: This used to subtract lines.len(), I think that was wrong
         // so it was switched to screen_lines.len()
-        cursor.y = cursor.y.saturating_sub(screen_lines.len() as u16);
+        cursor.y = cursor.y.saturating_sub(writeable_area.height);
 
         // NOTE: examle of how to render a bordered block
         // Sort of works, would need to update the shifting of the cursor
         // to account for the borders and shift the contents inwards
         //
-        // Block::bordered()
-        //     .border_set(symbols::border::ROUNDED)
-        //     .border_style(Style::reset().fg(Color::White))
-        //     .title("First time chatter")
-        //     .render(
-        //         Rect {
-        //             x: cursor.x,
-        //             y: cursor.y - 1,
-        //             width: area.width,
-        //             height: lines.len() as u16 + 2,
-        //         },
-        //         buf,
-        //     );
+
+        let borders = if self.first_msg && incomplete_message {
+            incomplete_borders
+        } else {
+            Borders::ALL
+        };
+
+        // TODO: Wrap this in if self.first_msg
+        Block::bordered()
+            .border_set(symbols::border::ROUNDED)
+            .border_style(Style::reset().fg(Color::White))
+            .borders(borders)
+            // .title("First time chatter")
+            .render(
+                Rect {
+                    x: cursor.x,
+                    y: cursor.y + 1,
+                    width: area.width,
+                    height: lines.len() as u16 + 2,
+                },
+                buf,
+            );
 
         // Update the area this message takes
         self.area = Some(Rect {
             x: 0,
             y: cursor.y,
             width: area.width,
-            height: lines.len() as u16,
+            height: writeable_area.height,
         });
     }
 }

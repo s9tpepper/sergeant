@@ -118,8 +118,6 @@ impl App {
     }
 
     fn handle_events(&mut self) -> Result<()> {
-        // NOTE: This is a blocking call, so it will wait until an event happens,
-        // this should be replaced with event::poll() in a real application.
         let available = event::poll(time::Duration::from_millis(0))?;
         if available {
             match event::read()? {
@@ -155,16 +153,12 @@ impl Widget for &mut App {
             let message_area = match message {
                 ChannelMessages::TwitchMessage(message) => match message {
                     TwitchMessage::PrivMessage { message } => {
-                        // println!("available area: {:?}", available_area);
-
                         message.render(available_area, buf);
 
                         message.area
                     }
 
                     TwitchMessage::RedeemMessage { message } => {
-                        // println!("available area: {:?}", available_area);
-
                         message.render(available_area, buf);
 
                         message.area
