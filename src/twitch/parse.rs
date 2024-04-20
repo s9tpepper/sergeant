@@ -1,4 +1,4 @@
-use std::{error::Error, fs, io::Cursor, path::PathBuf};
+use std::{error::Error, fs, path::PathBuf};
 
 use base64::prelude::*;
 use ratatui::{
@@ -180,9 +180,30 @@ fn test_get_message_symbols() {
 fn get_message_parts(symbols: &[Symbol]) -> Vec<MessageParts> {
     let mut message_to_render: Vec<MessageParts> = vec![];
     let mut word: Vec<Symbol> = vec![];
-    symbols.iter().for_each(|s| match s {
+    symbols.iter().enumerate().for_each(|(index, s)| match s {
         Symbol::Text(character) => {
-            if character.char == " " && !word.is_empty() {
+            let previous_index = if index == 0 { index } else { index - 1 };
+            let max_index = symbols.len() as u16 - 1;
+            let next_index = if index as u16 == max_index {
+                max_index
+            } else {
+                index as u16 + 1
+            };
+
+            let previous = &symbols[previous_index];
+            let next = &symbols[next_index as usize];
+
+            let mut previous_is_emote = false;
+            if let Symbol::Emote(_) = previous {
+                previous_is_emote = true;
+            };
+
+            let mut next_is_emote = false;
+            if let Symbol::Emote(_) = next {
+                next_is_emote = true;
+            };
+
+            if character.char == " " && !word.is_empty() && !previous_is_emote {
                 message_to_render.push(MessageParts::Text(word.clone()));
 
                 word.clear();
@@ -190,6 +211,8 @@ fn get_message_parts(symbols: &[Symbol]) -> Vec<MessageParts> {
                     char: " ".to_string(),
                     color: None,
                 })]));
+            } else if character.char == " " && previous_is_emote && next_is_emote {
+                // Don't do anything, skip adding spaces between emotes
             } else {
                 word.push(s.clone());
             }
