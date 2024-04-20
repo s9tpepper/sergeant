@@ -591,15 +591,15 @@ struct IrcMessage<'a> {
 fn get_encoded_image(url: &str) -> Result<String, Box<dyn Error>> {
     let response = ureq::get(url).call()?;
     let length: usize = response.header("content-length").unwrap().parse()?;
-    let mut file_bytes: Vec<u8> = vec![0; length];
-    response.into_reader().read_exact(&mut file_bytes)?;
-
-    let img_data = image::load_from_memory(&file_bytes)?;
-
-    let mut buffer: Vec<u8> = Vec::new();
-    // img_data.write_to(&mut Cursor::new(&mut buffer), image::ImageFormat::Png)?;
-    img_data.write_to(&mut Cursor::new(&mut buffer), image::ImageFormat::Gif)?;
-    let base64_emote = BASE64_STANDARD.encode(&buffer);
+    let file_bytes: Vec<u8> = vec![0; length];
+    // response.into_reader().read_exact(&mut file_bytes)?;
+    //
+    // let img_data = image::load_from_memory(&file_bytes)?;
+    //
+    // let mut buffer: Vec<u8> = Vec::new();
+    // // img_data.write_to(&mut Cursor::new(&mut buffer), image::ImageFormat::Png)?;
+    // img_data.write_to(&mut Cursor::new(&mut buffer), image::ImageFormat::Gif)?;
+    let base64_emote = BASE64_STANDARD.encode(file_bytes);
 
     Ok(base64_emote)
 }
