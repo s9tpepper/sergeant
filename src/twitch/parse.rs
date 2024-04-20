@@ -317,6 +317,20 @@ pub fn get_lines(symbols: &[Symbol], area: &Rect) -> Vec<Vec<MessageParts>> {
         }
     });
 
+    // Remove spaces if they appear at the beginning of a line
+    lines.iter_mut().for_each(|line| {
+        let first_word = line.first();
+        if let Some(MessageParts::Text(first_word)) = first_word {
+            if first_word.len() == 1 {
+                if let Some(Symbol::Text(symbol)) = first_word.first() {
+                    if symbol.char == *" ".to_string() {
+                        line.remove(0);
+                    }
+                }
+            }
+        }
+    });
+
     lines
 }
 
