@@ -113,7 +113,6 @@ impl TwitchIRC {
                             | message @ TwitchMessage::RaidMessage { .. },
                         ) => {
                             let _ = self.tx.send(ChannelMessages::TwitchMessage(message));
-                            // output(message, self);
                         }
 
                         Ok(TwitchMessage::PingMessage { message }) => {

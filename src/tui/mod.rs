@@ -1,7 +1,9 @@
 use color_eyre::config::HookBuilder;
 use color_eyre::eyre;
 
+use ratatui::layout::Position;
 use ratatui::prelude::*;
+use tui_scrollview::{ScrollView, ScrollViewState};
 
 use std::io::{self, stdout, Stdout};
 use std::sync::mpsc::Receiver;
@@ -33,6 +35,7 @@ pub type Tui = Terminal<CrosstermBackend<Stdout>>;
 
 #[derive(Debug, Default)]
 pub struct App {
+    scroll_view_state: ScrollViewState,
     chat_log: Vec<ChannelMessages>,
     exit: bool,
 }
@@ -60,7 +63,10 @@ impl Clone for MessageParts {
 
 impl App {
     pub fn new() -> Self {
+        let scroll_view_state = ScrollViewState::new();
+
         App {
+            scroll_view_state,
             chat_log: vec![],
             exit: false,
         }
@@ -109,7 +115,7 @@ impl App {
 
     fn truncate(&mut self) {
         if self.chat_log.len() > 100 {
-            self.chat_log.remove(0);
+            self.chat_log.remove(self.chat_log.len() - 1);
         }
     }
 
@@ -126,6 +132,7 @@ impl App {
                 Event::Key(key_event) if key_event.kind == KeyEventKind::Press => self
                     .handle_key_event(key_event)
                     .wrap_err_with(|| format!("Failed to handle key event: {:?}", key_event.code)),
+
                 _ => Ok(()),
             }
         } else {
@@ -148,24 +155,94 @@ impl App {
 
 impl Widget for &mut App {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        buf.reset();
+
+        let mut scroll_view_state = self.scroll_view_state;
+        let mut scroller = Scroller::new(self);
+        scroller.render(area, buf, &mut scroll_view_state);
+        let _ = scroller.handle_events();
+    }
+}
+
+struct Scroller<'a> {
+    app: &'a mut App,
+}
+
+impl<'a> Scroller<'a> {
+    pub fn new(app: &'a mut App) -> Self {
+        Scroller { app }
+    }
+
+    pub fn handle_events(&mut self) -> Result<()> {
+        let available = event::poll(time::Duration::from_millis(0))?;
+        if available {
+            match event::read()? {
+                // NOTE: it's important to check that the event is a key press event as
+                // crossterm also emits key release and repeat events on Windows.
+                Event::Key(key_event) if key_event.kind == KeyEventKind::Press => self
+                    .handle_key_event(key_event)
+                    .wrap_err_with(|| format!("Failed to handle key event: {:?}", key_event.code)),
+
+                _ => Ok(()),
+            }
+        } else {
+            Ok(())
+        }
+    }
+
+    fn handle_key_event(&mut self, key_event: KeyEvent) -> Result<()> {
+        match key_event.code {
+            KeyCode::Char('j') => self.app.scroll_view_state.scroll_down(),
+            KeyCode::Char('k') => self.app.scroll_view_state.scroll_up(),
+            KeyCode::Char('f') => self.app.scroll_view_state.scroll_page_down(),
+            KeyCode::Char('b') => self.app.scroll_view_state.scroll_page_up(),
+            KeyCode::Char('g') => self.app.scroll_view_state.scroll_to_top(),
+            KeyCode::Char('G') => self.app.scroll_view_state.scroll_to_bottom(),
+            _ => {}
+        }
+
+        Ok(())
+    }
+}
+
+impl<'a> StatefulWidget for &mut Scroller<'a> {
+    type State = ScrollViewState;
+
+    fn render(self, area: Rect, buf: &mut Buffer, _state: &mut Self::State) {
+        let content_size = layout::Size {
+            width: area.width,
+            height: area.height * 2,
+        };
+
+        let mut scroll_view = ScrollView::new(content_size);
+
         let mut available_area = area;
-        self.chat_log.iter_mut().for_each(|message| {
+        available_area.height = content_size.height;
+
+        if self.app.chat_log.is_empty() {
+            self.app.scroll_view_state.scroll_to_bottom();
+        }
+
+        self.app.chat_log.iter_mut().for_each(|message| {
             let message_area = match message {
                 ChannelMessages::TwitchMessage(message) => match message {
                     TwitchMessage::PrivMessage { message } => {
-                        message.render(available_area, buf);
+                        message.render(available_area, scroll_view.buf_mut());
 
                         message.area
                     }
 
                     TwitchMessage::RedeemMessage { message } => {
-                        message.render(available_area, buf);
+                        message.render(available_area, scroll_view.buf_mut());
 
                         message.area
                     }
 
-                    // TwitchMessage::RedeemMessage { message } => message.render(),
-                    TwitchMessage::RaidMessage { .. } => Some(Rect::new(0, 0, 0, 0)),
+                    TwitchMessage::RaidMessage { message } => {
+                        message.render(available_area, scroll_view.buf_mut());
+
+                        message.area
+                    }
 
                     _ => Some(Rect::new(0, 0, 0, 0)),
                 },
@@ -179,6 +256,17 @@ impl Widget for &mut App {
                 available_area.height = available_area.height.saturating_sub(message_area.height);
             }
         });
+
+        scroll_view.render(buf.area, buf, &mut self.app.scroll_view_state);
+
+        // NOTE: Make the ScrollView not scroll past the bottom of the content
+        let max_y_offset = content_size.height - buf.area.height;
+        if self.app.scroll_view_state.offset().y > max_y_offset {
+            // self.app.scroll_view_state.offset().y = max_y_offset;
+            self.app
+                .scroll_view_state
+                .set_offset(Position { y: max_y_offset, x: 0 })
+        }
     }
 }
 

@@ -6,7 +6,7 @@ use ratatui::{
     layout::Rect,
     style::{Color, Style},
     symbols,
-    widgets::{Block, Borders, Widget},
+    widgets::{Block, Widget},
 };
 use serde::{Deserialize, Serialize};
 
@@ -47,11 +47,15 @@ impl Emote {
         let mut file_bytes: Vec<u8> = vec![0; length];
         response.into_reader().read_exact(&mut file_bytes)?;
 
-        let img_data = image::load_from_memory(&file_bytes)?;
+        // let things = &file_bytes[..4];
+        // panic!("{:?}", things);
 
-        let mut buffer: Vec<u8> = Vec::new();
-        img_data.write_to(&mut Cursor::new(&mut buffer), image::ImageFormat::Png)?;
-        let base64_emote = BASE64_STANDARD.encode(&buffer);
+        // let img_data = image::load_from_memory(&file_bytes)?;
+        // let mut buffer: Vec<u8> = Vec::new();
+        // // img_data.write_to(&mut Cursor::new(&mut buffer), image::ImageFormat::Png)?;
+        // img_data.write_to(&mut Cursor::new(&mut buffer), image::ImageFormat::Gif)?;
+        // let base64_emote = BASE64_STANDARD.encode(&buffer);
+        let base64_emote = BASE64_STANDARD.encode(&file_bytes);
 
         let encoded_image = format!(
             // "{}1337;File=inline=1;height=22px;width=22px;preserveAspectRatio=1;doNotMoveCursor=1:{}{}",
@@ -93,6 +97,7 @@ pub struct ChatMessage {
     pub channel: String,
     pub raw: String,
     pub area: Option<Rect>,
+    // symbols: Vec<Symbol>,
 }
 
 // impl ChatMessage {
@@ -331,6 +336,32 @@ fn write_to_buffer(lines: &mut [Vec<MessageParts>], buf: &mut Buffer, cursor: &m
         cursor.y += 1;
     });
 }
+impl Widget for &mut RaidMessage {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let mut cursor = RenderCursor {
+            x: area.left(),
+            y: area.bottom().saturating_sub(1),
+        };
+
+        // Render the messages in yellow
+        let symbols: Vec<Symbol> = get_message_symbols(&self.raid_notice, &mut [], Some((255, 255, 0)));
+        let mut lines: Vec<Vec<MessageParts>> = get_lines(&symbols, &area);
+
+        cursor.x = area.left();
+        cursor.y = cursor.y.saturating_sub(lines.len() as u16);
+
+        let mut screen_lines = get_screen_lines(&mut lines, &area);
+
+        write_to_buffer(&mut screen_lines, buf, &mut cursor);
+
+        self.area = Some(Rect {
+            x: 0,
+            y: cursor.y,
+            width: area.width,
+            height: lines.len() as u16,
+        });
+    }
+}
 
 impl Widget for &mut RedeemMessage {
     fn render(self, area: Rect, buf: &mut Buffer) {
@@ -359,17 +390,8 @@ impl Widget for &mut RedeemMessage {
     }
 }
 
-impl Widget for &mut ChatMessage {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        // TODO: Remove this, for testing borders only
-        self.first_msg = true;
-
-        // Initialize the cursor position
-        let mut cursor = RenderCursor {
-            x: area.left(),
-            y: area.bottom().saturating_sub(1),
-        };
-
+impl ChatMessage {
+    fn get_symbols(&mut self) -> Vec<Symbol> {
         let mut symbols: Vec<Symbol> = get_message_symbols(&self.message, &mut self.emotes, None);
 
         // add space after nickname
@@ -407,57 +429,61 @@ impl Widget for &mut ChatMessage {
             symbols.insert(0, Symbol::Emote(badge.clone()));
         });
 
-        let mut lines: Vec<Vec<MessageParts>> = get_lines(&symbols, &area);
+        symbols
+    }
 
-        cursor.x = if self.first_msg { area.left() + 1 } else { area.left() };
-        cursor.y = cursor.y.saturating_sub(lines.len() as u16);
+    pub fn get_area(&self, area: Rect) -> Rect {
+        Rect::new(0, 0, area.width, 2)
+    }
+}
 
-        let mut screen_lines = get_screen_lines(&mut lines, &area);
+impl Widget for &mut ChatMessage {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        // Initialize the cursor position
+        let mut cursor = RenderCursor {
+            x: area.left(),
+            y: area.bottom().saturating_sub(1),
+        };
+
+        let needs_borders = self.first_msg;
+        let symbols: Vec<Symbol> = self.get_symbols();
+
+        let mut line_area = area;
+        line_area.width = if needs_borders { area.width - 4 } else { area.width };
+        let mut screen_lines: Vec<Vec<MessageParts>> = get_lines(&symbols, &line_area);
+
+        cursor.x = if needs_borders { area.left() + 1 } else { area.left() };
+        cursor.y = cursor.y.saturating_sub(screen_lines.len() as u16);
 
         let mut writeable_area = area;
-        writeable_area.width = if self.first_msg { area.width - 2 } else { area.width };
-        writeable_area.height = if self.first_msg {
+        writeable_area.width = if needs_borders { area.width - 1 } else { area.width };
+        writeable_area.height = if needs_borders {
             screen_lines.len() as u16 + 2
         } else {
             screen_lines.len() as u16
         };
 
-        let incomplete_borders = Borders::LEFT | Borders::RIGHT | Borders::BOTTOM;
-        let incomplete_message = cursor.y < screen_lines.len() as u16;
-
         write_to_buffer(&mut screen_lines, buf, &mut cursor);
-        cursor.x = 0;
 
-        // NOTE: This used to subtract lines.len(), I think that was wrong
-        // so it was switched to screen_lines.len()
+        // Reset cursor position after writing to buffer
+        cursor.x = 0;
         cursor.y = cursor.y.saturating_sub(writeable_area.height);
 
-        // NOTE: examle of how to render a bordered block
-        // Sort of works, would need to update the shifting of the cursor
-        // to account for the borders and shift the contents inwards
-        //
-
-        let borders = if self.first_msg && incomplete_message {
-            incomplete_borders
-        } else {
-            Borders::ALL
-        };
-
-        // TODO: Wrap this in if self.first_msg
-        Block::bordered()
-            .border_set(symbols::border::ROUNDED)
-            .border_style(Style::reset().fg(Color::White))
-            .borders(borders)
-            // .title("First time chatter")
-            .render(
-                Rect {
-                    x: cursor.x,
-                    y: cursor.y + 1,
-                    width: area.width,
-                    height: lines.len() as u16 + 2,
-                },
-                buf,
-            );
+        if needs_borders {
+            Block::bordered()
+                .border_set(symbols::border::ROUNDED)
+                .border_style(Style::reset().fg(Color::White))
+                .title("First time chatter")
+                .render(
+                    Rect {
+                        x: cursor.x,
+                        y: cursor.y + 1,
+                        width: area.width - 2,
+                        height: screen_lines.len() as u16 + 2,
+                    },
+                    buf,
+                );
+        }
 
         // Update the area this message takes
         self.area = Some(Rect {
@@ -472,10 +498,17 @@ impl Widget for &mut ChatMessage {
 #[derive(Debug)]
 pub enum TwitchMessage {
     RedeemMessage { message: RedeemMessage },
-    RaidMessage { user_id: String, raid_notice: String },
+    RaidMessage { message: RaidMessage },
     PrivMessage { message: ChatMessage },
     PingMessage { message: String },
     UnknownMessage { message: String },
+}
+
+#[derive(Debug)]
+pub struct RaidMessage {
+    pub user_id: String,
+    pub raid_notice: String,
+    pub area: Option<Rect>,
 }
 
 #[derive(Debug)]
@@ -537,7 +570,8 @@ fn get_encoded_image(url: &str) -> Result<String, Box<dyn Error>> {
     let img_data = image::load_from_memory(&file_bytes)?;
 
     let mut buffer: Vec<u8> = Vec::new();
-    img_data.write_to(&mut Cursor::new(&mut buffer), image::ImageFormat::Png)?;
+    // img_data.write_to(&mut Cursor::new(&mut buffer), image::ImageFormat::Png)?;
+    img_data.write_to(&mut Cursor::new(&mut buffer), image::ImageFormat::Gif)?;
     let base64_emote = BASE64_STANDARD.encode(&buffer);
 
     Ok(base64_emote)
@@ -841,10 +875,13 @@ fn parse_usernotice(message: IrcMessage) -> TwitchMessage {
     }
 
     if is_raid && !system_msg.is_empty() {
-        return TwitchMessage::RaidMessage {
+        let message = RaidMessage {
+            area: None,
             raid_notice: system_msg,
             user_id,
         };
+
+        return TwitchMessage::RaidMessage { message };
     }
 
     TwitchMessage::UnknownMessage {
