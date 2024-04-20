@@ -466,14 +466,19 @@ impl Widget for &mut ChatMessage {
         };
 
         let needs_borders = self.first_msg;
+
+        // NOTE: Used to test first time chatter decoration
+        // let needs_borders = self.message.len() % 2 > 0;
+
         let symbols: Vec<Symbol> = self.get_symbols();
 
         let mut line_area = area;
         line_area.width = if needs_borders { area.width - 4 } else { area.width };
         let mut screen_lines: Vec<Vec<MessageParts>> = get_lines(&symbols, &line_area);
 
+        let y_pos = cursor.y.saturating_sub(screen_lines.len() as u16);
         cursor.x = if needs_borders { area.left() + 1 } else { area.left() };
-        cursor.y = cursor.y.saturating_sub(screen_lines.len() as u16);
+        cursor.y = if needs_borders { y_pos - 1 } else { y_pos };
 
         let mut writeable_area = area;
         writeable_area.width = if needs_borders { area.width - 1 } else { area.width };
@@ -487,17 +492,18 @@ impl Widget for &mut ChatMessage {
 
         // Reset cursor position after writing to buffer
         cursor.x = 0;
-        cursor.y = cursor.y.saturating_sub(writeable_area.height);
+        cursor.y = cursor.y.saturating_sub(writeable_area.height) + 1;
 
         if needs_borders {
             Block::bordered()
                 .border_set(symbols::border::ROUNDED)
-                .border_style(Style::reset().fg(Color::White))
-                .title("First time chatter")
+                .border_style(Style::reset().fg(Color::Rgb(255, 255, 0)))
+                .title("✨First time chatter")
                 .render(
                     Rect {
                         x: cursor.x,
-                        y: cursor.y + 1,
+                        // y: cursor.y + 1,
+                        y: cursor.y,
                         width: area.width - 2,
                         height: screen_lines.len() as u16 + 2,
                     },

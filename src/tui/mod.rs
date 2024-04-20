@@ -262,22 +262,22 @@ impl<'a> StatefulWidget for &mut Scroller<'a> {
             // pub total_bits_used: u64,
             // pub context: String, // cheer
 
-            let data = SubMessage::Bits(BitsEvent {
-                area: None,
-                is_anonymous: false,
-                message_type: "bits_event".to_string(),
-                data: BitsEventData {
-                    user_name: "some_dude".to_string(),
-                    chat_message: "some cheery message".to_string(),
-                    bits_used: 500,
-                    total_bits_used: 1000,
-                    context: "cheer".to_string(),
-                },
-            });
-
-            self.app
-                .chat_log
-                .push(ChannelMessages::MessageData(MessageData { data }))
+            // let data = SubMessage::Bits(BitsEvent {
+            //     area: None,
+            //     is_anonymous: false,
+            //     message_type: "bits_event".to_string(),
+            //     data: BitsEventData {
+            //         user_name: "some_dude".to_string(),
+            //         chat_message: "some cheery message".to_string(),
+            //         bits_used: 500,
+            //         total_bits_used: 1000,
+            //         context: "cheer".to_string(),
+            //     },
+            // });
+            //
+            // self.app
+            //     .chat_log
+            //     .push(ChannelMessages::MessageData(MessageData { data }))
         }
 
         self.app.chat_log.iter_mut().for_each(|message| {
