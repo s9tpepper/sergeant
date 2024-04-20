@@ -336,29 +336,49 @@ fn write_to_buffer(lines: &mut [Vec<MessageParts>], buf: &mut Buffer, cursor: &m
         cursor.y += 1;
     });
 }
+
 impl Widget for &mut RaidMessage {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let mut cursor = RenderCursor {
             x: area.left(),
-            y: area.bottom().saturating_sub(1),
+            y: area.bottom(),
         };
 
         // Render the messages in yellow
         let symbols: Vec<Symbol> = get_message_symbols(&self.raid_notice, &mut [], Some((255, 255, 0)));
+
+        // Shrink horizontal area by 4 to make space for border and scroll bar
+        let mut line_area = area;
+        line_area.width = area.width - 4;
+
         let mut lines: Vec<Vec<MessageParts>> = get_lines(&symbols, &area);
 
-        cursor.x = area.left();
-        cursor.y = cursor.y.saturating_sub(lines.len() as u16);
+        // Move cursor one over to make space for border
+        cursor.x = area.left() + 1;
+        cursor.y = cursor.y.saturating_sub(lines.len() as u16) - 1;
 
         let mut screen_lines = get_screen_lines(&mut lines, &area);
 
         write_to_buffer(&mut screen_lines, buf, &mut cursor);
 
+        let block_area = Rect {
+            x: 0,
+            y: cursor.y - 2,
+            width: area.width - 2,
+            height: screen_lines.len() as u16 + 2,
+        };
+
+        Block::bordered()
+            .border_set(symbols::border::ROUNDED)
+            .border_style(Style::reset().fg(Color::LightYellow))
+            .title(format!("🪂 {} Raid", self.display_name))
+            .render(block_area, buf);
+
         self.area = Some(Rect {
             x: 0,
             y: cursor.y,
             width: area.width,
-            height: lines.len() as u16,
+            height: screen_lines.len() as u16,
         });
     }
 }
@@ -367,7 +387,7 @@ impl Widget for &mut RedeemMessage {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let mut cursor = RenderCursor {
             x: area.left(),
-            y: area.bottom().saturating_sub(1),
+            y: area.bottom(),
         };
 
         // Render the messages in green
@@ -442,7 +462,7 @@ impl Widget for &mut ChatMessage {
         // Initialize the cursor position
         let mut cursor = RenderCursor {
             x: area.left(),
-            y: area.bottom().saturating_sub(1),
+            y: area.bottom(),
         };
 
         let needs_borders = self.first_msg;
@@ -506,6 +526,7 @@ pub enum TwitchMessage {
 
 #[derive(Debug)]
 pub struct RaidMessage {
+    pub display_name: String,
     pub user_id: String,
     pub raid_notice: String,
     pub area: Option<Rect>,
@@ -859,6 +880,7 @@ fn parse_usernotice(message: IrcMessage) -> TwitchMessage {
     let mut system_msg = String::new();
     let mut is_raid = false;
     let mut user_id = String::new();
+    let mut display_name = String::new();
 
     for (tag, value) in message.tags {
         if value == "raid" {
@@ -872,6 +894,10 @@ fn parse_usernotice(message: IrcMessage) -> TwitchMessage {
         if tag == "user-id" {
             user_id = value.to_string();
         }
+
+        if tag == "msg-param-displayName" {
+            display_name = value.to_string();
+        }
     }
 
     if is_raid && !system_msg.is_empty() {
@@ -879,6 +905,7 @@ fn parse_usernotice(message: IrcMessage) -> TwitchMessage {
             area: None,
             raid_notice: system_msg,
             user_id,
+            display_name,
         };
 
         return TwitchMessage::RaidMessage { message };

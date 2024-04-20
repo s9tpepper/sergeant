@@ -18,8 +18,8 @@ use ratatui::backend::CrosstermBackend;
 use color_eyre::{eyre::Result, eyre::WrapErr};
 
 use crate::tui;
-use crate::twitch::parse::Text;
 use crate::twitch::parse::{Emote, RedeemMessage};
+use crate::twitch::parse::{RaidMessage, Text};
 use crate::twitch::pubsub::SubMessage;
 use crate::twitch::ChannelMessages;
 use crate::{
@@ -221,6 +221,19 @@ impl<'a> StatefulWidget for &mut Scroller<'a> {
 
         if self.app.chat_log.is_empty() {
             self.app.scroll_view_state.scroll_to_bottom();
+
+            // NOTE: Push messages here to test with
+            //
+            let message = RaidMessage {
+                display_name: "some_person".to_string(),
+                user_id: "1234".to_string(),
+                raid_notice: "1 raiders from some_person have joined!".to_string(),
+                area: None,
+            };
+
+            self.app
+                .chat_log
+                .push(ChannelMessages::TwitchMessage(TwitchMessage::RaidMessage { message }))
         }
 
         self.app.chat_log.iter_mut().for_each(|message| {
