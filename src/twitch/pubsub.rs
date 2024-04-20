@@ -123,8 +123,8 @@ impl Widget for &mut BitsEvent {
 
         let block_area = Rect {
             x: 0,
-            y: cursor.y - 1,
-            width: area.width - 2,
+            y: cursor.y.saturating_sub(1),
+            width: area.width.saturating_sub(2),
             height: screen_lines.len() as u16 + 2,
         };
 
