@@ -105,7 +105,7 @@ pub struct ChatMessage {
 // }
 
 // Place all characters and emote base64s in a vector
-fn get_message_symbols(message: &str, emotes: &mut [Emote], color: Option<(u8, u8, u8)>) -> Vec<Symbol> {
+pub fn get_message_symbols(message: &str, emotes: &mut [Emote], color: Option<(u8, u8, u8)>) -> Vec<Symbol> {
     // Load the base64 encoded emotes
     emotes.iter_mut().for_each(|e| {
         e.load().unwrap();
@@ -226,12 +226,12 @@ fn get_nickname_color(color: &str) -> (u8, u8, u8) {
 }
 
 #[derive(Debug)]
-struct RenderCursor {
-    x: u16,
-    y: u16,
+pub struct RenderCursor {
+    pub x: u16,
+    pub y: u16,
 }
 
-fn get_lines(symbols: &[Symbol], area: &Rect) -> Vec<Vec<MessageParts>> {
+pub fn get_lines(symbols: &[Symbol], area: &Rect) -> Vec<Vec<MessageParts>> {
     let message_parts = get_message_parts(symbols);
     let mut lines: Vec<Vec<MessageParts>> = vec![];
     let mut line: Vec<MessageParts> = vec![];
@@ -297,7 +297,7 @@ fn get_lines(symbols: &[Symbol], area: &Rect) -> Vec<Vec<MessageParts>> {
     lines
 }
 
-fn get_screen_lines(lines: &mut [Vec<MessageParts>], area: &Rect) -> Vec<Vec<MessageParts>> {
+pub fn get_screen_lines(lines: &mut [Vec<MessageParts>], area: &Rect) -> Vec<Vec<MessageParts>> {
     if lines.len() > area.height.into() {
         let line_limit = area.height.saturating_sub(1);
 
@@ -308,7 +308,7 @@ fn get_screen_lines(lines: &mut [Vec<MessageParts>], area: &Rect) -> Vec<Vec<Mes
     }
 }
 
-fn write_to_buffer(lines: &mut [Vec<MessageParts>], buf: &mut Buffer, cursor: &mut RenderCursor) {
+pub fn write_to_buffer(lines: &mut [Vec<MessageParts>], buf: &mut Buffer, cursor: &mut RenderCursor) {
     let left = cursor.x;
 
     lines.iter_mut().for_each(|line| {

@@ -20,7 +20,7 @@ use color_eyre::{eyre::Result, eyre::WrapErr};
 use crate::tui;
 use crate::twitch::parse::{Emote, RedeemMessage};
 use crate::twitch::parse::{RaidMessage, Text};
-use crate::twitch::pubsub::SubMessage;
+use crate::twitch::pubsub::{MessageData, SubMessage, SubscribeEvent, SubscribeMessage};
 use crate::twitch::ChannelMessages;
 use crate::{
     twitch::{
@@ -224,16 +224,32 @@ impl<'a> StatefulWidget for &mut Scroller<'a> {
 
             // NOTE: Push messages here to test with
             //
-            let message = RaidMessage {
-                display_name: "some_person".to_string(),
-                user_id: "1234".to_string(),
-                raid_notice: "1 raiders from some_person have joined!".to_string(),
-                area: None,
-            };
+            // let message = RaidMessage {
+            //     display_name: "some_person".to_string(),
+            //     user_id: "1234".to_string(),
+            //     raid_notice: "1 raiders from some_person have joined!".to_string(),
+            //     area: None,
+            // };
+            //
+            // self.app
+            //     .chat_log
+            //     .push(ChannelMessages::TwitchMessage(TwitchMessage::RaidMessage { message }))
 
-            self.app
-                .chat_log
-                .push(ChannelMessages::TwitchMessage(TwitchMessage::RaidMessage { message }))
+            // let data = SubMessage::Sub(SubscribeEvent {
+            //     area: None,
+            //     topic: "topic string".to_string(),
+            //     message: SubscribeMessage {
+            //         display_name: "some_dude".to_string(),
+            //         cumulative_months: 8,
+            //         streak_months: 10,
+            //         context: "".to_string(), // subgift, resub
+            //         sub_message: "This is a subscription message".to_string(),
+            //     },
+            // });
+            //
+            // self.app
+            //     .chat_log
+            //     .push(ChannelMessages::MessageData(MessageData { data }))
         }
 
         self.app.chat_log.iter_mut().for_each(|message| {
@@ -260,7 +276,28 @@ impl<'a> StatefulWidget for &mut Scroller<'a> {
                     _ => Some(Rect::new(0, 0, 0, 0)),
                 },
 
-                ChannelMessages::MessageData { .. } => Some(Rect::new(0, 0, 0, 0)),
+                ChannelMessages::MessageData(message) => {
+                    match message.data {
+                        SubMessage::Sub(ref mut sub_message) => {
+                            sub_message.render(available_area, scroll_view.buf_mut());
+
+                            sub_message.area
+                        }
+
+                        SubMessage::Bits(ref _message) => {
+                            // let message = format!(
+                            //     "{} has cheered {} bits",
+                            //     sub_message.data.user_name, sub_message.data.bits_used
+                            // );
+                            //
+                            // println!("{}", message.to_string().white().on_green().bold());
+                            // Ok(())
+                            Some(Rect::new(0, 0, 0, 0))
+                        }
+
+                        _ => Some(Rect::new(0, 0, 0, 0)),
+                    }
+                }
 
                 _ => Some(Rect::new(0, 0, 0, 0)),
             };

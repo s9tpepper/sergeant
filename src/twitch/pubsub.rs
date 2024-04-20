@@ -5,6 +5,9 @@ use std::sync::Arc;
 use std::time::{self, Duration};
 use std::{error::Error, fs::OpenOptions, io::Write};
 
+use ratatui::buffer::Buffer;
+use ratatui::prelude::*;
+use ratatui::widgets::{Block, Widget};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tungstenite::connect;
@@ -12,8 +15,10 @@ use tungstenite::Error::{AlreadyClosed, ConnectionClosed, Io};
 use tungstenite::Message::{self, Close, Ping, Text};
 
 use crate::commands::get_reward;
+use crate::tui::{MessageParts, Symbol};
 use crate::utils::get_data_directory;
 
+use super::parse::{get_lines, get_message_symbols, get_screen_lines, write_to_buffer, RenderCursor};
 use super::ChannelMessages;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -79,11 +84,87 @@ pub struct BitsEventData {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct SubscribeEvent {
+    #[serde(skip)]
+    pub area: Option<Rect>,
     pub topic: String,
     pub message: SubscribeMessage,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+impl Widget for &mut SubscribeEvent {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let message = format!(
+            "{} has subscribed for {} months, currently on a {} month streak.",
+            self.message.display_name,
+            self.message.cumulative_months,
+            self.message.streak_months,
+            // self.message.sub_message
+        );
+
+        let mut cursor = RenderCursor {
+            x: area.left(),
+            y: area.bottom().saturating_sub(1),
+        };
+
+        // Render the subscription details in gray
+        let sub_details_symbols: Vec<Symbol> = get_message_symbols(&message, &mut [], Some((128, 128, 128)));
+
+        // Shrink horizontal area by 4 to make space for border and scroll bar
+        let mut line_area = area;
+        line_area.width = area.width - 4;
+
+        let mut lines: Vec<Vec<MessageParts>> = get_lines(&sub_details_symbols, &line_area);
+
+        // Get symbols for subscription message
+        let message_symbols: Vec<Symbol> =
+            get_message_symbols(&self.message.sub_message, &mut [], Some((255, 255, 255)));
+        // Get lines for subscription message
+        let mut message_lines: Vec<Vec<MessageParts>> = get_lines(&message_symbols, &line_area);
+
+        // Add subscription message lines to the subscription details
+        lines.append(&mut message_lines);
+
+        let mut screen_lines = get_screen_lines(&mut lines, &line_area);
+
+        // Move cursor one over to make space for border
+        cursor.x = area.left() + 1;
+        cursor.y = cursor.y.saturating_sub(lines.len() as u16);
+
+        write_to_buffer(&mut screen_lines, buf, &mut cursor);
+
+        cursor.x = 0;
+        cursor.y -= screen_lines.len() as u16;
+
+        let block_area = Rect {
+            x: 0,
+            y: cursor.y - 1,
+            width: area.width - 2,
+            height: screen_lines.len() as u16 + 2,
+        };
+
+        let (sub_icon, sub_desc) = if self.message.context == "subgift" {
+            ('🎁', "was gifted a sub!")
+        } else if self.message.context == "resub" {
+            ('📅', "has resubbed!")
+        } else {
+            ('🎉', "has subbed!")
+        };
+
+        Block::bordered()
+            .border_set(symbols::border::ROUNDED)
+            .border_style(Style::reset().fg(Color::LightBlue))
+            .title(format!("{}{} {}", sub_icon, self.message.display_name, sub_desc))
+            .render(block_area, buf);
+
+        self.area = Some(Rect {
+            x: 0,
+            y: cursor.y,
+            width: area.width,
+            height: screen_lines.len() as u16,
+        });
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct SubscribeMessage {
     pub display_name: String,   // some_person
     pub cumulative_months: u64, // 9
