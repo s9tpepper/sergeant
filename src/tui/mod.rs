@@ -20,7 +20,7 @@ use color_eyre::{eyre::Result, eyre::WrapErr};
 use crate::tui;
 use crate::twitch::parse::{Emote, RedeemMessage};
 use crate::twitch::parse::{RaidMessage, Text};
-use crate::twitch::pubsub::{MessageData, SubMessage, SubscribeEvent, SubscribeMessage};
+use crate::twitch::pubsub::{BitsEvent, BitsEventData, MessageData, SubMessage, SubscribeEvent, SubscribeMessage};
 use crate::twitch::ChannelMessages;
 use crate::{
     twitch::{
@@ -250,6 +250,34 @@ impl<'a> StatefulWidget for &mut Scroller<'a> {
             // self.app
             //     .chat_log
             //     .push(ChannelMessages::MessageData(MessageData { data }))
+
+            // pub is_anonymous: bool,
+            // pub message_type: String,
+            // pub data: BitsEventData,
+            //
+            // BitsEventData
+            // pub user_name: String,
+            // pub chat_message: String,
+            // pub bits_used: u64,
+            // pub total_bits_used: u64,
+            // pub context: String, // cheer
+
+            let data = SubMessage::Bits(BitsEvent {
+                area: None,
+                is_anonymous: false,
+                message_type: "bits_event".to_string(),
+                data: BitsEventData {
+                    user_name: "some_dude".to_string(),
+                    chat_message: "some cheery message".to_string(),
+                    bits_used: 500,
+                    total_bits_used: 1000,
+                    context: "cheer".to_string(),
+                },
+            });
+
+            self.app
+                .chat_log
+                .push(ChannelMessages::MessageData(MessageData { data }))
         }
 
         self.app.chat_log.iter_mut().for_each(|message| {
@@ -276,28 +304,21 @@ impl<'a> StatefulWidget for &mut Scroller<'a> {
                     _ => Some(Rect::new(0, 0, 0, 0)),
                 },
 
-                ChannelMessages::MessageData(message) => {
-                    match message.data {
-                        SubMessage::Sub(ref mut sub_message) => {
-                            sub_message.render(available_area, scroll_view.buf_mut());
+                ChannelMessages::MessageData(message) => match message.data {
+                    SubMessage::Sub(ref mut sub_message) => {
+                        sub_message.render(available_area, scroll_view.buf_mut());
 
-                            sub_message.area
-                        }
-
-                        SubMessage::Bits(ref _message) => {
-                            // let message = format!(
-                            //     "{} has cheered {} bits",
-                            //     sub_message.data.user_name, sub_message.data.bits_used
-                            // );
-                            //
-                            // println!("{}", message.to_string().white().on_green().bold());
-                            // Ok(())
-                            Some(Rect::new(0, 0, 0, 0))
-                        }
-
-                        _ => Some(Rect::new(0, 0, 0, 0)),
+                        sub_message.area
                     }
-                }
+
+                    SubMessage::Bits(ref mut sub_message) => {
+                        sub_message.render(available_area, scroll_view.buf_mut());
+
+                        sub_message.area
+                    }
+
+                    _ => Some(Rect::new(0, 0, 0, 0)),
+                },
 
                 _ => Some(Rect::new(0, 0, 0, 0)),
             };

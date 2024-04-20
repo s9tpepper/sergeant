@@ -68,9 +68,80 @@ pub enum SubMessage {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct BitsEvent {
+    #[serde(skip)]
+    pub area: Option<Rect>,
     pub is_anonymous: bool,
     pub message_type: String,
     pub data: BitsEventData,
+}
+
+impl Widget for &mut BitsEvent {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let bits_from = if self.is_anonymous {
+            "Anonymous"
+        } else {
+            &self.data.user_name
+        };
+
+        let message = format!(
+            "{} has cheered {} bits. They have cheered a total of {} bits in this channel.",
+            bits_from, self.data.bits_used, self.data.total_bits_used
+        );
+
+        let mut cursor = RenderCursor {
+            x: area.left(),
+            y: area.bottom().saturating_sub(1),
+        };
+
+        // Render the bits details in gray
+        let bits_details_message: Vec<Symbol> = get_message_symbols(&message, &mut [], Some((128, 128, 128)));
+
+        // Shrink horizontal area by 4 to make space for border and scroll bar
+        let mut line_area = area;
+        line_area.width = area.width - 4;
+
+        let mut lines: Vec<Vec<MessageParts>> = get_lines(&bits_details_message, &line_area);
+
+        // Get symbols for cheer message in white
+        let message_symbols: Vec<Symbol> = get_message_symbols(&self.data.chat_message, &mut [], Some((255, 255, 255)));
+        // Get lines for cheer message
+        let mut message_lines: Vec<Vec<MessageParts>> = get_lines(&message_symbols, &line_area);
+
+        // Add cheer message lines to the bits details
+        lines.append(&mut message_lines);
+
+        let mut screen_lines = get_screen_lines(&mut lines, &line_area);
+
+        // Move cursor one over to make space for border
+        cursor.x = area.left() + 1;
+        cursor.y = cursor.y.saturating_sub(lines.len() as u16);
+
+        write_to_buffer(&mut screen_lines, buf, &mut cursor);
+
+        cursor.x = 0;
+        cursor.y -= screen_lines.len() as u16;
+
+        let block_area = Rect {
+            x: 0,
+            y: cursor.y - 1,
+            width: area.width - 2,
+            height: screen_lines.len() as u16 + 2,
+        };
+
+        // Purple border
+        Block::bordered()
+            .border_set(symbols::border::ROUNDED)
+            .border_style(Style::reset().fg(Color::Rgb(138, 43, 226)))
+            .title("♦️ Cheer!")
+            .render(block_area, buf);
+
+        self.area = Some(Rect {
+            x: 0,
+            y: cursor.y,
+            width: area.width,
+            height: screen_lines.len() as u16,
+        });
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug)]
