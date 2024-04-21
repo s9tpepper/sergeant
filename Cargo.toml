@@ -1,6 +1,6 @@
 [package]
 name = "sergeant"
-version = "0.5.1"
+version = "0.5.2"
 edition = "2021"
 description = "Sergeant is a terminal based Twitch chat widget and bot in one. It will display the Twitch chat from your channel in terminal while also allowing you to add chat bot commands."
 license = "MIT OR Apache-2.0"
@@ -24,7 +24,7 @@ openssl = "0.10.63"
 ratatui = "0.26.1"
 serde = { version = "1.0.196", features = ["alloc", "derive", "serde_derive"] } 
 serde_json = "1.0.113"
-tui-scrollview = "0.3.4"
+tui-scrollview = { git = "https://github.com/s9tpepper/tui-scrollview.git", branch = "ratatui-0261" }
 tungstenite = { version = "0.21.0", features = ["native-tls"] }
 ureq = "2.9.6"
 url = "2.5.0"
