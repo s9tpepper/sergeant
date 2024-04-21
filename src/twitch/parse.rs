@@ -1,4 +1,10 @@
-use std::{error::Error, fs, path::PathBuf};
+use std::{
+    collections::HashMap,
+    error::Error,
+    fs,
+    path::PathBuf,
+    sync::{OnceLock, RwLock},
+};
 
 use base64::prelude::*;
 use ratatui::{
@@ -21,6 +27,8 @@ const ESCAPE: &str = "\x1b";
 const BELL: &str = "\x07";
 const EMOTE_SPACE: u8 = 2;
 
+static EMOTE_CACHE: OnceLock<RwLock<HashMap<String, String>>> = OnceLock::new();
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct Text {
     char: String,
@@ -29,6 +37,7 @@ pub struct Text {
 
 #[derive(Debug, PartialEq)]
 pub struct Emote {
+    emote_id: String,
     start: usize,
     end: usize,
     url: String,
@@ -41,6 +50,15 @@ impl Emote {
         if self.encoded.is_some() {
             return Ok(());
         }
+
+        let cache = EMOTE_CACHE.get_or_init(|| RwLock::new(HashMap::new()));
+        let cache_read = cache.read().unwrap();
+        if let Some(encoding) = cache_read.get(&self.emote_id) {
+            self.encoded = Some(encoding.to_string());
+
+            return Ok(());
+        }
+        drop(cache_read);
 
         let response = ureq::get(&self.url).call()?;
         let length: usize = response.header("content-length").unwrap().parse()?;
@@ -65,7 +83,9 @@ impl Emote {
             get_emote_suffix()
         );
 
-        self.encoded = Some(encoded_image);
+        self.encoded = Some(encoded_image.clone());
+        let mut cache_write = cache.write().unwrap();
+        cache_write.insert(self.emote_id.clone(), encoded_image);
 
         Ok(())
     }
@@ -74,6 +94,7 @@ impl Emote {
 impl Clone for Emote {
     fn clone(&self) -> Self {
         Self {
+            emote_id: self.emote_id.clone(),
             start: self.start,
             end: self.end,
             url: self.url.clone(),
@@ -146,6 +167,7 @@ pub fn get_message_symbols(message: &str, emotes: &mut [Emote], color: Option<(u
 #[test]
 fn test_get_message_symbols() {
     let emote = Emote {
+        emote_id: "12345".to_string(),
         start: 0,
         end: 13,
         url: "https://static-cdn.jtvnw.net/emoticons/v2/303147449/default/light/1.0".to_string(),
@@ -808,6 +830,7 @@ fn process_emotes(value: &str, emotes: &mut Vec<Emote>) {
             let encoded = None;
 
             let emote = Emote {
+                emote_id: emote_id.to_string(),
                 start,
                 end,
                 url,
@@ -852,6 +875,7 @@ fn get_badges_symbols(badges: &[String]) -> Result<Vec<Emote>, Box<dyn Error>> {
         let encoded = get_iterm_encoded_image(base64);
 
         badges_symbols.push(Emote {
+            emote_id: badge.to_string(),
             start: 0,
             end: 0,
             url: "".to_string(),
