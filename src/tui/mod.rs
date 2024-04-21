@@ -1,7 +1,6 @@
 use color_eyre::config::HookBuilder;
 use color_eyre::eyre;
 
-use ratatui::layout::Position;
 use ratatui::prelude::*;
 use tui_scrollview::{ScrollView, ScrollViewState};
 
@@ -94,8 +93,6 @@ impl App {
                             let redeem_message = TwitchMessage::RedeemMessage { message: rm };
                             self.chat_log.insert(0, ChannelMessages::TwitchMessage(redeem_message));
                         }
-
-                        // TODO: Handle sub messages and bits messages
                         SubMessage::Sub(_) => {}
                         SubMessage::Bits(_) => {}
                     },
@@ -105,9 +102,6 @@ impl App {
             }
 
             terminal.draw(|frame| self.render(frame))?;
-
-            self.handle_events()
-                .wrap_err("handle events failed, can add additional details here")?;
         }
 
         Ok(())
@@ -121,31 +115,6 @@ impl App {
 
     fn render(&mut self, frame: &mut Frame) {
         frame.render_widget(self, frame.size());
-    }
-
-    fn handle_events(&mut self) -> Result<()> {
-        let available = event::poll(time::Duration::from_millis(0))?;
-        if available {
-            match event::read()? {
-                // NOTE: it's important to check that the event is a key press event as
-                // crossterm also emits key release and repeat events on Windows.
-                Event::Key(key_event) if key_event.kind == KeyEventKind::Press => self
-                    .handle_key_event(key_event)
-                    .wrap_err_with(|| format!("Failed to handle key event: {:?}", key_event.code)),
-
-                _ => Ok(()),
-            }
-        } else {
-            Ok(())
-        }
-    }
-
-    fn handle_key_event(&mut self, key_event: KeyEvent) -> Result<()> {
-        if let KeyCode::Char('q') = key_event.code {
-            self.exit()
-        }
-
-        Ok(())
     }
 
     fn exit(&mut self) {
@@ -174,7 +143,7 @@ impl<'a> Scroller<'a> {
     }
 
     pub fn handle_events(&mut self) -> Result<()> {
-        let available = event::poll(time::Duration::from_millis(0))?;
+        let available = event::poll(time::Duration::from_millis(16))?;
         if available {
             match event::read()? {
                 // NOTE: it's important to check that the event is a key press event as
@@ -192,6 +161,7 @@ impl<'a> Scroller<'a> {
 
     fn handle_key_event(&mut self, key_event: KeyEvent) -> Result<()> {
         match key_event.code {
+            KeyCode::Char('q') => self.app.exit(),
             KeyCode::Char('j') => self.app.scroll_view_state.scroll_down(),
             KeyCode::Char('k') => self.app.scroll_view_state.scroll_up(),
             KeyCode::Char('f') => self.app.scroll_view_state.scroll_page_down(),
@@ -329,15 +299,6 @@ impl<'a> StatefulWidget for &mut Scroller<'a> {
         });
 
         scroll_view.render(buf.area, buf, &mut self.app.scroll_view_state);
-
-        // NOTE: Make the ScrollView not scroll past the bottom of the content
-        let max_y_offset = content_size.height - buf.area.height;
-        if self.app.scroll_view_state.offset().y > max_y_offset {
-            // self.app.scroll_view_state.offset().y = max_y_offset;
-            self.app
-                .scroll_view_state
-                .set_offset(Position { y: max_y_offset, x: 0 })
-        }
     }
 }
 
