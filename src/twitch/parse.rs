@@ -814,8 +814,6 @@ fn process_emotes(value: &str, emotes: &mut Vec<Emote>) {
             continue;
         };
 
-        // TODO: Refactor the Emote struct so that it carries multiple positions
-        // and prevent the same url from being loaded more than once
         emote_position_data.split(',').for_each(|position| {
             let (s, e) = position.split_once('-').unwrap();
             let start = s.to_string().parse().unwrap();
