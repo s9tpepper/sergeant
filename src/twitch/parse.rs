@@ -284,8 +284,6 @@ pub fn get_lines(symbols: &[Symbol], area: &Rect) -> Vec<Vec<MessageParts>> {
 
     message_parts.iter().enumerate().for_each(|(ndx, part)| {
         let section_length = match part {
-            // TODO: Run the word through a fn to get the real length
-            // from the chars() and the emotes
             MessageParts::Text(word) => word.len(),
             MessageParts::Emote(_) => EMOTE_SPACE as usize,
         };
