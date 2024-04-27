@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use self::{announcements::Announcement, parse::TwitchMessage, pubsub::MessageData};
 
 pub mod announcements;
@@ -7,7 +9,7 @@ pub mod messages;
 pub mod parse;
 pub mod pubsub;
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum ChannelMessages {
     MessageData(MessageData),
     Announcement(Announcement),

@@ -32,8 +32,6 @@ use crate::{
 /// A type alias for the terminal type used in this application
 pub type Tui = Terminal<CrosstermBackend<Stdout>>;
 
-// TODO: Add persistence to the chat_log so the chat doesn't all go
-// away if the log crashes or gets restarted
 #[derive(Debug, Default)]
 pub struct App {
     scroll_view_state: ScrollViewState,
@@ -74,6 +72,8 @@ impl App {
     }
 
     pub fn run(&mut self, terminal: &mut tui::Tui, rx: Receiver<ChannelMessages>) -> Result<()> {
+        let _ = self.restore_chat_log();
+
         while !self.exit {
             if let Ok(message) = rx.try_recv() {
                 match message {
@@ -101,9 +101,44 @@ impl App {
 
                     ChannelMessages::Announcement(_) => {}
                 }
+
+                let _ = self.persist_chat_log();
             }
 
             terminal.draw(|frame| self.render(frame))?;
+        }
+
+        Ok(())
+    }
+
+    fn restore_chat_log(&mut self) -> Result<(), Box<dyn Error>> {
+        let target_dir = "chat_log";
+        let mut chat_log_path = get_data_directory(Some(target_dir))?;
+        chat_log_path.push("log.txt");
+
+        if chat_log_path.is_file() {
+            let chat_log_str = fs::read_to_string(&chat_log_path).expect("");
+            if let Ok(chat_log) = serde_json::from_str(&chat_log_str) {
+                self.chat_log = chat_log;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn persist_chat_log(&self) -> Result<(), Box<dyn Error>> {
+        let json_string = serde_json::to_string(&self.chat_log).unwrap_or_default();
+
+        let target_dir = "chat_log";
+        let mut chat_log_path = get_data_directory(Some(target_dir))?;
+
+        if !chat_log_path.exists() {
+            fs::create_dir_all(&chat_log_path)?;
+        }
+
+        if !json_string.is_empty() {
+            chat_log_path.push("log.txt");
+            fs::write(chat_log_path, json_string)?;
         }
 
         Ok(())

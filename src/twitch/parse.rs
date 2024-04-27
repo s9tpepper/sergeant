@@ -35,7 +35,7 @@ pub struct Text {
     color: Option<(u8, u8, u8)>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Emote {
     emote_id: String,
     start: usize,
@@ -104,7 +104,7 @@ impl Clone for Emote {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ChatMessage {
     pub badges: Vec<Emote>,
     pub emotes: Vec<Emote>,
@@ -117,6 +117,7 @@ pub struct ChatMessage {
     pub color: String,
     pub channel: String,
     pub raw: String,
+    #[serde(skip)]
     pub area: Option<Rect>,
     // symbols: Vec<Symbol>,
 }
@@ -584,7 +585,7 @@ impl Widget for &mut ChatMessage {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum TwitchMessage {
     RedeemMessage { message: RedeemMessage },
     RaidMessage { message: RaidMessage },
@@ -593,17 +594,19 @@ pub enum TwitchMessage {
     UnknownMessage { message: String },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RaidMessage {
     pub display_name: String,
     pub user_id: String,
     pub raid_notice: String,
+    #[serde(skip)]
     pub area: Option<Rect>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RedeemMessage {
     pub message: String,
+    #[serde(skip)]
     pub area: Option<Rect>,
 }
 

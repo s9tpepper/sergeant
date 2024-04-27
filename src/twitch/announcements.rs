@@ -7,16 +7,18 @@ use std::{
 };
 
 use ratatui::layout::Rect;
+use serde::{Deserialize, Serialize};
 
 use crate::utils::get_data_directory;
 
 use super::{irc::TwitchIRC, ChannelMessages};
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Announcement {
     pub timing: Duration,
     pub message: String,
     pub start: SystemTime,
+    #[serde(skip)]
     pub area: Option<Rect>,
 }
 
