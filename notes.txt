@@ -41,3 +41,10 @@ Handle all of these message tags: - I don't think I need to do this
   user-id
   user-type
 
+TODO: Verify that this panic is fixed
+sergeanThe application panicked (crashed).
+Message:  index out of bounds: the len is 2752 but the index is 65494
+Location: /Users/omargonzalez/.cargo/registry/src/index.crates.io-6f17d22bba15001f/ratatui-0.26.1/src/buffer/buffer.rs:108
+
+Backtrace omitted. Run with RUST_BACKTRACE=1 environment variable to display it.
+Run with RUST_BACKTRACE=full to include source snippets.

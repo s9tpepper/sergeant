@@ -32,6 +32,8 @@ use crate::{
 /// A type alias for the terminal type used in this application
 pub type Tui = Terminal<CrosstermBackend<Stdout>>;
 
+// TODO: Add persistence to the chat_log so the chat doesn't all go
+// away if the log crashes or gets restarted
 #[derive(Debug, Default)]
 pub struct App {
     scroll_view_state: ScrollViewState,

@@ -373,19 +373,25 @@ pub fn write_to_buffer(lines: &mut [Vec<MessageParts>], buf: &mut Buffer, cursor
             MessageParts::Text(word) => {
                 word.iter().for_each(|symbol| match symbol {
                     Symbol::Text(character) => {
-                        let (r, g, b) = character.color.unwrap_or((255, 255, 255));
-                        let rgb = Color::Rgb(r, g, b);
-                        buf.get_mut(cursor.x, cursor.y).set_symbol(&character.char).set_fg(rgb);
-                        cursor.x += 1;
+                        let index = buf.index_of(cursor.x, cursor.y);
+                        if index < buf.content.len() {
+                            let (r, g, b) = character.color.unwrap_or((255, 255, 255));
+                            let rgb = Color::Rgb(r, g, b);
+                            buf.get_mut(cursor.x, cursor.y).set_symbol(&character.char).set_fg(rgb);
+                            cursor.x += 1;
+                        }
                     }
                     Symbol::Emote(_) => {}
                 });
             }
 
             MessageParts::Emote(emote) => {
-                let encoded = emote.encoded.clone().unwrap_or_default();
-                buf.get_mut(cursor.x, cursor.y).set_symbol(&encoded);
-                cursor.x += EMOTE_SPACE as u16;
+                let index = buf.index_of(cursor.x, cursor.y);
+                if index < buf.content.len() {
+                    let encoded = emote.encoded.clone().unwrap_or_default();
+                    buf.get_mut(cursor.x, cursor.y).set_symbol(&encoded);
+                    cursor.x += EMOTE_SPACE as u16;
+                }
             }
         });
 
