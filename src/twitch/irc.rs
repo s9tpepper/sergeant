@@ -109,6 +109,7 @@ impl TwitchIRC {
                     tungstenite::Message::Text(new_message) => match parse(&new_message) {
                         Ok(
                             message @ TwitchMessage::RedeemMessage { .. }
+                            | message @ TwitchMessage::ClearMessage { .. }
                             | message @ TwitchMessage::PrivMessage { .. }
                             | message @ TwitchMessage::RaidMessage { .. },
                         ) => {

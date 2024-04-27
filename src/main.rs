@@ -1,30 +1,23 @@
 use clap::{Parser, Subcommand};
 use dotenv::dotenv;
-use sergeant::commands::add_reward;
-use sergeant::commands::list_rewards;
-use sergeant::commands::remove_reward;
-use sergeant::tui::init;
-use sergeant::tui::install_hooks;
-use sergeant::tui::restore;
-use sergeant::tui::App;
-use sergeant::twitch::announcements::start_announcements;
-use sergeant::twitch::irc::TwitchIRC;
-use sergeant::twitch::parse::get_badges;
-use sergeant::twitch::pubsub::connect_to_pub_sub;
-use sergeant::twitch::ChannelMessages;
-use std::fs;
-use std::sync::mpsc::channel;
-use std::thread;
+use sergeant::tui::{init, install_hooks, restore, App};
+use sergeant::twitch::{
+    announcements::start_announcements, irc::TwitchIRC, parse::get_badges, pubsub::connect_to_pub_sub, ChannelMessages,
+};
 
 use sergeant::commands::{
-    add_chat_command, authenticate_with_twitch, get_list_announcements, get_list_commands, remove_chat_command,
-    TokenStatus,
+    add_chat_command, add_reward, authenticate_with_twitch, get_list_announcements, get_list_commands, list_rewards,
+    remove_chat_command, remove_reward, TokenStatus,
 };
 
 use sergeant::utils::get_data_directory;
-use std::error::Error;
-use std::process::exit;
-use std::sync::Arc;
+use std::{
+    error::Error,
+    fs,
+    process::exit,
+    sync::{mpsc::channel, Arc},
+    thread,
+};
 
 type AsyncResult<T> = Result<T, Box<dyn Error>>;
 

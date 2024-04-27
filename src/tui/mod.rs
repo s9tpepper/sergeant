@@ -78,8 +78,17 @@ impl App {
             if let Ok(message) = rx.try_recv() {
                 match message {
                     ChannelMessages::TwitchMessage(message) => {
-                        self.chat_log.insert(0, ChannelMessages::TwitchMessage(message));
-                        self.truncate();
+                        if let TwitchMessage::ClearMessage { message } = message {
+                            self.chat_log.retain(|msg| match msg {
+                                ChannelMessages::TwitchMessage(TwitchMessage::PrivMessage { message: msg }) => {
+                                    msg.id != message.message_id
+                                }
+                                _ => true,
+                            });
+                        } else {
+                            self.chat_log.insert(0, ChannelMessages::TwitchMessage(message));
+                            self.truncate();
+                        }
                     }
 
                     ChannelMessages::MessageData(message) => match message.data {

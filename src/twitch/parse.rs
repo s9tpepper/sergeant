@@ -106,6 +106,7 @@ impl Clone for Emote {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ChatMessage {
+    pub id: String,
     pub badges: Vec<Emote>,
     pub emotes: Vec<Emote>,
     pub nickname: String,
@@ -119,12 +120,7 @@ pub struct ChatMessage {
     pub raw: String,
     #[serde(skip)]
     pub area: Option<Rect>,
-    // symbols: Vec<Symbol>,
 }
-
-// impl ChatMessage {
-//
-// }
 
 // Place all characters and emote base64s in a vector
 pub fn get_message_symbols(message: &str, emotes: &mut [Emote], color: Option<(u8, u8, u8)>) -> Vec<Symbol> {
@@ -542,7 +538,7 @@ impl Widget for &mut ChatMessage {
 
         let y_pos = cursor.y.saturating_sub(screen_lines.len() as u16);
         cursor.x = if needs_borders { area.left() + 1 } else { area.left() };
-        cursor.y = if needs_borders { y_pos - 1 } else { y_pos };
+        cursor.y = if needs_borders { y_pos.saturating_sub(1) } else { y_pos };
 
         let mut writeable_area = area;
         writeable_area.width = if needs_borders { area.width - 1 } else { area.width };
@@ -587,11 +583,18 @@ impl Widget for &mut ChatMessage {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum TwitchMessage {
+    ClearMessage { message: ClearMessage },
     RedeemMessage { message: RedeemMessage },
     RaidMessage { message: RaidMessage },
     PrivMessage { message: ChatMessage },
     PingMessage { message: String },
     UnknownMessage { message: String },
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ClearMessage {
+    pub display_name: String,
+    pub message_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -777,6 +780,9 @@ pub fn parse(mut message: &str) -> Result<TwitchMessage, Box<dyn Error>> {
             let message: String = irc_message.parameters.to_string();
             Ok(TwitchMessage::PingMessage { message })
         }
+
+        "CLEARMSG" => Ok(parse_clearmsg(irc_message)),
+
         _ => Err("Unknown message type".into()),
     }
 }
@@ -892,6 +898,26 @@ fn get_badges_symbols(badges: &[String]) -> Result<Vec<Emote>, Box<dyn Error>> {
     Ok(badges_symbols)
 }
 
+fn parse_clearmsg(irc_message: IrcMessage) -> TwitchMessage {
+    let mut message_id: String = String::new();
+    let mut display_name: String = String::new();
+
+    for (tag, value) in irc_message.tags {
+        match tag {
+            "target-msg-id" => message_id = value.to_string(),
+            "login" => display_name = value.to_string(),
+            _ => {}
+        }
+    }
+
+    TwitchMessage::ClearMessage {
+        message: ClearMessage {
+            display_name,
+            message_id,
+        },
+    }
+}
+
 fn parse_privmsg(irc_message: IrcMessage) -> TwitchMessage {
     let mut badges: Vec<String> = vec![];
     let mut color = "#FF9912".to_string();
@@ -900,9 +926,11 @@ fn parse_privmsg(irc_message: IrcMessage) -> TwitchMessage {
     let mut returning_chatter = false;
     let mut moderator = false;
     let mut emotes: Vec<Emote> = vec![];
+    let mut id = String::new();
 
     for (tag, value) in irc_message.tags {
         match tag {
+            "id" => id = value.to_string(),
             "badges" => set_badges(value, &mut badges),
             "color" => {
                 if !value.is_empty() {
@@ -932,6 +960,7 @@ fn parse_privmsg(irc_message: IrcMessage) -> TwitchMessage {
 
     TwitchMessage::PrivMessage {
         message: ChatMessage {
+            id,
             emotes,
             first_msg,
             returning_chatter,
