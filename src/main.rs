@@ -41,7 +41,7 @@ enum SubCmds {
         /// The message to send for the command
         message: String,
 
-        /// The timing for the message
+        /// The timing for the message in minutes
         timing: Option<usize>,
     },
 
@@ -88,6 +88,10 @@ enum Cmds {
         /// Your Twitch app client ID
         #[arg(long, short, env = "CLIENT_ID")]
         client_id: Option<String>,
+
+        /// Set to turn off announcements
+        #[arg(long, short = 's', env = "SKIP_ANNOUNCEMENTS", default_value_t = false)]
+        skip_announcements: bool,
     },
 
     /// Manage chat commands
@@ -148,7 +152,12 @@ fn get_credentials(
     }
 }
 
-fn start_chat(twitch_name: Arc<String>, oauth_token: Arc<String>, client_id: Arc<String>) -> AsyncResult<()> {
+fn start_chat(
+    twitch_name: Arc<String>,
+    oauth_token: Arc<String>,
+    client_id: Arc<String>,
+    skip_announcements: bool,
+) -> AsyncResult<()> {
     get_badges(&oauth_token, &client_id)?;
 
     let (pubsub_tx, rx) = channel::<ChannelMessages>();
@@ -163,8 +172,8 @@ fn start_chat(twitch_name: Arc<String>, oauth_token: Arc<String>, client_id: Arc
 
     let token = oauth_token.clone();
     let name = twitch_name.clone();
-    thread::spawn(|| {
-        let _ = start_announcements(name, token, announce_tx);
+    thread::spawn(move || {
+        let _ = start_announcements(name, token, announce_tx, skip_announcements);
     });
 
     thread::spawn(|| {
@@ -256,6 +265,7 @@ fn main() {
             twitch_name,
             oauth_token,
             client_id,
+            skip_announcements,
         } => {
             let (name, token, id) = get_credentials(twitch_name, oauth_token, client_id).unwrap();
 
@@ -263,7 +273,7 @@ fn main() {
             let id = Arc::new(id);
             let token = Arc::new(token);
 
-            let _ = start_chat(name, token, id);
+            let _ = start_chat(name, token, id, skip_announcements);
         }
 
         Cmds::Commands { cmd } => match cmd {

@@ -67,14 +67,21 @@ pub fn start_announcements(
     twitch_name: Arc<String>,
     oauth_token: Arc<String>,
     tx: Sender<ChannelMessages>,
+    skip_announcements: bool,
 ) -> Result<(), Box<dyn Error>> {
-    // TODO: Add a flag here to toggle announcements on/off?
+    if skip_announcements {
+        return Ok(());
+    }
 
     let mut twitch_irc = TwitchIRC::new(twitch_name, oauth_token, tx);
-
     let mut announcements = get_announcements()?;
 
     loop {
+        let new_announcements = get_announcements()?;
+        if announcements.len() != new_announcements.len() {
+            announcements = new_announcements;
+        }
+
         for announcement in announcements.iter_mut() {
             if let Ok(elapsed) = announcement.start.elapsed() {
                 let time_to_announce = elapsed > announcement.timing;
