@@ -226,6 +226,7 @@ impl<'a> StatefulWidget for &mut Scroller<'a> {
 
     fn render(self, area: Rect, buf: &mut Buffer, _state: &mut Self::State) {
         let content_size = layout::Size {
+            // Subtract one to avoid getting horizontal scrollbar from tui-scrollview
             width: area.width.saturating_sub(1),
             height: area.height * 2,
         };
