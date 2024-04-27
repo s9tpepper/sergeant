@@ -3,6 +3,7 @@ use std::process::Command;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::time::{self, Duration};
+use std::vec;
 use std::{error::Error, fs::OpenOptions, io::Write};
 
 use ratatui::buffer::Buffer;
@@ -18,7 +19,9 @@ use crate::commands::get_reward;
 use crate::tui::{MessageParts, Symbol};
 use crate::utils::get_data_directory;
 
-use super::parse::{get_lines, get_message_symbols, get_screen_lines, write_to_buffer, RenderCursor};
+use super::parse::{
+    get_lines, get_message_symbols, get_screen_lines, write_to_buffer, RedeemMessage, RenderCursor, TwitchMessage,
+};
 use super::ChannelMessages;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -268,6 +271,7 @@ pub struct Redemption {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Reward {
+    pub id: String,
     pub title: String,
     pub prompt: String,
     pub cost: u64,
@@ -284,7 +288,7 @@ pub fn send_to_error_log(err: String, json: String) {
     let _ = file.write_all(log.as_bytes());
 }
 
-fn handle_message(message: Message, tx: &Sender<ChannelMessages>) -> Result<(), Box<dyn Error>> {
+fn handle_message(message: Message, user: &User, tx: &Sender<ChannelMessages>) -> Result<(), Box<dyn Error>> {
     match message {
         Message::Text(message) => {
             if !message.contains("MESSAGE") {
@@ -315,42 +319,26 @@ fn handle_message(message: Message, tx: &Sender<ChannelMessages>) -> Result<(), 
                             break 'commands;
                         };
 
-                        let command_result = Command::new(&command_name).arg(user_input).output();
-                        match command_result {
-                            Ok(_) => {}
-                            Err(_) => {
-                                // TODO: Refund the points if the command fails
+                        let command_result = Command::new(&command_name)
+                            .arg(user_input)
+                            .status()
+                            .expect("reward failed");
+                        let command_success = command_result.success();
 
-                                send_to_error_log(
-                                    command_name.to_string(),
-                                    format!("Error running reward command with input: {}", user_input),
-                                );
+                        if !command_success {
+                            send_to_error_log(
+                                command_name.to_string(),
+                                format!("Error running reward command with input: {}", user_input),
+                            );
+
+                            if sub_message.redemption.status == "UNFULFILLED" {
+                                refund_points(sub_message, user, tx);
                             }
                         }
                     }
 
-                    SubMessage::Sub(ref _sub_message) => {
-                        // let message = format!(
-                        //     "{} has subscribed for {} months, currently on a {} month steak.",
-                        //     sub_message.message.display_name,
-                        //     sub_message.message.cumulative_months,
-                        //     sub_message.message.streak_months
-                        // );
-                        //
-                        // println!("{}", message.to_string().blue().bold());
-                        //
-                        // Ok(())
-                    }
-
-                    SubMessage::Bits(ref _sub_message) => {
-                        // let message = format!(
-                        //     "{} has cheered {} bits",
-                        //     sub_message.data.user_name, sub_message.data.bits_used
-                        // );
-                        //
-                        // println!("{}", message.to_string().white().on_green().bold());
-                        // Ok(())
-                    }
+                    SubMessage::Sub(ref _sub_message) => {}
+                    SubMessage::Bits(ref _sub_message) => {}
                 }
             }
 
@@ -363,6 +351,30 @@ fn handle_message(message: Message, tx: &Sender<ChannelMessages>) -> Result<(), 
             Err("Not a message".into())
         }
     }
+}
+
+fn refund_points(channel_points_data: &ChannelPointsData, user: &User, tx: &Sender<ChannelMessages>) {
+    let api_url = "https://api.twitch.tv/helix/channel_points/custom_rewards/redemptions";
+
+    let id = &channel_points_data.redemption.id;
+    let reward_id = &channel_points_data.redemption.reward.id;
+    let response = ureq::patch(api_url)
+        .query_pairs(vec![
+            ("id", id.as_str()),
+            ("broadcaster_id", &user.id),
+            ("reward_id", reward_id),
+        ])
+        .call();
+
+    let success = response.is_ok();
+    let points = channel_points_data.redemption.reward.cost;
+    let result = if success { "were" } else { "could not be" };
+    let redeemer = &channel_points_data.redemption.user.display_name;
+    let message = format!("{points} points {result} refunded to {redeemer}");
+    let area = None;
+    let _ = tx.send(ChannelMessages::TwitchMessage(TwitchMessage::RedeemMessage {
+        message: RedeemMessage { message, area },
+    }));
 }
 
 pub fn connect_to_pub_sub(
@@ -430,7 +442,7 @@ pub fn connect_to_pub_sub(
                 match socket.read() {
                     Ok(message) => match message {
                         Text(message) => {
-                            let _ = handle_message(Message::Text(message), &tx);
+                            let _ = handle_message(Message::Text(message), &user, &tx);
                         }
                         Close(_) => {
                             send_to_error_log("We got a close message, reconnecting...".to_string(), "".to_string());

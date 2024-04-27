@@ -415,7 +415,7 @@ impl Widget for &mut RaidMessage {
 
         // Move cursor one over to make space for border
         cursor.x = area.left() + 1;
-        cursor.y = cursor.y.saturating_sub(lines.len() as u16) - 1;
+        cursor.y = cursor.y.saturating_sub(lines.len() as u16).saturating_sub(1);
 
         let mut screen_lines = get_screen_lines(&mut lines, &area);
 
@@ -423,8 +423,8 @@ impl Widget for &mut RaidMessage {
 
         let block_area = Rect {
             x: 0,
-            y: cursor.y - 2,
-            width: area.width - 2,
+            y: cursor.y.saturating_sub(2),
+            width: area.width.saturating_sub(2),
             height: screen_lines.len() as u16 + 2,
         };
 
