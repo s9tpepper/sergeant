@@ -71,7 +71,13 @@ impl App {
         }
     }
 
-    pub fn run(&mut self, terminal: &mut tui::Tui, rx: Receiver<ChannelMessages>) -> Result<()> {
+    pub fn run(&mut self, rx: Receiver<ChannelMessages>) -> Result<()> {
+        let crossterm = CrosstermBackend::new(stdout());
+        let mut terminal = Terminal::new(CrosstermBackend::new(stdout())).expect("No TUI");
+
+        execute!(stdout(), EnterAlternateScreen)?;
+        enable_raw_mode()?;
+
         let _ = self.restore_chat_log();
 
         while !self.exit {
@@ -86,6 +92,10 @@ impl App {
                                 _ => true,
                             });
                         } else {
+                            // This line removes the artifacts from behind emotes, but is now causing
+                            // the chat to flicker when a new message is received
+                            let _ = terminal.backend_mut().clear_region(backend::ClearType::All);
+
                             self.chat_log.insert(0, ChannelMessages::TwitchMessage(message));
                             self.truncate();
                         }
@@ -118,6 +128,14 @@ impl App {
         }
 
         Ok(())
+    }
+
+    fn render(&mut self, frame: &mut Frame) {
+        frame.render_widget(self, frame.size());
+    }
+
+    fn exit(&mut self) {
+        self.exit = true;
     }
 
     fn restore_chat_log(&mut self) -> Result<(), Box<dyn Error>> {
@@ -157,14 +175,6 @@ impl App {
         if self.chat_log.len() > 100 {
             self.chat_log.remove(self.chat_log.len() - 1);
         }
-    }
-
-    fn render(&mut self, frame: &mut Frame) {
-        frame.render_widget(self, frame.size());
-    }
-
-    fn exit(&mut self) {
-        self.exit = true;
     }
 }
 
@@ -387,12 +397,12 @@ pub fn get_list_commands() -> Result<Vec<String>, Box<dyn Error>> {
 }
 
 /// Initialize the terminal
-pub fn init() -> io::Result<Tui> {
-    execute!(stdout(), EnterAlternateScreen)?;
-    enable_raw_mode()?;
-    Terminal::new(CrosstermBackend::new(stdout()))
-    // Terminal::new(TestBackend::new(320, 240))
-}
+// pub fn init() -> io::Result<Tui> {
+//     execute!(stdout(), EnterAlternateScreen)?;
+//     enable_raw_mode()?;
+//     Terminal::new(CrosstermBackend::new(stdout()))
+//     // Terminal::new(TestBackend::new(320, 240))
+// }
 
 /// Restore the terminal to its original state
 pub fn restore() -> io::Result<()> {

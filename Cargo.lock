@@ -1986,7 +1986,7 @@ dependencies = [
 
 [[package]]
 name = "sergeant"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "base64 0.21.7",
  "clap 4.5.4",

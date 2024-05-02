@@ -6,12 +6,13 @@ use base64::prelude::*;
 
 use crate::utils::get_data_directory;
 
-const TWITCH_SCOPES: [&str; 12] = [
+const TWITCH_SCOPES: [&str; 13] = [
     "channel:read:subscriptions",
     "chat:read",
     "chat:edit",
     "channel:moderate",
     "channel:read:redemptions",
+    "channel:manage:redemptions",
     "channel:bot",
     "user:write:chat",
     "moderator:manage:shoutouts",

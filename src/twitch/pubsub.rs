@@ -367,6 +367,10 @@ fn refund_points(channel_points_data: &ChannelPointsData, user: &User, tx: &Send
         .call();
 
     let success = response.is_ok();
+    if !success {
+        send_to_error_log("Refund Error".to_string(), format!("{response:?}"));
+    }
+
     let points = channel_points_data.redemption.reward.cost;
     let result = if success { "were" } else { "could not be" };
     let redeemer = &channel_points_data.redemption.user.display_name;

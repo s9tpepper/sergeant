@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use dotenv::dotenv;
-use sergeant::tui::{init, install_hooks, restore, App};
+use sergeant::tui::{install_hooks, restore, App};
 use sergeant::twitch::{
     announcements::start_announcements, irc::TwitchIRC, parse::get_badges, pubsub::connect_to_pub_sub, ChannelMessages,
 };
@@ -175,8 +175,8 @@ fn start_chat(
     });
 
     install_hooks()?;
-    let mut terminal = init()?;
-    App::default().run(&mut terminal, rx)?;
+
+    App::new().run(rx)?;
     restore()?;
 
     Ok(())

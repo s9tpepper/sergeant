@@ -363,9 +363,17 @@ pub fn get_screen_lines(lines: &mut [Vec<MessageParts>], area: &Rect) -> Vec<Vec
 }
 
 pub fn write_to_buffer(lines: &mut [Vec<MessageParts>], buf: &mut Buffer, cursor: &mut RenderCursor) {
+    // let mut terminal = Terminal::new(CrosstermBackend::new(stdout())).expect("No TUI");
     let left = cursor.x;
 
     lines.iter_mut().for_each(|line| {
+        let mut has_emotes = false;
+        line.iter().for_each(|s| {
+            if let MessageParts::Emote(_) = s {
+                has_emotes = true;
+            }
+        });
+
         line.iter().for_each(|s| match s {
             MessageParts::Text(word) => {
                 word.iter().for_each(|symbol| match symbol {
@@ -374,6 +382,7 @@ pub fn write_to_buffer(lines: &mut [Vec<MessageParts>], buf: &mut Buffer, cursor
                         if index < buf.content.len() {
                             let (r, g, b) = character.color.unwrap_or((255, 255, 255));
                             let rgb = Color::Rgb(r, g, b);
+                            buf.get_mut(cursor.x, cursor.y).reset();
                             buf.get_mut(cursor.x, cursor.y).set_symbol(&character.char).set_fg(rgb);
                             cursor.x += 1;
                         }
@@ -385,7 +394,13 @@ pub fn write_to_buffer(lines: &mut [Vec<MessageParts>], buf: &mut Buffer, cursor
             MessageParts::Emote(emote) => {
                 let index = buf.index_of(cursor.x, cursor.y);
                 if index < buf.content.len() {
+                    // if has_emotes {
+                    //     let _ = terminal.backend_mut().clear_region(backend::ClearType::UntilNewLine);
+                    // }
+
                     let encoded = emote.encoded.clone().unwrap_or_default();
+
+                    buf.get_mut(cursor.x, cursor.y).reset();
                     buf.get_mut(cursor.x, cursor.y).set_symbol(&encoded);
                     cursor.x += EMOTE_SPACE as u16;
                 }
