@@ -17,8 +17,8 @@ use ratatui::backend::CrosstermBackend;
 use color_eyre::{eyre::Result, eyre::WrapErr};
 
 use crate::tui;
-use crate::twitch::parse::Text;
 use crate::twitch::parse::{Emote, RedeemMessage};
+use crate::twitch::parse::{RaidMessage, Text};
 use crate::twitch::pubsub::SubMessage;
 use crate::twitch::ChannelMessages;
 use crate::{
@@ -259,7 +259,7 @@ impl<'a> StatefulWidget for &mut Scroller<'a> {
             //
             // self.app
             //     .chat_log
-            //     .push(ChannelMessages::TwitchMessage(TwitchMessage::RaidMessage { message }))
+            //     .push(ChannelMessages::TwitchMessage(TwitchMessage::RaidMessage { message }));
 
             // let data = SubMessage::Sub(SubscribeEvent {
             //     area: None,
@@ -429,7 +429,7 @@ fn get_list(directory: &str) -> Result<Vec<String>, Box<dyn Error>> {
     Ok(commands)
 }
 
-fn check_for_chat_commands(message: &str, client: &mut TwitchIRC) {
+pub fn check_for_chat_commands(message: &str, client: &mut TwitchIRC) {
     let commands_list = get_list_commands();
     if let Ok(list) = &commands_list {
         for item in list {

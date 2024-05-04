@@ -17,11 +17,11 @@ use ratatui::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    tui::{MessageParts, Symbol},
+    tui::{check_for_chat_commands, MessageParts, Symbol},
     utils::get_data_directory,
 };
 
-use super::pubsub::TwitchApiResponse;
+use super::{irc::TwitchIRC, pubsub::TwitchApiResponse};
 
 const ESCAPE: &str = "\x1b";
 const BELL: &str = "\x07";
@@ -455,6 +455,7 @@ impl Widget for &mut RaidMessage {
         let block_area = Rect {
             x: 0,
             y: cursor.y.saturating_sub(2),
+            // y: cursor.y,
             width: area.width.saturating_sub(2),
             height: screen_lines.len() as u16 + 2,
         };
@@ -747,7 +748,7 @@ pub fn get_badges(token: &str, client_id: &str) -> AsyncResult<Vec<BadgeItem>> {
     Ok(response.data)
 }
 
-pub fn parse(mut message: &str) -> Result<TwitchMessage, Box<dyn Error>> {
+pub fn parse(mut message: &str, client: &mut TwitchIRC) -> Result<TwitchMessage, Box<dyn Error>> {
     let raw = message;
 
     let mut tags = vec![];
@@ -803,7 +804,11 @@ pub fn parse(mut message: &str) -> Result<TwitchMessage, Box<dyn Error>> {
     };
 
     match r#type {
-        "PRIVMSG" => Ok(parse_privmsg(irc_message)),
+        "PRIVMSG" => {
+            let priv_msg = parse_privmsg(irc_message, client);
+
+            Ok(priv_msg)
+        }
 
         "USERNOTICE" => Ok(parse_usernotice(irc_message)),
 
@@ -949,7 +954,7 @@ fn parse_clearmsg(irc_message: IrcMessage) -> TwitchMessage {
     }
 }
 
-fn parse_privmsg(irc_message: IrcMessage) -> TwitchMessage {
+fn parse_privmsg(irc_message: IrcMessage, client: &mut TwitchIRC) -> TwitchMessage {
     let mut badges: Vec<String> = vec![];
     let mut color = "#FF9912".to_string();
     let mut first_msg = false;
@@ -988,6 +993,8 @@ fn parse_privmsg(irc_message: IrcMessage) -> TwitchMessage {
     // let _ = add_emotes(&mut message, &mut emotes);
     let badges_symbols = get_badges_symbols(&badges);
     // let nickname = format!("{}{}", encoded_badges, irc_message.sender);
+    let message = irc_message.parameters.to_string();
+    check_for_chat_commands(&message, client);
 
     TwitchMessage::PrivMessage {
         message: ChatMessage {
@@ -998,8 +1005,8 @@ fn parse_privmsg(irc_message: IrcMessage) -> TwitchMessage {
             subscriber,
             moderator,
             color,
+            message,
             badges: badges_symbols.unwrap_or_default(),
-            message: irc_message.parameters.to_string(),
             nickname: irc_message.sender.to_string(),
             channel: irc_message.channel.to_string(),
             raw: irc_message.raw.to_string(),

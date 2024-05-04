@@ -106,7 +106,7 @@ impl TwitchIRC {
                 let messages = messages.map(tungstenite::Message::from);
 
                 messages.for_each(|message| match message {
-                    tungstenite::Message::Text(new_message) => match parse(&new_message) {
+                    tungstenite::Message::Text(new_message) => match parse(&new_message, self) {
                         Ok(
                             message @ TwitchMessage::RedeemMessage { .. }
                             | message @ TwitchMessage::ClearMessage { .. }
