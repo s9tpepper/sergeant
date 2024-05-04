@@ -374,7 +374,7 @@ pub fn write_to_buffer(lines: &mut [Vec<MessageParts>], buf: &mut Buffer, cursor
             }
         });
 
-        line.iter().for_each(|s| match s {
+        line.iter_mut().for_each(|s| match s {
             MessageParts::Text(word) => {
                 word.iter().for_each(|symbol| match symbol {
                     Symbol::Text(character) => {
@@ -394,14 +394,30 @@ pub fn write_to_buffer(lines: &mut [Vec<MessageParts>], buf: &mut Buffer, cursor
             MessageParts::Emote(emote) => {
                 let index = buf.index_of(cursor.x, cursor.y);
                 if index < buf.content.len() {
-                    // if has_emotes {
-                    //     let _ = terminal.backend_mut().clear_region(backend::ClearType::UntilNewLine);
-                    // }
-
+                    // let _ = terminal.backend_mut().clear_region(backend::ClearType::UntilNewLine);
                     let encoded = emote.encoded.clone().unwrap_or_default();
 
-                    buf.get_mut(cursor.x, cursor.y).reset();
+                    // if emote.clear {
+                    //     // if has_emotes {
+                    //     //     let _ = terminal.backend_mut().clear_region(backend::ClearType::CurrentLine);
+                    //     // }
+                    //
+                    //     let _ = terminal.backend_mut().clear_region(backend::ClearType::UntilNewLine);
+                    //     buf.get_mut(cursor.x, cursor.y).reset();
+                    //     buf.get_mut(cursor.x + 1, cursor.y).reset();
+                    //     buf.get_mut(cursor.x, cursor.y).set_symbol(" ");
+                    //     buf.get_mut(cursor.x + 1, cursor.y).set_symbol(" ");
+                    //     println!("did a clearing");
+                    // } else {
+                    // buf.get_mut(cursor.x, cursor.y).set_bg(Color::Rgb(0, 0, 0));
+                    // buf.get_mut(cursor.x, cursor.y).set_fg(Color::Rgb(0, 0, 0));
+                    // buf.get_mut(cursor.x + 1, cursor.y).set_bg(Color::Rgb(0, 0, 0));
+                    // buf.get_mut(cursor.x + 1, cursor.y).set_fg(Color::Rgb(0, 0, 0));
+                    // let _ = buf.get_mut(cursor.x, cursor.y).on_bright_black();
+
                     buf.get_mut(cursor.x, cursor.y).set_symbol(&encoded);
+                    // }
+
                     cursor.x += EMOTE_SPACE as u16;
                 }
             }
