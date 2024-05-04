@@ -3,6 +3,7 @@ use std::{
     error::Error,
     fs,
     path::PathBuf,
+    process::Command,
     sync::{OnceLock, RwLock},
 };
 
@@ -17,11 +18,15 @@ use ratatui::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    commands::get_action,
     tui::{check_for_chat_commands, MessageParts, Symbol},
     utils::get_data_directory,
 };
 
-use super::{irc::TwitchIRC, pubsub::TwitchApiResponse};
+use super::{
+    irc::TwitchIRC,
+    pubsub::{send_to_error_log, TwitchApiResponse},
+};
 
 const ESCAPE: &str = "\x1b";
 const BELL: &str = "\x07";
@@ -802,6 +807,26 @@ pub fn parse(mut message: &str, client: &mut TwitchIRC) -> Result<TwitchMessage,
         parameters,
         raw,
     };
+
+    // Run command for IRC action if one exists for thie IRC message type
+    let action = get_action(r#type);
+    if action.is_ok() {
+        let command_name = action.unwrap();
+        let command_result = Command::new(&command_name)
+            .arg(irc_message.sender)
+            .arg(irc_message.parameters)
+            .arg(irc_message.raw)
+            .status()
+            .expect("IRC action failed");
+        let command_success = command_result.success();
+
+        if !command_success {
+            send_to_error_log(
+                command_name.to_string(),
+                format!("Error running irc action command with input: {}", irc_message.sender),
+            );
+        }
+    }
 
     match r#type {
         "PRIVMSG" => {

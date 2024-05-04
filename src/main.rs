@@ -6,8 +6,8 @@ use sergeant::twitch::{
 };
 
 use sergeant::commands::{
-    add_chat_command, add_reward, authenticate_with_twitch, get_list_announcements, get_list_commands, list_rewards,
-    remove_chat_command, remove_reward, TokenStatus,
+    add_action, add_chat_command, add_reward, authenticate_with_twitch, get_list_announcements, get_list_commands,
+    list_actions, list_rewards, remove_action, remove_chat_command, remove_reward, TokenStatus,
 };
 
 use sergeant::utils::get_data_directory;
@@ -41,6 +41,27 @@ enum SubCmds {
     /// Remove a command
     Remove {
         /// The name of the command to remove
+        name: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum IrcActionSubCmds {
+    /// List IRC Actions
+    List,
+
+    /// Add an IRC ation command
+    Add {
+        /// The name of the IRC message type as it is named in the IRC protocol
+        name: String,
+
+        /// The cli command to execute for as the IRC action
+        cli: String,
+    },
+
+    /// Remove an IRC action
+    Remove {
+        /// The name of the IRC message type to remove
         name: String,
     },
 }
@@ -97,6 +118,12 @@ enum Cmds {
     Rewards {
         #[command(subcommand)]
         cmd: RewardSubCmds,
+    },
+
+    /// Manage IRC actions
+    IrcActions {
+        #[command(subcommand)]
+        cmd: IrcActionSubCmds,
     },
 
     // Send a chat message
@@ -278,6 +305,18 @@ fn main() {
             }
             SubCmds::Remove { name } => {
                 remove_command(&name);
+            }
+        },
+
+        Cmds::IrcActions { cmd } => match cmd {
+            IrcActionSubCmds::List => {
+                list_actions();
+            }
+            IrcActionSubCmds::Add { name, cli } => {
+                let _ = add_action(&name, &cli);
+            }
+            IrcActionSubCmds::Remove { name } => {
+                let _ = remove_action(&name);
             }
         },
 

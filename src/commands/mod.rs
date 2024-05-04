@@ -187,54 +187,87 @@ fn store_token(token_status: TokenStatus) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn add_reward(reward_name: &str, cli: &str) -> Result<(), Box<dyn Error>> {
-    let target_dir = "chat_rewards";
-    let file_contents = cli.to_string();
-
-    let mut reward_path = get_data_directory(Some(target_dir))?;
-
-    if !reward_path.exists() {
-        std::fs::create_dir_all(&reward_path)?;
-    }
-
-    reward_path.push(reward_name);
-
-    fs::write(reward_path, file_contents)?;
-
-    Ok(())
-}
-
-pub fn remove_reward(reward_name: &str) -> Result<(), Box<dyn Error>> {
-    let mut reward_path = get_data_directory(Some("chat_rewards"))?;
-    reward_path.push(reward_name);
-    if reward_path.exists() {
-        return Ok(fs::remove_file(reward_path)?);
-    }
-
-    Ok(())
-}
-
-pub fn list_rewards() {
-    if let Ok(list) = get_list("chat_rewards") {
+fn list(list_type: String) {
+    if let Ok(list) = get_list(&list_type) {
+        let human_readable = list_type.replace('_', " ");
         if list.is_empty() {
-            println!("Currently no chat rewards have been added.");
+            println!("Currently no {human_readable} have been added.");
         }
 
-        println!("Available chat rewards:");
+        println!("Available {human_readable}:");
         for item in list {
             println!("- {}", item);
         }
     }
 }
 
-pub fn get_reward(reward_name: &str) -> Result<String, Box<dyn Error>> {
-    let mut reward_path = get_data_directory(Some("chat_rewards"))?;
-    reward_path.push(reward_name);
+fn get_item(item_name: &str, item_type: &str) -> Result<String, Box<dyn Error>> {
+    let mut item_path = get_data_directory(Some(item_type))?;
+    item_path.push(item_name);
 
-    if reward_path.exists() {
-        let command_name = fs::read_to_string(reward_path)?;
-        return Ok(command_name);
+    if item_path.exists() {
+        let item = fs::read_to_string(item_path)?;
+        return Ok(item);
     }
 
-    Err("No reward found".into())
+    let human_readable = item_type.replace('_', " ");
+    Err(format!("No {human_readable} found").into())
+}
+
+pub fn remove_item(item_name: &str, item_type: &str) -> Result<(), Box<dyn Error>> {
+    let mut item_path = get_data_directory(Some(item_type))?;
+    item_path.push(item_name);
+    if item_path.exists() {
+        return Ok(fs::remove_file(item_path)?);
+    }
+
+    Ok(())
+}
+
+pub fn add_item(item_name: &str, cli: &str, item_type: &str) -> Result<(), Box<dyn Error>> {
+    let file_contents = cli.to_string();
+
+    let mut item_path = get_data_directory(Some(item_type))?;
+
+    if !item_path.exists() {
+        std::fs::create_dir_all(&item_path)?;
+    }
+
+    item_path.push(item_name);
+
+    fs::write(item_path, file_contents)?;
+
+    Ok(())
+}
+
+pub fn add_reward(reward_name: &str, cli: &str) -> Result<(), Box<dyn Error>> {
+    add_item(reward_name, cli, "chat_rewards")
+}
+
+pub fn get_reward(reward_name: &str) -> Result<String, Box<dyn Error>> {
+    get_item(reward_name, "chat_rewards")
+}
+
+pub fn list_rewards() {
+    list("chat_rewards".to_string())
+}
+
+pub fn remove_reward(reward_name: &str) -> Result<(), Box<dyn Error>> {
+    remove_item(reward_name, "chat_rewards")
+}
+
+pub fn remove_action(action_name: &str) -> Result<(), Box<dyn Error>> {
+    remove_item(action_name, "irc_actions")
+}
+
+pub fn add_action(action_name: &str, cli: &str) -> Result<(), Box<dyn Error>> {
+    add_item(action_name, cli, "irc_actions")
+}
+
+pub fn list_actions() {
+    list("irc_actions".to_string())
+}
+
+pub fn get_action(action_name: &str) -> Result<String, Box<dyn Error>> {
+    get_item(action_name, "irc_actions")
 }
