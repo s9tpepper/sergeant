@@ -321,6 +321,7 @@ fn handle_message(message: Message, user: &User, tx: &Sender<ChannelMessages>) -
 
                         let command_result = Command::new(&command_name)
                             .arg(user_input)
+                            .arg(&sub_message.redemption.user.display_name)
                             .status()
                             .expect("reward failed");
                         let command_success = command_result.success();
