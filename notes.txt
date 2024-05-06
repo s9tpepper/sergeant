@@ -47,3 +47,9 @@ Location: /Users/omargonzalez/.cargo/registry/src/index.crates.io-6f17d22bba1500
 
 Backtrace omitted. Run with RUST_BACKTRACE=1 environment variable to display it.
 Run with RUST_BACKTRACE=full to include source snippets.
+
+
+
+// NEED TO FIX THIS, it is working but still returning this message
+SystemTime { tv_sec: 1714957698, tv_nsec: 128225000 } - spotifyplay.mjs: Error running reward command with input: https://open.spotify.com/track/6WGaVdhY8uMWMgxiKpdLVy?si=6001b31fe0ef4b76
+SystemTime { tv_sec: 1714957698, tv_nsec: 193618000 } - Refund Error: Err(Status(401, Response[status: 401, status_text: Unauthorized, url: https://api.twitch.tv/helix/channel_points/custom_rewards/redemptions?id=cb5ddc0b-462b-41d5-b897-03e0c3598bea&broadcaster_id=961536166&reward_id=8b4571af-e0ac-46e3-89a7-c684b1b77968]))

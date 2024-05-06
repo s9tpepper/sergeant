@@ -17,8 +17,8 @@ use ratatui::backend::CrosstermBackend;
 use color_eyre::{eyre::Result, eyre::WrapErr};
 
 use crate::tui;
+use crate::twitch::parse::Text;
 use crate::twitch::parse::{Emote, RedeemMessage};
-use crate::twitch::parse::{RaidMessage, Text};
 use crate::twitch::pubsub::SubMessage;
 use crate::twitch::ChannelMessages;
 use crate::{

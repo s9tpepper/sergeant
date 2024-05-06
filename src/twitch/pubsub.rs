@@ -15,7 +15,7 @@ use tungstenite::connect;
 use tungstenite::Error::{AlreadyClosed, ConnectionClosed, Io};
 use tungstenite::Message::{self, Close, Ping, Text};
 
-use crate::commands::get_reward;
+use crate::commands::{get_action, get_reward};
 use crate::tui::{MessageParts, Symbol};
 use crate::utils::get_data_directory;
 
@@ -311,7 +311,18 @@ fn handle_message(message: Message, user: &User, tx: &Sender<ChannelMessages>) -
             'commands: {
                 match sub_message.data {
                     SubMessage::Points(ref sub_message) => {
-                        let Ok(command_name) = get_reward(&sub_message.redemption.reward.title) else {
+                        let reward = get_reward(&sub_message.redemption.reward.title);
+                        let irc_action = get_action(&sub_message.redemption.reward.title);
+
+                        let found_command = if reward.is_ok() {
+                            reward
+                        } else if irc_action.is_ok() {
+                            irc_action
+                        } else {
+                            break 'commands;
+                        };
+
+                        let Ok(command_name) = found_command else {
                             break 'commands;
                         };
 
@@ -319,16 +330,35 @@ fn handle_message(message: Message, user: &User, tx: &Sender<ChannelMessages>) -
                             break 'commands;
                         };
 
+                        send_to_error_log("Set intro clip input value:".into(), user_input.to_string());
+                        send_to_error_log("Sent command name:".into(), command_name.clone());
+                        send_to_error_log(
+                            "Sent display_name:".into(),
+                            sub_message.redemption.user.display_name.clone(),
+                        );
+
                         let command_result = Command::new(&command_name)
                             .arg(user_input)
                             .arg(&sub_message.redemption.user.display_name)
-                            .status()
+                            .output()
                             .expect("reward failed");
-                        let command_success = command_result.success();
+
+                        let command_success = command_result.status.success();
+
+                        // command_output.success()
+                        // let command_success = command_result.success();
+
+                        // send_to_error_log("Reward command execution result:".into(), command_success.to_string());
+                        // send_to_error_log("Reward output:", command_result);
 
                         if !command_success {
                             send_to_error_log(
                                 command_name.to_string(),
+                                format!("Error running reward command with input: {}", user_input),
+                            );
+
+                            send_to_error_log(
+                                format!("{} output: {:?}", command_name, command_result),
                                 format!("Error running reward command with input: {}", user_input),
                             );
 
