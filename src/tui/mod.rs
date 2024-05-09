@@ -93,7 +93,7 @@ impl App {
                         } else {
                             // This line removes the artifacts from behind emotes, but is now causing
                             // the chat to flicker when a new message is received
-                            // let _ = terminal.backend_mut().clear_region(backend::ClearType::All);
+                            let _ = terminal.backend_mut().clear_region(backend::ClearType::All);
 
                             self.chat_log.insert(0, ChannelMessages::TwitchMessage(message));
                             self.truncate();

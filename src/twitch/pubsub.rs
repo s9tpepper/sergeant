@@ -1,5 +1,5 @@
 use std::io::ErrorKind;
-use std::process::Command;
+use std::process::{self, Command};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::time::{self, Duration};
@@ -288,7 +288,12 @@ pub fn send_to_error_log(err: String, json: String) {
     let _ = file.write_all(log.as_bytes());
 }
 
-fn handle_message(message: Message, user: &User, tx: &Sender<ChannelMessages>) -> Result<(), Box<dyn Error>> {
+fn handle_message(
+    message: Message,
+    user: &User,
+    tx: &Sender<ChannelMessages>,
+    credentials: &Credentials,
+) -> Result<(), Box<dyn Error>> {
     match message {
         Message::Text(message) => {
             if !message.contains("MESSAGE") {
@@ -326,9 +331,8 @@ fn handle_message(message: Message, user: &User, tx: &Sender<ChannelMessages>) -
                             break 'commands;
                         };
 
-                        let Some(user_input) = &sub_message.redemption.user_input else {
-                            break 'commands;
-                        };
+                        let default_input = &String::new();
+                        let user_input = &sub_message.redemption.user_input.as_ref().unwrap_or(default_input);
 
                         send_to_error_log("Set intro clip input value:".into(), user_input.to_string());
                         send_to_error_log("Sent command name:".into(), command_name.clone());
@@ -340,16 +344,12 @@ fn handle_message(message: Message, user: &User, tx: &Sender<ChannelMessages>) -
                         let command_result = Command::new(&command_name)
                             .arg(user_input)
                             .arg(&sub_message.redemption.user.display_name)
+                            .stdout(process::Stdio::piped())
+                            .stderr(process::Stdio::piped())
                             .output()
                             .expect("reward failed");
 
                         let command_success = command_result.status.success();
-
-                        // command_output.success()
-                        // let command_success = command_result.success();
-
-                        // send_to_error_log("Reward command execution result:".into(), command_success.to_string());
-                        // send_to_error_log("Reward output:", command_result);
 
                         if !command_success {
                             send_to_error_log(
@@ -363,8 +363,10 @@ fn handle_message(message: Message, user: &User, tx: &Sender<ChannelMessages>) -
                             );
 
                             if sub_message.redemption.status == "UNFULFILLED" {
-                                refund_points(sub_message, user, tx);
+                                refund_points(sub_message, user, tx, credentials, command_result);
                             }
+                        } else if sub_message.redemption.status == "UNFULFILLED" {
+                            reward_fulfilled(sub_message, user, credentials);
                         }
                     }
 
@@ -384,16 +386,47 @@ fn handle_message(message: Message, user: &User, tx: &Sender<ChannelMessages>) -
     }
 }
 
-fn refund_points(channel_points_data: &ChannelPointsData, user: &User, tx: &Sender<ChannelMessages>) {
+fn reward_fulfilled(channel_points_data: &ChannelPointsData, user: &User, credentials: &Credentials) {
+    let api_url = "https://api.twitch.tv/helix/channel_points/custom_rewards/redemptions";
+    let id = &channel_points_data.redemption.id;
+    let reward_id = &channel_points_data.redemption.reward.id;
+    let _ = ureq::patch(api_url)
+        .set(
+            "Authorization",
+            &format!("Bearer {}", credentials.oauth_token.replace("oauth:", "")),
+        )
+        .set("Client-Id", credentials.client_id.as_str())
+        .query_pairs(vec![
+            ("id", id.as_str()),
+            ("broadcaster_id", &user.id),
+            ("reward_id", reward_id),
+            ("status", "FULFILLED"),
+        ])
+        .call();
+}
+
+fn refund_points(
+    channel_points_data: &ChannelPointsData,
+    user: &User,
+    tx: &Sender<ChannelMessages>,
+    credentials: &Credentials,
+    command_result: process::Output,
+) {
     let api_url = "https://api.twitch.tv/helix/channel_points/custom_rewards/redemptions";
 
     let id = &channel_points_data.redemption.id;
     let reward_id = &channel_points_data.redemption.reward.id;
     let response = ureq::patch(api_url)
+        .set(
+            "Authorization",
+            &format!("Bearer {}", credentials.oauth_token.replace("oauth:", "")),
+        )
+        .set("Client-Id", credentials.client_id.as_str())
         .query_pairs(vec![
             ("id", id.as_str()),
             ("broadcaster_id", &user.id),
             ("reward_id", reward_id),
+            ("status", "CANCELED"),
         ])
         .call();
 
@@ -407,9 +440,28 @@ fn refund_points(channel_points_data: &ChannelPointsData, user: &User, tx: &Send
     let redeemer = &channel_points_data.redemption.user.display_name;
     let message = format!("{points} points {result} refunded to {redeemer}");
     let area = None;
+
     let _ = tx.send(ChannelMessages::TwitchMessage(TwitchMessage::RedeemMessage {
         message: RedeemMessage { message, area },
     }));
+
+    let _ = tx.send(ChannelMessages::TwitchMessage(TwitchMessage::RedeemMessage {
+        message: RedeemMessage {
+            // message: format!(
+            //     "Intro clip is not approved or you haven't added an intro clip: {}",
+            //     command_code
+            // ),
+            message: String::from_utf8(command_result.stdout)
+                .expect("Invalid UTF-8")
+                .to_string(),
+            area,
+        },
+    }));
+}
+
+pub struct Credentials {
+    pub oauth_token: Arc<String>,
+    pub client_id: Arc<String>,
 }
 
 pub fn connect_to_pub_sub(
@@ -477,7 +529,12 @@ pub fn connect_to_pub_sub(
                 match socket.read() {
                     Ok(message) => match message {
                         Text(message) => {
-                            let _ = handle_message(Message::Text(message), &user, &tx);
+                            let credentials = Credentials {
+                                oauth_token: oauth_token.clone(),
+                                client_id: client_id.clone(),
+                            };
+
+                            let _ = handle_message(Message::Text(message), &user, &tx, &credentials);
                         }
                         Close(_) => {
                             send_to_error_log("We got a close message, reconnecting...".to_string(), "".to_string());
