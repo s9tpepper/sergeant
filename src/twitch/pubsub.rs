@@ -447,10 +447,6 @@ fn refund_points(
 
     let _ = tx.send(ChannelMessages::TwitchMessage(TwitchMessage::RedeemMessage {
         message: RedeemMessage {
-            // message: format!(
-            //     "Intro clip is not approved or you haven't added an intro clip: {}",
-            //     command_code
-            // ),
             message: String::from_utf8(command_result.stdout)
                 .expect("Invalid UTF-8")
                 .to_string(),
