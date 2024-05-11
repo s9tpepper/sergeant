@@ -250,6 +250,26 @@ impl<'a> StatefulWidget for &mut Scroller<'a> {
 
             // NOTE: Push messages here to test with
             //
+            // let chat_message = TwitchMessage::PrivMessage {
+            //     message: ChatMessage {
+            //         id: "1234".to_string(),
+            //         nickname: "some_person".to_string(),
+            //         color: "#FF0000".to_string(),
+            //         message: "This is a test message".to_string(),
+            //         first_msg: false,
+            //         badges: vec![],
+            //         emotes: vec![],
+            //         returning_chatter: false,
+            //         subscriber: false,
+            //         moderator: false,
+            //         channel: "some_channel".to_string(),
+            //         raw: "raw message".to_string(),
+            //         area: None,
+            //     },
+            // };
+            //
+            // self.app.chat_log.push(ChannelMessages::TwitchMessage(chat_message));
+            //
             // let message = RaidMessage {
             //     display_name: "some_person".to_string(),
             //     user_id: "1234".to_string(),
@@ -260,6 +280,25 @@ impl<'a> StatefulWidget for &mut Scroller<'a> {
             // self.app
             //     .chat_log
             //     .push(ChannelMessages::TwitchMessage(TwitchMessage::RaidMessage { message }));
+            //
+            // let chat_message = TwitchMessage::PrivMessage {
+            //     message: ChatMessage {
+            //         id: "1234".to_string(),
+            //         nickname: "some_person".to_string(),
+            //         color: "#FF0000".to_string(),
+            //         message: "This is a test message".to_string(),
+            //         first_msg: false,
+            //         badges: vec![],
+            //         emotes: vec![],
+            //         returning_chatter: false,
+            //         subscriber: false,
+            //         moderator: false,
+            //         channel: "some_channel".to_string(),
+            //         raw: "raw message".to_string(),
+            //         area: None,
+            //     },
+            // };
+            // self.app.chat_log.push(ChannelMessages::TwitchMessage(chat_message));
 
             // let data = SubMessage::Sub(SubscribeEvent {
             //     area: None,

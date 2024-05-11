@@ -470,7 +470,7 @@ impl Widget for &mut RaidMessage {
             x: 0,
             y: cursor.y,
             width: area.width,
-            height: screen_lines.len() as u16,
+            height: screen_lines.len() as u16 + 2, // Add 2 for border
         });
     }
 }
