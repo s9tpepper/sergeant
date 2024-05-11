@@ -647,7 +647,7 @@ pub struct RedeemMessage {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BadgeVersion {
-    // id: String,
+    id: String,
     // title: String,
     // description: String,
     // click_action: String,
@@ -692,9 +692,10 @@ struct IrcMessage<'a> {
 fn get_encoded_image(url: &str) -> Result<String, Box<dyn Error>> {
     let response = ureq::get(url).call()?;
     let length: usize = response.header("content-length").unwrap().parse()?;
-    let file_bytes: Vec<u8> = vec![0; length];
-    // response.into_reader().read_exact(&mut file_bytes)?;
-    //
+    let mut file_bytes: Vec<u8> = vec![0; length];
+
+    response.into_reader().read_exact(&mut file_bytes)?;
+
     // let img_data = image::load_from_memory(&file_bytes)?;
     //
     // let mut buffer: Vec<u8> = Vec::new();
@@ -730,18 +731,15 @@ pub fn get_badges(token: &str, client_id: &str) -> AsyncResult<Vec<BadgeItem>> {
 
     let mut response: TwitchApiResponse<Vec<BadgeItem>> = serde_json::from_reader(response.into_reader())?;
 
-    let data_dir = get_data_directory(None)?;
+    let data_dir = get_data_directory(Some("badges"))?;
 
     for badge_item in response.data.iter_mut() {
-        let file_name = format!("{}.txt", badge_item.set_id);
-        let Some(ref version) = badge_item.versions.pop() else {
-            continue;
-        };
-
-        let badge_path = data_dir.join(file_name);
-
-        if !badge_path.exists() {
-            generate_badge_file(badge_path, version)?;
+        for version in badge_item.versions.iter_mut() {
+            let file_name = format!("{}_{}.txt", badge_item.set_id, version.id);
+            let badge_path = data_dir.join(file_name);
+            if !badge_path.exists() {
+                generate_badge_file(badge_path, version)?;
+            }
         }
     }
 
@@ -830,13 +828,23 @@ pub fn parse(mut message: &str, client: &mut TwitchIRC) -> Result<TwitchMessage,
 #[derive(Clone, PartialEq, Debug)]
 pub struct Tag<'a>(pub &'a str, pub &'a str);
 
-fn set_badges(tag_value: &str, valid_badges: &mut Vec<String>) {
+// This Badge struct is used to figure out what BadgeItem to use
+// when parsing through a user's badges
+pub struct Badge {
+    pub set_id: String,
+    pub version_id: String,
+}
+
+fn set_badges(tag_value: &str, valid_badges: &mut Vec<Badge>) {
     for badge in tag_value.split(',') {
         let mut badge_parts = badge.split('/');
         if let Some(key) = badge_parts.next() {
-            let value = badge_parts.next().unwrap_or("0");
-            if value == "1" {
-                valid_badges.push(key.to_string());
+            let value = badge_parts.next().unwrap_or("none");
+            if value != "none" {
+                valid_badges.push(Badge {
+                    set_id: key.to_string(),
+                    version_id: value.to_string(),
+                });
             }
         }
     }
@@ -913,22 +921,49 @@ fn get_iterm_encoded_image(base64: String) -> String {
     format!("{ESCAPE}]1337;File=inline=1;preserveAspectRatio=1:{base64_str}{BELL}")
 }
 
-fn get_badges_symbols(badges: &[String]) -> Result<Vec<Emote>, Box<dyn Error>> {
+fn get_badges_symbols(badges: &[Badge], channel_badges: &Option<Vec<BadgeItem>>) -> Result<Vec<Emote>, Box<dyn Error>> {
     let mut badges_symbols: Vec<Emote> = vec![];
-    let data_dir = get_data_directory(None)?;
+    let data_dir = get_data_directory(Some("badges"))?;
     for badge in badges.iter() {
-        let badge_path = data_dir.join(format!("{}.txt", badge));
-        let base64 = fs::read_to_string(badge_path)?;
-        let encoded = get_iterm_encoded_image(base64);
+        let badge_path = data_dir.join(format!("{}_{}.txt", badge.set_id, badge.version_id));
 
-        badges_symbols.push(Emote {
-            emote_id: badge.to_string(),
-            start: 0,
-            end: 0,
-            url: "".to_string(),
-            name: "".to_string(),
-            encoded: Some(encoded),
-        });
+        // Check if the badge exists, then its a global badge
+        if badge_path.exists() {
+            let base64 = fs::read_to_string(badge_path)?;
+            let encoded = get_iterm_encoded_image(base64);
+
+            badges_symbols.push(Emote {
+                emote_id: badge.set_id.clone(),
+                start: 0,
+                end: 0,
+                url: "".to_string(),
+                name: "".to_string(),
+                encoded: Some(encoded),
+            });
+        } else {
+            // This might be a channel badge
+            if let Some(channel_badges) = channel_badges {
+                for badge_item in channel_badges.iter() {
+                    if badge_item.set_id == badge.set_id {
+                        for version in badge_item.versions.iter() {
+                            if version.id == badge.version_id {
+                                let mut emote = Emote {
+                                    emote_id: badge.set_id.clone(),
+                                    start: 0,
+                                    end: 0,
+                                    url: version.image_url_1x.clone(),
+                                    name: "".to_string(),
+                                    encoded: None,
+                                };
+                                emote.load()?;
+
+                                badges_symbols.push(emote);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     Ok(badges_symbols)
@@ -955,7 +990,7 @@ fn parse_clearmsg(irc_message: IrcMessage) -> TwitchMessage {
 }
 
 fn parse_privmsg(irc_message: IrcMessage, client: &mut TwitchIRC) -> TwitchMessage {
-    let mut badges: Vec<String> = vec![];
+    let mut badges: Vec<Badge> = vec![];
     let mut color = "#FF9912".to_string();
     let mut first_msg = false;
     let mut subscriber = false;
@@ -966,7 +1001,15 @@ fn parse_privmsg(irc_message: IrcMessage, client: &mut TwitchIRC) -> TwitchMessa
 
     for (tag, value) in irc_message.tags {
         match tag {
+            // TODO: Fix staff/etc badges
+            "user-type" => match value {
+                "staff" => {}
+                "admin" => {}
+                "global_mod" => {}
+                _ => {}
+            },
             "id" => id = value.to_string(),
+            "badge-info" => set_badges(value, &mut badges),
             "badges" => set_badges(value, &mut badges),
             "color" => {
                 if !value.is_empty() {
@@ -991,7 +1034,7 @@ fn parse_privmsg(irc_message: IrcMessage, client: &mut TwitchIRC) -> TwitchMessa
     }
 
     // let _ = add_emotes(&mut message, &mut emotes);
-    let badges_symbols = get_badges_symbols(&badges);
+    let badges_symbols = get_badges_symbols(&badges, &client.badges);
     // let nickname = format!("{}{}", encoded_badges, irc_message.sender);
     let message = irc_message.parameters.to_string();
     check_for_chat_commands(&message, client);

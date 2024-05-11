@@ -192,12 +192,14 @@ fn start_chat(
 
     let token = oauth_token.clone();
     let name = twitch_name.clone();
+    let id = client_id.clone();
     thread::spawn(move || {
-        let _ = start_announcements(name, token, announce_tx, skip_announcements);
+        let _ = start_announcements(name, token, id, announce_tx, skip_announcements);
     });
 
+    let id = client_id.clone();
     thread::spawn(|| {
-        let mut twitch_irc = TwitchIRC::new(twitch_name, oauth_token, chat_tx);
+        let mut twitch_irc = TwitchIRC::new(twitch_name, oauth_token, id, chat_tx);
         twitch_irc.listen();
     });
 

@@ -457,18 +457,14 @@ pub struct Credentials {
     pub client_id: Arc<String>,
 }
 
-pub fn connect_to_pub_sub(
-    oauth_token: Arc<String>,
-    client_id: Arc<String>,
-    tx: Sender<ChannelMessages>,
-) -> Result<(), Box<dyn Error>> {
+pub fn get_user(oauth_token: &str, client_id: &str) -> Result<User, Box<dyn Error>> {
     let get_users_url = "https://api.twitch.tv/helix/users";
     let response = ureq::get(get_users_url)
         .set(
             "Authorization",
             &format!("Bearer {}", oauth_token.replace("oauth:", "")),
         )
-        .set("Client-Id", &client_id.to_string())
+        .set("Client-Id", client_id)
         .call();
 
     let Ok(response) = response else {
@@ -478,6 +474,16 @@ pub fn connect_to_pub_sub(
     let mut response: TwitchApiResponse<Vec<User>> = serde_json::from_reader(response.into_reader())?;
 
     let user = response.data.swap_remove(0);
+
+    Ok(user)
+}
+
+pub fn connect_to_pub_sub(
+    oauth_token: Arc<String>,
+    client_id: Arc<String>,
+    tx: Sender<ChannelMessages>,
+) -> Result<(), Box<dyn Error>> {
+    let user = get_user(&oauth_token, &client_id)?;
     let twitch_pub_sub = "wss://pubsub-edge.twitch.tv";
 
     match connect(twitch_pub_sub) {

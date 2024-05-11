@@ -1,4 +1,5 @@
 use std::{
+    error::Error,
     net::TcpStream,
     sync::{mpsc::Sender, Arc},
     thread::sleep,
@@ -9,13 +10,19 @@ use tungstenite::{stream::MaybeTlsStream, WebSocket};
 
 use crate::twitch::parse::parse;
 
-use super::{parse::TwitchMessage, pubsub::send_to_error_log, ChannelMessages};
+use super::{
+    parse::{BadgeItem, TwitchMessage},
+    pubsub::{get_user, send_to_error_log, TwitchApiResponse},
+    ChannelMessages,
+};
 
 pub struct TwitchIRC {
     tx: Sender<ChannelMessages>,
     socket: WebSocket<MaybeTlsStream<TcpStream>>,
-    nickname: String,
-    oauth_token: String,
+    pub nickname: String,
+    pub oauth_token: String,
+    pub client_id: String,
+    pub badges: Option<Vec<BadgeItem>>,
 }
 
 const CONN_MAX_RETRIES: u8 = 3;
@@ -81,14 +88,21 @@ fn connect(twitch_name: &Arc<String>, oauth_token: &Arc<String>, retry: u8) -> W
 }
 
 impl TwitchIRC {
-    pub fn new(twitch_name: Arc<String>, oauth_token: Arc<String>, tx: Sender<ChannelMessages>) -> Self {
+    pub fn new(
+        twitch_name: Arc<String>,
+        oauth_token: Arc<String>,
+        client_id: Arc<String>,
+        tx: Sender<ChannelMessages>,
+    ) -> Self {
         let socket = connect(&twitch_name, &oauth_token, 0);
 
         TwitchIRC {
             socket,
+            tx,
             nickname: twitch_name.to_string(),
             oauth_token: oauth_token.to_string(),
-            tx,
+            client_id: client_id.to_string(),
+            badges: None,
         }
     }
 
@@ -97,7 +111,35 @@ impl TwitchIRC {
         let _ = self.socket.send(message.into());
     }
 
+    fn load_channel_badges(&mut self) -> Result<(), Box<dyn Error>> {
+        // Get channel badges
+        let user = get_user(&self.oauth_token, &self.client_id)?;
+        let channel_badges = ureq::get(
+            format!(
+                "https://api.twitch.tv/helix/chat/badges?broadcaster_id={}",
+                user.id.as_str()
+            )
+            .as_str(),
+        )
+        .set("Client-ID", &self.client_id)
+        .set(
+            "Authorization",
+            &format!("Bearer {}", self.oauth_token.replace("oauth:", "")),
+        )
+        .call();
+
+        if let Ok(response) = channel_badges {
+            let response: TwitchApiResponse<Vec<BadgeItem>> = serde_json::from_reader(response.into_reader())?;
+
+            self.badges = Some(response.data);
+        }
+
+        Ok(())
+    }
+
     pub fn listen(&mut self) {
+        let _ = self.load_channel_badges();
+
         loop {
             if let Ok(message) = self.socket.read() {
                 // NOTE: Twitch could send multiple messages at once, so we need to split them
