@@ -334,13 +334,6 @@ fn handle_message(
                         let default_input = &String::new();
                         let user_input = &sub_message.redemption.user_input.as_ref().unwrap_or(default_input);
 
-                        send_to_error_log("Set intro clip input value:".into(), user_input.to_string());
-                        send_to_error_log("Sent command name:".into(), command_name.clone());
-                        send_to_error_log(
-                            "Sent display_name:".into(),
-                            sub_message.redemption.user.display_name.clone(),
-                        );
-
                         let command_result = Command::new(&command_name)
                             .arg(user_input)
                             .arg(&sub_message.redemption.user.display_name)
@@ -390,7 +383,7 @@ fn reward_fulfilled(channel_points_data: &ChannelPointsData, user: &User, creden
     let api_url = "https://api.twitch.tv/helix/channel_points/custom_rewards/redemptions";
     let id = &channel_points_data.redemption.id;
     let reward_id = &channel_points_data.redemption.reward.id;
-    let _ = ureq::patch(api_url)
+    let response = ureq::patch(api_url)
         .set(
             "Authorization",
             &format!("Bearer {}", credentials.oauth_token.replace("oauth:", "")),
@@ -403,6 +396,10 @@ fn reward_fulfilled(channel_points_data: &ChannelPointsData, user: &User, creden
             ("status", "FULFILLED"),
         ])
         .call();
+
+    if response.is_err() {
+        send_to_error_log("Fulfill Error".to_string(), format!("{response:?}"));
+    }
 }
 
 fn refund_points(
