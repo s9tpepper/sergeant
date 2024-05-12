@@ -25,9 +25,6 @@ const TWITCH_SCOPES: [&str; 13] = [
 const TWITCH_CREATE_TOKEN: &str = "https://twitchtokengenerator.com/api/create/[APP_NAME]/[SCOPES]";
 const TWITCH_TOKEN_STATUS: &str = "https://twitchtokengenerator.com/api/status/[ID]";
 
-// TODO: Implement token refreshes for when tokens expire
-// const TWITCH_TOKEN_REFRESH: &str = "https://twitchtokengenerator.com/api/refresh/[REFRESH_TOKEN]";
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TokenResponse {
     success: bool,
@@ -35,7 +32,7 @@ pub struct TokenResponse {
     message: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct TokenStatus {
     pub success: bool,
     pub id: String,
@@ -178,7 +175,7 @@ pub fn authenticate_with_twitch() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn store_token(token_status: TokenStatus) -> Result<(), Box<dyn Error>> {
+pub fn store_token(token_status: TokenStatus) -> Result<(), Box<dyn Error>> {
     let mut token_dir = get_data_directory(Some("token"))?;
     token_dir.push("oath_token.txt");
 

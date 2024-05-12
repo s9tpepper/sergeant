@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use self::{announcements::Announcement, parse::TwitchMessage, pubsub::MessageData};
 
 pub mod announcements;
+pub mod api;
 pub mod irc;
 pub mod message;
 pub mod messages;

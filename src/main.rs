@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use dotenv::dotenv;
 use sergeant::tui::{install_hooks, restore, App};
+use sergeant::twitch::api::{refresh_token, validate};
 use sergeant::twitch::{
     announcements::start_announcements, irc::TwitchIRC, parse::get_badges, pubsub::connect_to_pub_sub, ChannelMessages,
 };
@@ -146,9 +147,12 @@ fn get_credentials(
     twitch_name: Option<String>,
     oauth_token: Option<String>,
     client_id: Option<String>,
-) -> Result<(String, String, String), Box<dyn Error>> {
+    _refresh: Option<String>,
+) -> Result<(String, String, String, String), Box<dyn Error>> {
     match (twitch_name, oauth_token, client_id) {
-        (Some(twitch_name), Some(oauth_token), Some(client_id)) => Ok((twitch_name, oauth_token, client_id)),
+        (Some(twitch_name), Some(oauth_token), Some(client_id)) => {
+            Ok((twitch_name, oauth_token, client_id, String::new()))
+        }
 
         _ => {
             let error_message =
@@ -164,6 +168,7 @@ fn get_credentials(
                     token_status.username.unwrap(),
                     format!("oauth:{}", token_status.token.unwrap()),
                     token_status.client_id.unwrap(),
+                    token_status.refresh.unwrap(),
                 ))
             } else {
                 panic!("{}", error_message);
@@ -176,8 +181,36 @@ fn start_chat(
     twitch_name: Arc<String>,
     oauth_token: Arc<String>,
     client_id: Arc<String>,
+    refresh: Arc<String>,
     skip_announcements: bool,
 ) -> AsyncResult<()> {
+    let validate_token_response = validate(&oauth_token);
+    let mut token_status: Option<TokenStatus> = None;
+    if validate_token_response.is_err() {
+        let token_status_result = refresh_token(&refresh);
+        if token_status_result.is_err() {
+            panic!("Token refresh failed, unable to validate Twitch API access. Please login again.");
+        }
+
+        token_status = Some(token_status_result.unwrap());
+    }
+
+    // Shadow the function arguments if the tokens were refreshed
+    let oauth_token = if let Some(token_status) = &token_status {
+        // NOTE: Not exactly sure why token needs a clone here and client_id does not
+        let token = token_status.token.clone().unwrap();
+        Arc::new(token)
+    } else {
+        oauth_token
+    };
+
+    let client_id = if let Some(token_status) = token_status {
+        let client_id = token_status.client_id.unwrap();
+        Arc::new(client_id)
+    } else {
+        client_id
+    };
+
     get_badges(&oauth_token, &client_id)?;
 
     let (pubsub_tx, rx) = channel::<ChannelMessages>();
@@ -198,8 +231,9 @@ fn start_chat(
     });
 
     let id = client_id.clone();
+    let token = oauth_token.clone();
     thread::spawn(|| {
-        let mut twitch_irc = TwitchIRC::new(twitch_name, oauth_token, id, chat_tx);
+        let mut twitch_irc = TwitchIRC::new(twitch_name, token, id, chat_tx);
         twitch_irc.listen();
     });
 
@@ -289,13 +323,14 @@ fn main() {
             client_id,
             skip_announcements,
         } => {
-            let (name, token, id) = get_credentials(twitch_name, oauth_token, client_id).unwrap();
+            let (name, token, id, refresh) = get_credentials(twitch_name, oauth_token, client_id, None).unwrap();
 
             let name = Arc::new(name);
             let id = Arc::new(id);
             let token = Arc::new(token);
+            let refresh = Arc::new(refresh);
 
-            let _ = start_chat(name, token, id, skip_announcements);
+            let _ = start_chat(name, token, id, refresh, skip_announcements);
         }
 
         Cmds::Commands { cmd } => match cmd {
