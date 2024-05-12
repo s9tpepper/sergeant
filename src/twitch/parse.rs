@@ -1001,41 +1001,43 @@ fn parse_privmsg(irc_message: IrcMessage, client: &mut TwitchIRC) -> TwitchMessa
 
     for (tag, value) in irc_message.tags {
         match tag {
-            // TODO: Fix staff/etc badges
-            "user-type" => match value {
-                "staff" => {}
-                "admin" => {}
-                "global_mod" => {}
-                _ => {}
-            },
+            "user-type" => set_badges(format!("{value}/1").as_str(), &mut badges),
+
             "id" => id = value.to_string(),
+
             "badge-info" => set_badges(value, &mut badges),
+
             "badges" => set_badges(value, &mut badges),
+
             "color" => {
                 if !value.is_empty() {
                     color = value.to_string();
                 }
             }
+
             "first-msg" => {
                 first_msg = get_bool(value);
             }
+
             "subscriber" => {
                 subscriber = get_bool(value);
             }
+
             "returning-chatter" => {
                 returning_chatter = get_bool(value);
             }
+
             "mod" => {
                 moderator = get_bool(value);
             }
+
             "emotes" => process_emotes(value, &mut emotes),
-            _other => {}
+
+            _ => {}
         }
     }
 
-    // let _ = add_emotes(&mut message, &mut emotes);
     let badges_symbols = get_badges_symbols(&badges, &client.badges);
-    // let nickname = format!("{}{}", encoded_badges, irc_message.sender);
     let message = irc_message.parameters.to_string();
     check_for_chat_commands(&message, client);
 
