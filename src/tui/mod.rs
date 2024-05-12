@@ -470,6 +470,17 @@ fn get_list(directory: &str) -> Result<Vec<String>, Box<dyn Error>> {
 
 pub fn check_for_chat_commands(message: &str, client: &mut TwitchIRC) {
     let commands_list = get_list_commands();
+    if message == "!commands" {
+        let available_commands = commands_list
+            .unwrap()
+            .iter()
+            .map(|item| format!("!{}", item))
+            .collect::<Vec<String>>()
+            .join(", ");
+        client.send_privmsg(format!("Available commands: {available_commands}").as_str());
+        return;
+    }
+
     if let Ok(list) = &commands_list {
         for item in list {
             let command = format!("!{}", item);
@@ -486,7 +497,7 @@ fn output_chat_command(command: &str, client: &mut TwitchIRC) -> Result<(), Box<
 
     let message = fs::read_to_string(data_dir)?;
 
-    client.send_privmsg(format!("[bot] {}", message).as_str());
+    client.send_privmsg(&message);
 
     Ok(())
 }
