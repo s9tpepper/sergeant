@@ -503,7 +503,6 @@ fn output_chat_command(command: &str, client: &mut TwitchIRC) -> Result<(), Box<
 }
 
 fn print_message(message: &ChatMessage, client: &mut TwitchIRC) {
-    // let (r, g, b) = get_nickname_color(&message.color);
     let nickname = &message.nickname;
 
     let nick = nickname;
