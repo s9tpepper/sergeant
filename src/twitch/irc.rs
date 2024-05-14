@@ -11,7 +11,7 @@ use tungstenite::{stream::MaybeTlsStream, WebSocket};
 use crate::twitch::parse::parse;
 
 use super::{
-    parse::{BadgeItem, TwitchMessage},
+    parse::{BadgeItem, ChatMessage, TwitchMessage},
     pubsub::{get_user, send_to_error_log, TwitchApiResponse},
     ChannelMessages,
 };
@@ -104,6 +104,26 @@ impl TwitchIRC {
             client_id: client_id.to_string(),
             badges: None,
         }
+    }
+
+    pub fn display_msg(&self, message: &str) {
+        let _ = self.tx.send(ChannelMessages::TwitchMessage(TwitchMessage::PrivMessage {
+            message: ChatMessage {
+                id: String::from(""),
+                badges: vec![],
+                emotes: vec![],
+                nickname: self.nickname.to_string(),
+                first_msg: false,
+                returning_chatter: false,
+                subscriber: false,
+                moderator: false,
+                message: message.to_string(),
+                color: "#808080".to_string(),
+                channel: format!("{}{}", "#", self.nickname),
+                raw: "".to_string(),
+                area: None,
+            },
+        }));
     }
 
     pub fn send_privmsg(&mut self, message: &str) {

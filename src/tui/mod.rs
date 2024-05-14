@@ -477,7 +477,14 @@ pub fn check_for_chat_commands(message: &str, client: &mut TwitchIRC) {
             .map(|item| format!("!{}", item))
             .collect::<Vec<String>>()
             .join(", ");
-        client.send_privmsg(format!("Available commands: {available_commands}").as_str());
+
+        let message = format!("Available commands: {available_commands}");
+        client.send_privmsg(message.as_str());
+
+        // Send message to display since this IRC client is the one posting the message
+        // it won't display if its not sent directly to the TUI client for rendering
+        client.display_msg(&message);
+
         return;
     }
 
@@ -498,6 +505,10 @@ fn output_chat_command(command: &str, client: &mut TwitchIRC) -> Result<(), Box<
     let message = fs::read_to_string(data_dir)?;
 
     client.send_privmsg(&message);
+
+    // Send message to display since this IRC client is the one posting the message
+    // it won't display if its not sent directly to the TUI client for rendering
+    client.display_msg(&message);
 
     Ok(())
 }
