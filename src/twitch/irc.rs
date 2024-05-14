@@ -122,6 +122,7 @@ impl TwitchIRC {
                 channel: format!("{}{}", "#", self.nickname),
                 raw: "".to_string(),
                 area: None,
+                timestamp: None,
             },
         }));
     }

@@ -118,6 +118,11 @@ pub struct ChatMessage {
     pub color: String,
     pub channel: String,
     pub raw: String,
+
+    // NOTE: Can be removed later if/when its implemented for display
+    // Set to option so it won't break the chat log deserialization
+    pub timestamp: Option<String>,
+
     #[serde(skip)]
     pub area: Option<Rect>,
 }
@@ -998,9 +1003,12 @@ fn parse_privmsg(irc_message: IrcMessage, client: &mut TwitchIRC) -> TwitchMessa
     let mut moderator = false;
     let mut emotes: Vec<Emote> = vec![];
     let mut id = String::new();
+    let mut timestamp = String::new();
 
     for (tag, value) in irc_message.tags {
         match tag {
+            "tmi-sent-ts" => timestamp = value.to_string(),
+
             "user-type" => set_badges(format!("{value}/1").as_str(), &mut badges),
 
             "id" => id = value.to_string(),
@@ -1051,6 +1059,7 @@ fn parse_privmsg(irc_message: IrcMessage, client: &mut TwitchIRC) -> TwitchMessa
             moderator,
             color,
             message,
+            timestamp: Some(timestamp),
             badges: badges_symbols.unwrap_or_default(),
             nickname: irc_message.sender.to_string(),
             channel: irc_message.channel.to_string(),

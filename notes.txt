@@ -27,12 +27,11 @@ Remove Announcement - done
 - ferris_twitch announce remove event
 
 
-TODO:
+TO-DONE:
 Handle all of these message tags:
-  client-nonce
-  emote-only
-  flags
-  room-id
-  tmi-sent-ts
-  turbo
-  user-id
+  client-nonce - not in privmsg list
+  emote-only - not in privmsg list
+  flags - not in privmsg list
+  room-id - don't need
+  turbo - is commercial-free sitewide enabled, don't need
+  user-id - do I need the user's id?
