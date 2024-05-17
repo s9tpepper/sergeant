@@ -1,8 +1,10 @@
+use crate::scrollview::scroll_view::ScrollView;
+use crate::scrollview::state::ScrollViewState;
+
 use color_eyre::config::HookBuilder;
 use color_eyre::eyre;
 
 use ratatui::prelude::*;
-use tui_scrollview::{ScrollView, ScrollViewState};
 
 use std::io::{self, stdout, Stdout};
 use std::sync::mpsc::Receiver;
