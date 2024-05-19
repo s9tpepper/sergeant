@@ -30,6 +30,11 @@ const MESSAGE_DELIMITER: &str = "\r\n";
 
 fn connect(twitch_name: &Arc<String>, oauth_token: &Arc<String>, retry: u8) -> WebSocket<MaybeTlsStream<TcpStream>> {
     if retry == CONN_MAX_RETRIES {
+        send_to_error_log(
+            "Unable to reconnect to Twitch IRC:".to_string(),
+            format!("Tried {retry} times"),
+        );
+
         panic!("Could not connect to Twitch IRC servers, tried {retry} times.")
     }
 

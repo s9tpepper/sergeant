@@ -74,7 +74,6 @@ pub fn start_announcements(
         return Ok(());
     }
 
-    let mut twitch_irc = TwitchIRC::new(twitch_name, oauth_token, client_id, tx);
     let mut announcements = get_announcements()?;
 
     loop {
@@ -84,18 +83,73 @@ pub fn start_announcements(
         }
 
         for announcement in announcements.iter_mut() {
-            if let Ok(elapsed) = announcement.start.elapsed() {
-                let time_to_announce = elapsed > announcement.timing;
+            let time_to_announce = check_announcement(announcement);
 
-                if time_to_announce {
-                    announcement.start = SystemTime::now();
+            if time_to_announce {
+                let mut twitch_irc =
+                    TwitchIRC::new(twitch_name.clone(), oauth_token.clone(), client_id.clone(), tx.clone());
 
-                    twitch_irc.send_privmsg(&announcement.message);
-                };
-            }
+                announcement.start = SystemTime::now();
+
+                twitch_irc.send_privmsg(&announcement.message);
+            };
         }
 
-        let duration = Duration::new(30, 0);
-        sleep(duration);
+        sleep(Duration::from_secs(30));
     }
+}
+
+fn check_announcement(announcement: &Announcement) -> bool {
+    if let Ok(elapsed) = announcement.start.elapsed() {
+        return elapsed > announcement.timing;
+    }
+
+    false
+}
+
+#[test]
+fn test_get_announcements() {
+    let announcements = get_announcements();
+    if let Ok(list) = announcements {
+        dbg!(&list);
+
+        assert!(list.len() == 1);
+        return;
+    }
+
+    panic!("Couldn't get announcements");
+}
+
+#[test]
+fn test_check_announcement_true() {
+    let now = SystemTime::now();
+    let twenty_five_mins_ago = now.checked_sub(Duration::from_secs(60 * 26));
+
+    let announcement = Announcement {
+        timing: Duration::from_secs(60 * 25),
+        message: "hello".to_string(),
+        start: twenty_five_mins_ago.unwrap(),
+        area: None,
+    };
+
+    let time_to_announce = check_announcement(&announcement);
+
+    assert!(time_to_announce);
+}
+
+#[test]
+fn test_check_announcement_false() {
+    let now = SystemTime::now();
+    let five_mins_ago = now.checked_sub(Duration::from_secs(60 * 5));
+
+    let announcement = Announcement {
+        timing: Duration::from_secs(60 * 25),
+        message: "hello".to_string(),
+        start: five_mins_ago.unwrap(),
+        area: None,
+    };
+
+    let time_to_announce = check_announcement(&announcement);
+
+    assert!(!time_to_announce);
 }
