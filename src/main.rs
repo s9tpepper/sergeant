@@ -12,6 +12,9 @@ use sergeant::commands::{
 };
 
 use sergeant::utils::get_data_directory;
+use sergeant::websocket::start_websocket;
+use std::thread::sleep;
+use std::time::Duration;
 use std::{
     error::Error,
     fs,
@@ -237,9 +240,11 @@ fn start_chat(
         twitch_irc.listen();
     });
 
-    install_hooks()?;
+    let (socket_tx, socket_rx) = channel::<ChannelMessages>();
+    tokio::spawn(start_websocket(socket_rx));
 
-    App::new().run(rx)?;
+    install_hooks()?;
+    App::new().run(rx, socket_tx.clone())?;
     restore()?;
 
     Ok(())
@@ -311,7 +316,8 @@ fn start_login_flow() {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // Load ENV vars with DotEnv
     dotenv().ok();
 

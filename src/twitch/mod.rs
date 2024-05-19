@@ -10,7 +10,7 @@ pub mod messages;
 pub mod parse;
 pub mod pubsub;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum ChannelMessages {
     MessageData(MessageData),
     Announcement(Announcement),

@@ -54,12 +54,12 @@ pub struct SocketMessageData {
     message: String,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct MessageData {
     pub data: SubMessage,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 #[serde(untagged)]
 pub enum SubMessage {
     Points(Box<ChannelPointsData>),
@@ -69,7 +69,7 @@ pub enum SubMessage {
     // BitsUnlocks {},
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct BitsEvent {
     #[serde(skip)]
     pub area: Option<Rect>,
@@ -147,7 +147,7 @@ impl Widget for &mut BitsEvent {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct BitsEventData {
     pub user_name: String,
     pub chat_message: String,
@@ -156,7 +156,7 @@ pub struct BitsEventData {
     pub context: String, // cheer
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct SubscribeEvent {
     #[serde(skip)]
     pub area: Option<Rect>,
@@ -247,20 +247,20 @@ pub struct SubscribeMessage {
     pub sub_message: String,    // A message, possibly with emotes
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct ChannelPointsData {
     pub timestamp: String,
     pub redemption: Redemption,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct UserReference {
     pub id: String,
     pub login: String,
     pub display_name: String,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct Redemption {
     pub id: String,
     pub user: UserReference,
@@ -269,7 +269,7 @@ pub struct Redemption {
     pub reward: Reward,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct Reward {
     pub id: String,
     pub title: String,

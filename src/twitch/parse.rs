@@ -104,7 +104,7 @@ impl Clone for Emote {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ChatMessage {
     pub id: String,
     pub badges: Vec<Emote>,
@@ -618,7 +618,7 @@ impl Widget for &mut ChatMessage {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TwitchMessage {
     ClearMessage { message: ClearMessage },
     RedeemMessage { message: RedeemMessage },
@@ -628,13 +628,13 @@ pub enum TwitchMessage {
     UnknownMessage { message: String },
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ClearMessage {
     pub display_name: String,
     pub message_id: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RaidMessage {
     pub display_name: String,
     pub user_id: String,
@@ -643,7 +643,7 @@ pub struct RaidMessage {
     pub area: Option<Rect>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RedeemMessage {
     pub message: String,
     #[serde(skip)]
