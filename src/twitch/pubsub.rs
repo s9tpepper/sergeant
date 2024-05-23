@@ -258,6 +258,7 @@ pub struct UserReference {
     pub id: String,
     pub login: String,
     pub display_name: String,
+    pub profile_url: Option<String>,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
@@ -288,6 +289,40 @@ pub fn send_to_error_log(err: String, json: String) {
     let _ = file.write_all(log.as_bytes());
 }
 
+fn add_user_profile_url(message_data: &mut MessageData, credentials: &Credentials) -> Result<(), Box<dyn Error>> {
+    match message_data.data {
+        SubMessage::Points(ref mut sub_message) => {
+            let api_url = "https://api.twitch.tv/helix/users";
+            let id = &sub_message.redemption.user.id;
+            let response = ureq::get(api_url)
+                .set(
+                    "Authorization",
+                    &format!("Bearer {}", credentials.oauth_token.replace("oauth:", "")),
+                )
+                .set("Client-Id", credentials.client_id.as_str())
+                .query_pairs(vec![("id", id.as_str())])
+                .call();
+
+            if response.is_err() {
+                send_to_error_log("Error getting user profile pic".to_string(), format!("{response:?}"));
+                return Ok(());
+            }
+
+            let response = response.unwrap();
+            send_to_error_log("user profile pic response:".to_string(), format!("{response:?}"));
+
+            let mut response: TwitchApiResponse<Vec<User>> = serde_json::from_reader(response.into_reader())?;
+            let user = response.data.swap_remove(0);
+
+            sub_message.redemption.user.profile_url = Some(user.profile_image_url);
+
+            Ok(())
+        }
+        SubMessage::Sub(_) => Ok(()),
+        SubMessage::Bits(_) => Ok(()),
+    }
+}
+
 fn handle_message(
     message: Message,
     user: &User,
@@ -308,10 +343,16 @@ fn handle_message(
             };
 
             let sub_message = &socket_message.data.message;
-            let Ok(sub_message) = serde_json::from_str::<MessageData>(sub_message) else {
+            let Ok(mut sub_message) = serde_json::from_str::<MessageData>(sub_message) else {
                 send_to_error_log(sub_message.to_string(), message.to_string());
                 return Err("Not a message".into());
             };
+
+            let _ = add_user_profile_url(&mut sub_message, credentials);
+
+            // NOTE: Send message transmission before checking for CLI commands attached
+            // to a message so that the CLI command does not block the chat log update
+            tx.send(ChannelMessages::MessageData(sub_message.clone()))?;
 
             'commands: {
                 match sub_message.data {
@@ -367,8 +408,6 @@ fn handle_message(
                     SubMessage::Bits(ref _sub_message) => {}
                 }
             }
-
-            tx.send(ChannelMessages::MessageData(sub_message))?;
 
             Ok(())
         }

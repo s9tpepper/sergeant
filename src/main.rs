@@ -13,8 +13,6 @@ use sergeant::commands::{
 
 use sergeant::utils::get_data_directory;
 use sergeant::websocket::start_websocket;
-use std::thread::sleep;
-use std::time::Duration;
 use std::{
     error::Error,
     fs,
