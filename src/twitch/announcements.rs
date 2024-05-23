@@ -11,7 +11,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::utils::get_data_directory;
 
-use super::{irc::TwitchIRC, ChannelMessages};
+use super::{
+    irc::{TwitchIRC, MESSAGE_DELIMITER},
+    parse::{parse, TwitchMessage},
+    ChannelMessages,
+};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Announcement {
@@ -75,8 +79,29 @@ pub fn start_announcements(
     }
 
     let mut announcements = get_announcements()?;
+    let mut twitch_irc = TwitchIRC::new(twitch_name.clone(), oauth_token.clone(), client_id.clone(), tx.clone());
 
     loop {
+        if let Ok(message) = twitch_irc.socket.read() {
+            let messages = message.to_text().unwrap().split(MESSAGE_DELIMITER);
+            let messages = messages.map(tungstenite::Message::from);
+
+            messages.for_each(|message| {
+                if let tungstenite::Message::Text(new_message) = message {
+                    match parse(&new_message, &mut twitch_irc) {
+                        Ok(TwitchMessage::PingMessage { message }) => {
+                            let pong_message = format!("PONG {message}");
+
+                            let _ = twitch_irc.socket.send(pong_message.into());
+                        }
+
+                        Ok(_) => {}
+                        Err(_) => {}
+                    }
+                }
+            })
+        }
+
         let new_announcements = get_announcements()?;
         if announcements.len() != new_announcements.len() {
             announcements = new_announcements;
@@ -86,9 +111,6 @@ pub fn start_announcements(
             let time_to_announce = check_announcement(announcement);
 
             if time_to_announce {
-                let mut twitch_irc =
-                    TwitchIRC::new(twitch_name.clone(), oauth_token.clone(), client_id.clone(), tx.clone());
-
                 announcement.start = SystemTime::now();
 
                 twitch_irc.send_privmsg(&announcement.message);

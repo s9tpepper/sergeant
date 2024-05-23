@@ -18,7 +18,7 @@ use super::{
 
 pub struct TwitchIRC {
     tx: Sender<ChannelMessages>,
-    socket: WebSocket<MaybeTlsStream<TcpStream>>,
+    pub socket: WebSocket<MaybeTlsStream<TcpStream>>,
     pub nickname: String,
     pub oauth_token: String,
     pub client_id: String,
@@ -26,7 +26,7 @@ pub struct TwitchIRC {
 }
 
 const CONN_MAX_RETRIES: u8 = 3;
-const MESSAGE_DELIMITER: &str = "\r\n";
+pub const MESSAGE_DELIMITER: &str = "\r\n";
 
 fn connect(twitch_name: &Arc<String>, oauth_token: &Arc<String>, retry: u8) -> WebSocket<MaybeTlsStream<TcpStream>> {
     if retry == CONN_MAX_RETRIES {
