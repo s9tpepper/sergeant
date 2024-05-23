@@ -95,7 +95,9 @@ pub fn start_announcements(
                             let _ = twitch_irc.socket.send(pong_message.into());
                         }
 
+                        // NOTE: Dont care about other messages for announcements
                         Ok(_) => {}
+
                         Err(_) => {}
                     }
                 }
