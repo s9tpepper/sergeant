@@ -7,7 +7,7 @@ use color_eyre::eyre;
 use ratatui::prelude::*;
 
 use std::io::{self, stdout, Stdout};
-use std::sync::mpsc::Receiver;
+use std::sync::mpsc::{Receiver, Sender};
 use std::{error::Error, fs};
 use std::{panic, time};
 
@@ -21,7 +21,7 @@ use color_eyre::{eyre::Result, eyre::WrapErr};
 use crate::tui;
 use crate::twitch::parse::Text;
 use crate::twitch::parse::{Emote, RedeemMessage};
-use crate::twitch::pubsub::SubMessage;
+use crate::twitch::pubsub::{send_to_error_log, SubMessage};
 use crate::twitch::ChannelMessages;
 use crate::{
     twitch::{
@@ -73,7 +73,7 @@ impl App {
         }
     }
 
-    pub fn run(&mut self, rx: Receiver<ChannelMessages>) -> Result<()> {
+    pub fn run(&mut self, rx: Receiver<ChannelMessages>, socket_tx: Sender<ChannelMessages>) -> Result<()> {
         let mut terminal = Terminal::new(CrosstermBackend::new(stdout())).expect("No TUI");
 
         execute!(stdout(), EnterAlternateScreen)?;
@@ -83,7 +83,7 @@ impl App {
 
         while !self.exit {
             if let Ok(message) = rx.try_recv() {
-                match message {
+                match &message {
                     ChannelMessages::TwitchMessage(message) => {
                         if let TwitchMessage::ClearMessage { message } = message {
                             self.chat_log.retain(|msg| match msg {
@@ -97,12 +97,12 @@ impl App {
                             // the chat to flicker when a new message is received
                             let _ = terminal.backend_mut().clear_region(backend::ClearType::All);
 
-                            self.chat_log.insert(0, ChannelMessages::TwitchMessage(message));
+                            self.chat_log.insert(0, ChannelMessages::TwitchMessage(message.clone()));
                             self.truncate();
                         }
                     }
 
-                    ChannelMessages::MessageData(message) => match message.data {
+                    ChannelMessages::MessageData(message) => match &message.data {
                         SubMessage::Points(points_message) => {
                             let message = format!(
                                 "{} redeemed {} for {}",
@@ -115,14 +115,29 @@ impl App {
                             let redeem_message = TwitchMessage::RedeemMessage { message: rm };
                             self.chat_log.insert(0, ChannelMessages::TwitchMessage(redeem_message));
                         }
+
+                        // TODO: Implement Sub and Bits messages
                         SubMessage::Sub(_) => {}
                         SubMessage::Bits(_) => {}
                     },
 
+                    // noop here
                     ChannelMessages::Announcement(_) => {}
                 }
 
                 let _ = self.persist_chat_log();
+                let socket_tx_send_result = socket_tx.send(message);
+                if let Err(send_error) = socket_tx_send_result {
+                    send_to_error_log(
+                        "websocket: Could not transmit message to channel".to_string(),
+                        send_error.to_string(),
+                    )
+                } else {
+                    send_to_error_log(
+                        "websocket: Successfully transmitted message to channel".to_string(),
+                        "Success".to_string(),
+                    );
+                }
             }
 
             terminal.draw(|frame| self.render(frame))?;

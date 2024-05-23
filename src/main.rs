@@ -12,6 +12,7 @@ use sergeant::commands::{
 };
 
 use sergeant::utils::get_data_directory;
+use sergeant::websocket::start_websocket;
 use std::{
     error::Error,
     fs,
@@ -237,9 +238,13 @@ fn start_chat(
         twitch_irc.listen();
     });
 
-    install_hooks()?;
+    let (socket_tx, socket_rx) = channel::<ChannelMessages>();
+    thread::spawn(|| {
+        start_websocket(socket_rx);
+    });
 
-    App::new().run(rx)?;
+    install_hooks()?;
+    App::new().run(rx, socket_tx.clone())?;
     restore()?;
 
     Ok(())

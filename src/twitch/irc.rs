@@ -209,6 +209,7 @@ impl TwitchIRC {
                         connect(&name, &token, 0);
                     }
 
+                    /*   */
                     unknown => send_to_error_log(unknown.to_string(), "Unhandled error from socket.read()".to_string()),
                 });
             }

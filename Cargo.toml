@@ -18,14 +18,14 @@ colored = "2.1.0"
 crossterm = "0.27.0"
 directories = "5.0.1"
 dotenv = { version = "0.15.0", features = ["cli", "clap"] }
+features = "0.10.0"
+full = "0.1.0"
 hex-rgb = "0.1.1"
 image = "0.25.0"
 openssl = "0.10.63"
 ratatui = "0.26.2"
 serde = { version = "1.0.196", features = ["alloc", "derive", "serde_derive"] } 
 serde_json = "1.0.113"
-# tui-scrollview = "0.3.5"
-# tui-scrollview = { git = "https://github.com/s9tpepper/tui-scrollview.git", branch = "main" }
 tungstenite = { version = "0.21.0", features = ["native-tls"] }
 ureq = "2.9.6"
 url = "2.5.0"

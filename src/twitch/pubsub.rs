@@ -54,12 +54,12 @@ pub struct SocketMessageData {
     message: String,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct MessageData {
     pub data: SubMessage,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 #[serde(untagged)]
 pub enum SubMessage {
     Points(Box<ChannelPointsData>),
@@ -69,7 +69,7 @@ pub enum SubMessage {
     // BitsUnlocks {},
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct BitsEvent {
     #[serde(skip)]
     pub area: Option<Rect>,
@@ -147,7 +147,7 @@ impl Widget for &mut BitsEvent {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct BitsEventData {
     pub user_name: String,
     pub chat_message: String,
@@ -156,7 +156,7 @@ pub struct BitsEventData {
     pub context: String, // cheer
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct SubscribeEvent {
     #[serde(skip)]
     pub area: Option<Rect>,
@@ -247,20 +247,21 @@ pub struct SubscribeMessage {
     pub sub_message: String,    // A message, possibly with emotes
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct ChannelPointsData {
     pub timestamp: String,
     pub redemption: Redemption,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct UserReference {
     pub id: String,
     pub login: String,
     pub display_name: String,
+    pub profile_url: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct Redemption {
     pub id: String,
     pub user: UserReference,
@@ -269,7 +270,7 @@ pub struct Redemption {
     pub reward: Reward,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct Reward {
     pub id: String,
     pub title: String,
@@ -286,6 +287,40 @@ pub fn send_to_error_log(err: String, json: String) {
 
     let mut file = OpenOptions::new().create(true).append(true).open(error_log).unwrap();
     let _ = file.write_all(log.as_bytes());
+}
+
+fn add_user_profile_url(message_data: &mut MessageData, credentials: &Credentials) -> Result<(), Box<dyn Error>> {
+    match message_data.data {
+        SubMessage::Points(ref mut sub_message) => {
+            let api_url = "https://api.twitch.tv/helix/users";
+            let id = &sub_message.redemption.user.id;
+            let response = ureq::get(api_url)
+                .set(
+                    "Authorization",
+                    &format!("Bearer {}", credentials.oauth_token.replace("oauth:", "")),
+                )
+                .set("Client-Id", credentials.client_id.as_str())
+                .query_pairs(vec![("id", id.as_str())])
+                .call();
+
+            if response.is_err() {
+                send_to_error_log("Error getting user profile pic".to_string(), format!("{response:?}"));
+                return Ok(());
+            }
+
+            let response = response.unwrap();
+            send_to_error_log("user profile pic response:".to_string(), format!("{response:?}"));
+
+            let mut response: TwitchApiResponse<Vec<User>> = serde_json::from_reader(response.into_reader())?;
+            let user = response.data.swap_remove(0);
+
+            sub_message.redemption.user.profile_url = Some(user.profile_image_url);
+
+            Ok(())
+        }
+        SubMessage::Sub(_) => Ok(()),
+        SubMessage::Bits(_) => Ok(()),
+    }
 }
 
 fn handle_message(
@@ -308,10 +343,16 @@ fn handle_message(
             };
 
             let sub_message = &socket_message.data.message;
-            let Ok(sub_message) = serde_json::from_str::<MessageData>(sub_message) else {
+            let Ok(mut sub_message) = serde_json::from_str::<MessageData>(sub_message) else {
                 send_to_error_log(sub_message.to_string(), message.to_string());
                 return Err("Not a message".into());
             };
+
+            let _ = add_user_profile_url(&mut sub_message, credentials);
+
+            // NOTE: Send message transmission before checking for CLI commands attached
+            // to a message so that the CLI command does not block the chat log update
+            tx.send(ChannelMessages::MessageData(sub_message.clone()))?;
 
             'commands: {
                 match sub_message.data {
@@ -367,8 +408,6 @@ fn handle_message(
                     SubMessage::Bits(ref _sub_message) => {}
                 }
             }
-
-            tx.send(ChannelMessages::MessageData(sub_message))?;
 
             Ok(())
         }
