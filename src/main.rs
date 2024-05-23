@@ -239,7 +239,9 @@ fn start_chat(
     });
 
     let (socket_tx, socket_rx) = channel::<ChannelMessages>();
-    tokio::spawn(start_websocket(socket_rx));
+    thread::spawn(|| {
+        start_websocket(socket_rx);
+    });
 
     install_hooks()?;
     App::new().run(rx, socket_tx.clone())?;
@@ -314,8 +316,7 @@ fn start_login_flow() {
     }
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
     // Load ENV vars with DotEnv
     dotenv().ok();
 

@@ -1,4 +1,5 @@
-const socket = new WebSocket("ws://192.168.0.43:54321");
+const socket = new WebSocket("ws://127.0.0.1:54321");
+// const socket = new WebSocket("ws://127.0.0.1:8080");
 
 socket.addEventListener("message", (event) => {
   console.log(event.data);
