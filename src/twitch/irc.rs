@@ -11,8 +11,9 @@ use tungstenite::{stream::MaybeTlsStream, WebSocket};
 use crate::twitch::parse::parse;
 
 use super::{
+    api::{get_user, TwitchApiResponse},
     parse::{BadgeItem, ChatMessage, TwitchMessage},
-    pubsub::{get_user, send_to_error_log, TwitchApiResponse},
+    pubsub::send_to_error_log,
     ChannelMessages,
 };
 

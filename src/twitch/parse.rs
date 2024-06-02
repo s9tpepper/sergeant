@@ -21,7 +21,7 @@ use crate::{
     utils::get_data_directory,
 };
 
-use super::{irc::TwitchIRC, pubsub::TwitchApiResponse};
+use super::{api::TwitchApiResponse, irc::TwitchIRC};
 
 const ESCAPE: &str = "\x1b";
 const BELL: &str = "\x07";
@@ -487,8 +487,14 @@ impl Widget for &mut RedeemMessage {
             y: area.bottom(),
         };
 
-        // Render the messages in green
-        let symbols: Vec<Symbol> = get_message_symbols(&self.message, &mut [], Some((0, 255, 0)));
+        let default_color = Some((0, 255, 0));
+        let color = if self.color.is_some() {
+            self.color
+        } else {
+            default_color
+        };
+
+        let symbols: Vec<Symbol> = get_message_symbols(&self.message, &mut [], color);
         let mut lines: Vec<Vec<MessageParts>> = get_lines(&symbols, &area);
 
         cursor.x = area.left();
@@ -621,11 +627,17 @@ impl Widget for &mut ChatMessage {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum TwitchMessage {
     ClearMessage { message: ClearMessage },
+    ClearMessageByUser { message: ClearMessageByUser },
     RedeemMessage { message: RedeemMessage },
     RaidMessage { message: RaidMessage },
     PrivMessage { message: ChatMessage },
     PingMessage { message: String },
     UnknownMessage { message: String },
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ClearMessageByUser {
+    pub display_name: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -646,8 +658,12 @@ pub struct RaidMessage {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RedeemMessage {
     pub message: String,
+
     #[serde(skip)]
     pub area: Option<Rect>,
+
+    #[serde(skip)]
+    pub color: Option<(u8, u8, u8)>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

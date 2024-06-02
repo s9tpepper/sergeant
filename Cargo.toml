@@ -27,6 +27,6 @@ ratatui = "0.26.2"
 serde = { version = "1.0.196", features = ["alloc", "derive", "serde_derive"] } 
 serde_json = "1.0.113"
 tungstenite = { version = "0.21.0", features = ["native-tls"] }
-ureq = "2.9.6"
+ureq = { version = "2.9.6", features = ["json"] }
 url = "2.5.0"
 uuid = "1.7.0"

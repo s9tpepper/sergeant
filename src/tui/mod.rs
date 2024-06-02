@@ -85,20 +85,34 @@ impl App {
             if let Ok(message) = rx.try_recv() {
                 match &message {
                     ChannelMessages::TwitchMessage(message) => {
-                        if let TwitchMessage::ClearMessage { message } = message {
-                            self.chat_log.retain(|msg| match msg {
-                                ChannelMessages::TwitchMessage(TwitchMessage::PrivMessage { message: msg }) => {
-                                    msg.id != message.message_id
-                                }
-                                _ => true,
-                            });
-                        } else {
-                            // This line removes the artifacts from behind emotes, but is now causing
-                            // the chat to flicker when a new message is received
-                            let _ = terminal.backend_mut().clear_region(backend::ClearType::All);
+                        match message {
+                            TwitchMessage::ClearMessage { message } => {
+                                self.chat_log.retain(|msg| match msg {
+                                    ChannelMessages::TwitchMessage(TwitchMessage::PrivMessage { message: msg }) => {
+                                        msg.id != message.message_id
+                                    }
+                                    _ => true,
+                                });
+                            }
 
-                            self.chat_log.insert(0, ChannelMessages::TwitchMessage(message.clone()));
-                            self.truncate();
+                            // NOTE: This message comes from EventSub channel
+                            TwitchMessage::ClearMessageByUser { message } => {
+                                self.chat_log.retain(|msg| match msg {
+                                    ChannelMessages::TwitchMessage(TwitchMessage::PrivMessage { message: msg }) => {
+                                        msg.nickname.to_lowercase() != message.display_name.to_lowercase()
+                                    }
+                                    _ => true,
+                                });
+                            }
+
+                            _ => {
+                                // This line removes the artifacts from behind emotes, but is now causing
+                                // the chat to flicker when a new message is received
+                                let _ = terminal.backend_mut().clear_region(backend::ClearType::All);
+
+                                self.chat_log.insert(0, ChannelMessages::TwitchMessage(message.clone()));
+                                self.truncate();
+                            }
                         }
                     }
 
@@ -111,7 +125,11 @@ impl App {
                                 points_message.redemption.reward.cost
                             );
 
-                            let rm = RedeemMessage { message, area: None };
+                            let rm = RedeemMessage {
+                                message,
+                                area: None,
+                                color: None,
+                            };
                             let redeem_message = TwitchMessage::RedeemMessage { message: rm };
                             self.chat_log.insert(0, ChannelMessages::TwitchMessage(redeem_message));
                         }

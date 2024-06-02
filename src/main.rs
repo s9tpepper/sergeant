@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use dotenv::dotenv;
+use sergeant::eventsub::start_eventsub;
 use sergeant::tui::{install_hooks, restore, App};
 use sergeant::twitch::api::{refresh_token, validate};
 use sergeant::twitch::{
@@ -217,6 +218,7 @@ fn start_chat(
     let (pubsub_tx, rx) = channel::<ChannelMessages>();
     let announce_tx = pubsub_tx.clone();
     let chat_tx = pubsub_tx.clone();
+    let eventsub_tx = pubsub_tx.clone();
 
     let token = oauth_token.clone();
     let id = client_id.clone();
@@ -241,6 +243,12 @@ fn start_chat(
     let (socket_tx, socket_rx) = channel::<ChannelMessages>();
     thread::spawn(|| {
         start_websocket(socket_rx);
+    });
+
+    let id = client_id.clone();
+    let token = oauth_token.clone();
+    thread::spawn(|| {
+        start_eventsub(token, id, eventsub_tx);
     });
 
     install_hooks()?;

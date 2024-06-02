@@ -19,28 +19,11 @@ use crate::commands::{get_action, get_reward};
 use crate::tui::{MessageParts, Symbol};
 use crate::utils::get_data_directory;
 
+use super::api::{get_user, get_user_profile, User};
 use super::parse::{
     get_lines, get_message_symbols, get_screen_lines, write_to_buffer, RedeemMessage, RenderCursor, TwitchMessage,
 };
 use super::ChannelMessages;
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct TwitchApiResponse<T> {
-    pub data: T,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct User {
-    pub id: String,
-    pub login: String,
-    pub display_name: String,
-    pub r#type: String,
-    pub broadcaster_type: String,
-    pub description: String,
-    pub profile_image_url: String,
-    pub offline_image_url: String,
-    pub created_at: String,
-}
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct SocketMessage {
@@ -292,29 +275,12 @@ pub fn send_to_error_log(err: String, json: String) {
 fn add_user_profile_url(message_data: &mut MessageData, credentials: &Credentials) -> Result<(), Box<dyn Error>> {
     match message_data.data {
         SubMessage::Points(ref mut sub_message) => {
-            let api_url = "https://api.twitch.tv/helix/users";
             let id = &sub_message.redemption.user.id;
-            let response = ureq::get(api_url)
-                .set(
-                    "Authorization",
-                    &format!("Bearer {}", credentials.oauth_token.replace("oauth:", "")),
-                )
-                .set("Client-Id", credentials.client_id.as_str())
-                .query_pairs(vec![("id", id.as_str())])
-                .call();
+            let user_profile = get_user_profile(id.as_str(), credentials);
 
-            if response.is_err() {
-                send_to_error_log("Error getting user profile pic".to_string(), format!("{response:?}"));
-                return Ok(());
+            if let Ok(profile_url) = user_profile {
+                sub_message.redemption.user.profile_url = profile_url;
             }
-
-            let response = response.unwrap();
-            send_to_error_log("user profile pic response:".to_string(), format!("{response:?}"));
-
-            let mut response: TwitchApiResponse<Vec<User>> = serde_json::from_reader(response.into_reader())?;
-            let user = response.data.swap_remove(0);
-
-            sub_message.redemption.user.profile_url = Some(user.profile_image_url);
 
             Ok(())
         }
@@ -478,7 +444,11 @@ fn refund_points(
     let area = None;
 
     let _ = tx.send(ChannelMessages::TwitchMessage(TwitchMessage::RedeemMessage {
-        message: RedeemMessage { message, area },
+        message: RedeemMessage {
+            message,
+            area,
+            color: None,
+        },
     }));
 
     let _ = tx.send(ChannelMessages::TwitchMessage(TwitchMessage::RedeemMessage {
@@ -487,6 +457,7 @@ fn refund_points(
                 .expect("Invalid UTF-8")
                 .to_string(),
             area,
+            color: None,
         },
     }));
 }
@@ -494,27 +465,6 @@ fn refund_points(
 pub struct Credentials {
     pub oauth_token: Arc<String>,
     pub client_id: Arc<String>,
-}
-
-pub fn get_user(oauth_token: &str, client_id: &str) -> Result<User, Box<dyn Error>> {
-    let get_users_url = "https://api.twitch.tv/helix/users";
-    let response = ureq::get(get_users_url)
-        .set(
-            "Authorization",
-            &format!("Bearer {}", oauth_token.replace("oauth:", "")),
-        )
-        .set("Client-Id", client_id)
-        .call();
-
-    let Ok(response) = response else {
-        return Err("Failed to get user data".into());
-    };
-
-    let mut response: TwitchApiResponse<Vec<User>> = serde_json::from_reader(response.into_reader())?;
-
-    let user = response.data.swap_remove(0);
-
-    Ok(user)
 }
 
 pub fn connect_to_pub_sub(

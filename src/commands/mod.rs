@@ -6,7 +6,7 @@ use base64::prelude::*;
 
 use crate::utils::get_data_directory;
 
-const TWITCH_SCOPES: [&str; 13] = [
+const TWITCH_SCOPES: [&str; 17] = [
     "channel:read:subscriptions",
     "chat:read",
     "chat:edit",
@@ -20,6 +20,10 @@ const TWITCH_SCOPES: [&str; 13] = [
     "chat_login",
     "bits:read",
     "channel:moderate",
+    "channel:read:ads",
+    "user:read:chat",
+    "user:bot",
+    "channel:bot",
 ];
 
 const TWITCH_CREATE_TOKEN: &str = "https://twitchtokengenerator.com/api/create/[APP_NAME]/[SCOPES]";
