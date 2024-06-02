@@ -25,7 +25,7 @@ pub fn start_websocket(messages_rx: Receiver<ChannelMessages>) {
         }
     });
 
-    let server = TcpListener::bind("127.0.0.1:54321").unwrap();
+    let server = TcpListener::bind("0.0.0.0:8765").unwrap();
     for stream in server.incoming() {
         spawn(move || {
             let mut websocket = accept(stream.unwrap()).unwrap();
