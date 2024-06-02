@@ -324,12 +324,9 @@ fn handle_message(
                 match sub_message.data {
                     SubMessage::Points(ref sub_message) => {
                         let reward = get_reward(&sub_message.redemption.reward.title);
-                        let irc_action = get_action(&sub_message.redemption.reward.title);
 
                         let found_command = if reward.is_ok() {
                             reward
-                        } else if irc_action.is_ok() {
-                            irc_action
                         } else {
                             break 'commands;
                         };

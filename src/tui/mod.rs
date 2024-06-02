@@ -1,3 +1,4 @@
+use crate::commands::get_action;
 use crate::scrollview::scroll_view::ScrollView;
 use crate::scrollview::state::ScrollViewState;
 
@@ -7,6 +8,7 @@ use color_eyre::eyre;
 use ratatui::prelude::*;
 
 use std::io::{self, stdout, Stdout};
+use std::process::{self, Command};
 use std::str::FromStr;
 use std::sync::mpsc::{Receiver, Sender};
 use std::{error::Error, fs};
@@ -532,6 +534,55 @@ fn get_list(directory: &str) -> Result<Vec<String>, Box<dyn Error>> {
     }
 
     Ok(commands)
+}
+
+pub fn check_for_irc_actions(message: &str, display_name: &str) {
+    let irc_actions_list = get_list("irc_actions");
+    if let Ok(list) = &irc_actions_list {
+        for item in list {
+            let command = format!("!{}", item);
+            if message == command {
+                let _ = execute_command(item, display_name);
+            }
+        }
+    }
+}
+
+pub fn execute_command(command: &str, display_name: &str) -> Result<(), Box<dyn Error>> {
+    let irc_action = get_action(command);
+
+    let found_command = if irc_action.is_ok() {
+        irc_action
+    } else {
+        return Ok(());
+    };
+
+    let Ok(command_name) = found_command else {
+        return Ok(());
+    };
+
+    let command_result = Command::new(&command_name)
+        .arg(display_name)
+        .stdout(process::Stdio::piped())
+        .stderr(process::Stdio::piped())
+        .output()
+        .expect("irc action failed");
+
+    let command_success = command_result.status.success();
+
+    if !command_success {
+        send_to_error_log(
+            command_name.to_string(),
+            "Error running irc_action command with input: {}".to_string(),
+        );
+
+        send_to_error_log(
+            format!("{} output: {:?}", command_name, command_result),
+            "Error running reward command with input: {}".to_string(),
+        );
+    }
+
+    Ok(())
 }
 
 pub fn check_for_chat_commands(message: &str, client: &mut TwitchIRC) {

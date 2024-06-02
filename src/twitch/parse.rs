@@ -17,7 +17,7 @@ use ratatui::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    tui::{check_for_chat_commands, MessageParts, Symbol},
+    tui::{check_for_chat_commands, check_for_irc_actions, MessageParts, Symbol},
     utils::get_data_directory,
 };
 
@@ -1064,6 +1064,7 @@ fn parse_privmsg(irc_message: IrcMessage, client: &mut TwitchIRC) -> TwitchMessa
     let badges_symbols = get_badges_symbols(&badges, &client.badges);
     let message = irc_message.parameters.to_string();
     check_for_chat_commands(&message, client);
+    check_for_irc_actions(&message, irc_message.sender);
 
     TwitchMessage::PrivMessage {
         message: ChatMessage {

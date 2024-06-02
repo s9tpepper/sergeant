@@ -28,3 +28,17 @@ sergeant commands list
 # add a recurring announcement every 5 mins:
 sergeant commands add spam "Spam your Twitch channel all you want" 5
 ```
+
+## sergeant rewards
+Use this to add, remove, and list rewards. Rewards are linked directly to Twitch reward redemptions. You can directly link a Twitch redeem to an arbitrary CLI command. If the redeem takes user input, the input is passed on to the CLI command as well as the display_name of the Twitch user that redeemed the reward.
+```
+# Link a Twitch redeem named "spotify" to a CLI command named "spt":
+sergeant rewards add spotify spt
+
+# remove reward:
+sergeant rewards remove spotify
+
+# list commands:
+sergeant rewards list
+```
+
