@@ -392,6 +392,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "color-name"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8cabd7573f60c1096a1e2bd82b2dc03a8063e607c698e15189a476c3541d65c"
+
+[[package]]
 name = "color-spantrace"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1855,6 +1861,7 @@ dependencies = [
  "base64 0.21.7",
  "clap 4.5.4",
  "color-eyre",
+ "color-name",
  "colored",
  "crossterm",
  "directories",

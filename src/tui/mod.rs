@@ -7,6 +7,7 @@ use color_eyre::eyre;
 use ratatui::prelude::*;
 
 use std::io::{self, stdout, Stdout};
+use std::str::FromStr;
 use std::sync::mpsc::{Receiver, Sender};
 use std::{error::Error, fs};
 use std::{panic, time};
@@ -142,8 +143,35 @@ impl App {
                     // noop here
                     ChannelMessages::Announcement(_) => {}
 
-                    // TODO: Figure out which notifications we want to surface in the TUI
-                    ChannelMessages::Notifications(_) => {}
+                    ChannelMessages::Notifications(subscription_event) => {
+                        if let Some(notice_type) = &subscription_event.notice_type {
+                            match notice_type.as_str() {
+                                "announcement" => {
+                                    let mut color = String::from_str("grey").unwrap();
+                                    if let Some(announcement) = &subscription_event.announcement {
+                                        color = announcement.color.to_string();
+                                    }
+                                    let rgb = color_name::Color::val().by_string(color);
+                                    let message_color = rgb.unwrap_or((128, 128, 128).into());
+
+                                    if let Some(message) = &subscription_event.message {
+                                        let redeem_message = RedeemMessage {
+                                            message: message.text.clone(),
+                                            area: None,
+                                            color: Some(message_color.into()),
+                                        };
+
+                                        let redeem_message = TwitchMessage::RedeemMessage {
+                                            message: redeem_message,
+                                        };
+                                        self.chat_log.insert(0, ChannelMessages::TwitchMessage(redeem_message));
+                                    }
+                                }
+
+                                &_ => {}
+                            }
+                        }
+                    }
                 }
 
                 let _ = self.persist_chat_log();
