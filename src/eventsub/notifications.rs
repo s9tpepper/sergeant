@@ -6,6 +6,8 @@ use crate::twitch::{
     ChannelMessages,
 };
 
+use super::structs::SubscriptionEvent;
+
 pub fn channel_ad_break_begin_notification(duration_seconds: Option<u64>, tx: Sender<ChannelMessages>) {
     if let Some(duration_seconds) = duration_seconds {
         let ad_message = format!("Starting {duration_seconds} second ad break...");
@@ -25,5 +27,25 @@ pub fn chat_clear_user_messages_notification(display_name: Option<String>, tx: S
         let message = ClearMessageByUser { display_name };
         let twitch_message = TwitchMessage::ClearMessageByUser { message };
         let _ = tx.send(twitch::ChannelMessages::TwitchMessage(twitch_message));
+    }
+}
+
+pub fn channel_chat_notification(
+    event: Option<SubscriptionEvent>,
+    tui_tx: Sender<ChannelMessages>,
+    socket_tx: Sender<ChannelMessages>,
+) {
+    if let Some(event) = event {
+        if let Some(ref notice_type) = event.notice_type {
+            match notice_type.as_str() {
+                "announcement" => {
+                    let _ = tui_tx.send(ChannelMessages::Notifications(Box::new(event.clone())));
+                }
+
+                &_ => {}
+            }
+        }
+
+        let _ = socket_tx.send(ChannelMessages::Notifications(Box::new(event)));
     }
 }

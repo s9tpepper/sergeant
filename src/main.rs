@@ -247,8 +247,9 @@ fn start_chat(
 
     let id = client_id.clone();
     let token = oauth_token.clone();
+    let eventsub_socket_tx = socket_tx.clone();
     thread::spawn(|| {
-        start_eventsub(token, id, eventsub_tx);
+        start_eventsub(token, id, eventsub_tx, eventsub_socket_tx);
     });
 
     install_hooks()?;

@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::eventsub::structs::SubscriptionEvent;
+
 use self::{announcements::Announcement, parse::TwitchMessage, pubsub::MessageData};
 
 pub mod announcements;
@@ -15,6 +17,7 @@ pub enum ChannelMessages {
     MessageData(MessageData),
     Announcement(Announcement),
     TwitchMessage(TwitchMessage),
+    Notifications(Box<SubscriptionEvent>),
 }
 
 #[cfg(test)]

@@ -185,6 +185,10 @@ impl TwitchIRC {
                             let _ = self.tx.send(ChannelMessages::TwitchMessage(message));
                         }
 
+                        Ok(TwitchMessage::ClearMessageByUser { .. }) => {
+                            // NOTE: This message is being used by EventSub
+                        }
+
                         Ok(TwitchMessage::PingMessage { message }) => {
                             let pong_message = format!("PONG {message}");
 

@@ -1,4 +1,5 @@
 pub mod notifications;
+pub mod structs;
 pub mod subscriptions;
 
 use std::{
@@ -12,10 +13,13 @@ use tungstenite::{stream::MaybeTlsStream, WebSocket};
 use crate::twitch::ChannelMessages;
 
 use self::{
-    notifications::{channel_ad_break_begin_notification, chat_clear_user_messages_notification},
+    notifications::{
+        channel_ad_break_begin_notification, channel_chat_notification, chat_clear_user_messages_notification,
+    },
+    structs::{Subscription, SubscriptionEvent},
     subscriptions::{
-        channel_ad_break_begin, channel_chat_clear_user_messages, Subscription, SubscriptionEvent,
-        CHANNEL_AD_BREAK_BEGIN, CHAT_CLEAR_USER_MESSAGES,
+        channel_ad_break_begin, channel_chat_clear_user_messages, CHANNEL_AD_BREAK_BEGIN, CHANNEL_CHAT_NOTIFICATION,
+        CHAT_CLEAR_USER_MESSAGES,
     },
 };
 
@@ -51,10 +55,15 @@ pub struct Message {
     payload: Payload,
 }
 
-pub fn start_eventsub(oauth_token: Arc<String>, client_id: Arc<String>, tx: Sender<ChannelMessages>) {
+pub fn start_eventsub(
+    oauth_token: Arc<String>,
+    client_id: Arc<String>,
+    tx: Sender<ChannelMessages>,
+    socket_tx: Sender<ChannelMessages>,
+) {
     match tungstenite::connect(EVENT_SUB) {
         Ok((ref mut socket, _)) => {
-            listen(socket, oauth_token, client_id, tx);
+            listen(socket, oauth_token, client_id, tx, socket_tx);
         }
         Err(_) => todo!(),
     }
@@ -65,6 +74,7 @@ fn listen(
     oauth_token: Arc<String>,
     client_id: Arc<String>,
     tx: Sender<ChannelMessages>,
+    socket_tx: Sender<ChannelMessages>,
 ) {
     loop {
         if let Ok(message) = socket.read() {
@@ -94,6 +104,12 @@ fn listen(
                                     CHAT_CLEAR_USER_MESSAGES => {
                                         if let Some(SubscriptionEvent { target_user_login, .. }) = msg.payload.event {
                                             chat_clear_user_messages_notification(target_user_login, tx.clone());
+                                        }
+                                    }
+
+                                    CHANNEL_CHAT_NOTIFICATION => {
+                                        if let Some(SubscriptionEvent { .. }) = msg.payload.event {
+                                            channel_chat_notification(msg.payload.event, tx.clone(), socket_tx.clone());
                                         }
                                     }
 

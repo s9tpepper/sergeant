@@ -141,6 +141,9 @@ impl App {
 
                     // noop here
                     ChannelMessages::Announcement(_) => {}
+
+                    // TODO: Figure out which notifications we want to surface in the TUI
+                    ChannelMessages::Notifications(_) => {}
                 }
 
                 let _ = self.persist_chat_log();
