@@ -28,7 +28,6 @@ sergeant commands list
 # add a recurring announcement every 5 mins:
 sergeant commands add spam "Spam your Twitch channel all you want" 5
 ```
-
 ## sergeant rewards
 Use this to add, remove, and list rewards. Rewards are linked directly to Twitch reward redemptions. You can directly link a Twitch redeem to an arbitrary CLI command. If the redeem takes user input, the input is passed on to the CLI command as well as the display_name of the Twitch user that redeemed the reward.
 ```
@@ -38,7 +37,22 @@ sergeant rewards add spotify spt
 # remove reward:
 sergeant rewards remove spotify
 
-# list commands:
+# list rewards:
 sergeant rewards list
 ```
 
+## sergeant irc-actions
+Use this to add, remove, and list irc-actions. IRC actions are linked directly to IRC !commands. You can directly link a an arbitrary !command to an arbitrary CLI command. The display_name of the Twitch user that sent the chat command is sent to the CLI command.
+```
+# Link a irc-action named "boom" to a CLI command named "any-cli-command":
+sergeant irc-actions add boom any-cli-command
+
+# remove irc-action:
+sergeant irc-actions remove spotify
+
+# list irc-actions:
+sergeant irc-actions list
+```
+
+## Overlay Server
+The `sergeant chat` command also starts a WebSocket server that can be used to build OBS overlays. All supported Twitch IRC, PubSub, and EventSub messages are posted to the WebSocket server so that they can be used to build a web based interface. The WebSocket server runs on port 8765.
