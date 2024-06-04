@@ -1,3 +1,4 @@
+use descape::UnescapeExt;
 use std::{error::Error, path::PathBuf};
 
 use directories::ProjectDirs;
@@ -17,4 +18,15 @@ pub fn get_data_directory(path: Option<&str>) -> Result<PathBuf, Box<dyn Error>>
     }
 
     Err("Could not get data directory".into())
+}
+
+pub fn unescape(escaped_str: &str) -> String {
+    escaped_str.to_unescaped().unwrap().replace(r"\s", " ")
+}
+
+#[test]
+fn test_unescape() {
+    let test_string = r"7\\sraiders\\sfrom\\sMatisseTec\\shave\\sjoined!";
+
+    assert_eq!(unescape(test_string), r"7 raiders from MatisseTec have joined!");
 }

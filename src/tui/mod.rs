@@ -1,6 +1,7 @@
 use crate::commands::get_action;
 use crate::scrollview::scroll_view::ScrollView;
 use crate::scrollview::state::ScrollViewState;
+use crate::utils::unescape;
 
 use color_eyre::config::HookBuilder;
 use color_eyre::eyre;
@@ -22,8 +23,8 @@ use ratatui::backend::CrosstermBackend;
 use color_eyre::{eyre::Result, eyre::WrapErr};
 
 use crate::tui;
-use crate::twitch::parse::Text;
 use crate::twitch::parse::{Emote, RedeemMessage};
+use crate::twitch::parse::{RaidMessage, Text};
 use crate::twitch::pubsub::{send_to_error_log, SubMessage};
 use crate::twitch::ChannelMessages;
 use crate::{
@@ -339,9 +340,12 @@ impl<'a> StatefulWidget for &mut Scroller<'a> {
             // self.app.chat_log.push(ChannelMessages::TwitchMessage(chat_message));
             //
             // let message = RaidMessage {
-            //     display_name: "some_person".to_string(),
-            //     user_id: "1234".to_string(),
-            //     raid_notice: "1 raiders from some_person have joined!".to_string(),
+            //     // display_name: "some_person".to_string(),
+            //     // user_id: "1234".to_string(),
+            //     // raid_notice: "1 raiders from some_person have joined!".to_string(),
+            //     display_name: "MatisseTec".to_string(),
+            //     user_id: "468106723".to_string(),
+            //     raid_notice: unescape(r"7\\sraiders\\sfrom\\sMatisseTec\\shave\\sjoined!"),
             //     area: None,
             // };
             //

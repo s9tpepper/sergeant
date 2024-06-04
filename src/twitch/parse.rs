@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     tui::{check_for_chat_commands, check_for_irc_actions, MessageParts, Symbol},
-    utils::get_data_directory,
+    utils::{get_data_directory, unescape},
 };
 
 use super::{api::TwitchApiResponse, irc::TwitchIRC};
@@ -1111,11 +1111,13 @@ fn parse_usernotice(message: IrcMessage) -> TwitchMessage {
     }
 
     if is_raid && !system_msg.is_empty() {
+        let raid_notice = unescape(&system_msg);
+
         let message = RaidMessage {
-            area: None,
-            raid_notice: system_msg,
+            raid_notice,
             user_id,
             display_name,
+            area: None,
         };
 
         return TwitchMessage::RaidMessage { message };

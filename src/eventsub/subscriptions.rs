@@ -42,8 +42,6 @@ fn request_subscription(
             .set("Content-Type", "application/json")
             .send_json(subscription);
 
-        dbg!(&subscription_result);
-
         if let Err(error) = subscription_result {
             send_to_error_log("Subscription Error:".to_string(), error.to_string());
         }

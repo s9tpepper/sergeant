@@ -11,12 +11,13 @@ categories = ["command-line-utilities"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-base64 = "0.21.7"
+base64 = "0.22.1"
 clap = { version = "4.5.1", features = ["derive", "env", "cargo"] }
 color-eyre = "0.6.3"
 color-name = "1.1.0"
 colored = "2.1.0"
 crossterm = "0.27.0"
+descape = "1.1.2"
 directories = "5.0.1"
 dotenv = { version = "0.15.0", features = ["cli", "clap"] }
 features = "0.10.0"
@@ -27,7 +28,7 @@ openssl = "0.10.63"
 ratatui = "0.26.2"
 serde = { version = "1.0.196", features = ["alloc", "derive", "serde_derive"] } 
 serde_json = "1.0.113"
-tungstenite = { version = "0.21.0", features = ["native-tls"] }
+tungstenite = { version = "0.23.0", features = ["native-tls"] }
 ureq = { version = "2.9.6", features = ["json"] }
 url = "2.5.0"
 uuid = "1.7.0"
