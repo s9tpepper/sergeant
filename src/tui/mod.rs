@@ -347,6 +347,10 @@ impl<'a> StatefulWidget for &mut Scroller<'a> {
             //     user_id: "468106723".to_string(),
             //     raid_notice: unescape(r"7\\sraiders\\sfrom\\sMatisseTec\\shave\\sjoined!"),
             //     area: None,
+            //     r: 128,
+            //     g: 1,
+            //     b: 249,
+            //     direction: 1,
             // };
             //
             // self.app
@@ -368,6 +372,13 @@ impl<'a> StatefulWidget for &mut Scroller<'a> {
             //         channel: "some_channel".to_string(),
             //         raw: "raw message".to_string(),
             //         area: None,
+            //         animation_id: "rainbow-eclipse".to_string(),
+            //         can_animate: true,
+            //         r: 128,
+            //         g: 1,
+            //         b: 249,
+            //         direction: 1,
+            //         timestamp: None,
             //     },
             // };
             // self.app.chat_log.push(ChannelMessages::TwitchMessage(chat_message));

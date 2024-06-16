@@ -115,6 +115,12 @@ impl TwitchIRC {
     pub fn display_msg(&self, message: &str) {
         let _ = self.tx.send(ChannelMessages::TwitchMessage(TwitchMessage::PrivMessage {
             message: ChatMessage {
+                animation_id: String::from(""),
+                can_animate: false,
+                r: 0,
+                g: 0,
+                b: 0,
+                direction: 0,
                 id: String::from(""),
                 badges: vec![],
                 emotes: vec![],

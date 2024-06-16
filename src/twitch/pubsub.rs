@@ -15,7 +15,7 @@ use tungstenite::connect;
 use tungstenite::Error::{AlreadyClosed, ConnectionClosed, Io};
 use tungstenite::Message::{self, Close, Ping, Text};
 
-use crate::commands::{get_action, get_reward};
+use crate::commands::get_reward;
 use crate::tui::{MessageParts, Symbol};
 use crate::utils::get_data_directory;
 

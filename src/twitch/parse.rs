@@ -21,7 +21,7 @@ use crate::{
     utils::{get_data_directory, unescape},
 };
 
-use super::{api::TwitchApiResponse, irc::TwitchIRC};
+use super::{api::TwitchApiResponse, irc::TwitchIRC, pubsub::send_to_error_log};
 
 const ESCAPE: &str = "\x1b";
 const BELL: &str = "\x07";
@@ -106,6 +106,12 @@ impl Clone for Emote {
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ChatMessage {
+    pub animation_id: String,
+    pub can_animate: bool,
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+    pub direction: i8,
     pub id: String,
     pub badges: Vec<Emote>,
     pub emotes: Vec<Emote>,
@@ -568,7 +574,8 @@ impl Widget for &mut ChatMessage {
             y: area.bottom(),
         };
 
-        let needs_borders = self.first_msg;
+        let is_animated = self.animation_id != *"";
+        let needs_borders = self.first_msg || is_animated;
 
         // NOTE: Used to test first time chatter decoration
         // let needs_borders = self.message.len() % 2 > 0;
@@ -598,14 +605,40 @@ impl Widget for &mut ChatMessage {
         cursor.y = cursor.y.saturating_sub(writeable_area.height) + 1;
 
         if needs_borders {
+            let title = if self.first_msg { "✨First time chatter" } else { "" };
+
+            let border_style = if self.first_msg && !is_animated {
+                Style::reset().fg(Color::Rgb(255, 255, 0))
+            } else if self.animation_id == "rainbow-eclipse" {
+                if self.direction == 1 {
+                    self.r = self.r.wrapping_add(1);
+                } else {
+                    self.r = self.r.wrapping_sub(1);
+                }
+
+                if self.r == 255 {
+                    self.direction = -1;
+                } else if self.r == 0 {
+                    self.direction = 1;
+                }
+                Style::reset().fg(Color::Rgb(self.r, self.g, self.b))
+            } else {
+                Style::reset().fg(Color::Rgb(255, 255, 0))
+            };
+
+            let border_type = if is_animated {
+                symbols::border::THICK
+            } else {
+                symbols::border::ROUNDED
+            };
+
             Block::bordered()
-                .border_set(symbols::border::ROUNDED)
-                .border_style(Style::reset().fg(Color::Rgb(255, 255, 0)))
-                .title("✨First time chatter")
+                .border_set(border_type)
+                .border_style(border_style)
+                .title(title)
                 .render(
                     Rect {
                         x: cursor.x,
-                        // y: cursor.y + 1,
                         y: cursor.y,
                         width: area.width - 2,
                         height: screen_lines.len() as u16 + 2,
@@ -648,6 +681,10 @@ pub struct ClearMessage {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RaidMessage {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+    pub direction: i8,
     pub display_name: String,
     pub user_id: String,
     pub raid_notice: String,
@@ -777,6 +814,8 @@ pub fn parse(mut message: &str, client: &mut TwitchIRC) -> Result<TwitchMessage,
 
     // Check if the message contains tags
     if message.starts_with('@') {
+        message = &message[1..];
+
         let Some((tags_str, msg)) = message.split_once(' ') else {
             return Err("Could not parse message".into());
         };
@@ -790,6 +829,8 @@ pub fn parse(mut message: &str, client: &mut TwitchIRC) -> Result<TwitchMessage,
     }
 
     if message.starts_with(':') {
+        message = &message[1..];
+
         let Some((left, msg)) = message.split_once(' ') else {
             return Err("Could not parse message".into());
         };
@@ -1020,9 +1061,12 @@ fn parse_privmsg(irc_message: IrcMessage, client: &mut TwitchIRC) -> TwitchMessa
     let mut emotes: Vec<Emote> = vec![];
     let mut id = String::new();
     let mut timestamp = String::new();
+    let mut animation_id = String::new();
 
     for (tag, value) in irc_message.tags {
         match tag {
+            "animation-id" => animation_id = value.to_string(),
+
             "tmi-sent-ts" => timestamp = value.to_string(),
 
             "user-type" => set_badges(format!("{value}/1").as_str(), &mut badges),
@@ -1066,6 +1110,7 @@ fn parse_privmsg(irc_message: IrcMessage, client: &mut TwitchIRC) -> TwitchMessa
     check_for_chat_commands(&message, client);
     check_for_irc_actions(&message, irc_message.sender, client);
 
+    let can_animate = animation_id != *"";
     TwitchMessage::PrivMessage {
         message: ChatMessage {
             id,
@@ -1076,12 +1121,18 @@ fn parse_privmsg(irc_message: IrcMessage, client: &mut TwitchIRC) -> TwitchMessa
             moderator,
             color,
             message,
+            animation_id,
+            can_animate,
             timestamp: Some(timestamp),
             badges: badges_symbols.unwrap_or_default(),
             nickname: irc_message.sender.to_string(),
             channel: irc_message.channel.to_string(),
             raw: irc_message.raw.to_string(),
             area: None,
+            r: 128,
+            g: 1,
+            b: 249,
+            direction: 1,
         },
     }
 }
@@ -1118,6 +1169,10 @@ fn parse_usernotice(message: IrcMessage) -> TwitchMessage {
             user_id,
             display_name,
             area: None,
+            r: 0,
+            g: 0,
+            b: 0,
+            direction: 1,
         };
 
         return TwitchMessage::RaidMessage { message };
