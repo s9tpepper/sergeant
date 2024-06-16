@@ -372,6 +372,7 @@ impl<'a> StatefulWidget for &mut Scroller<'a> {
             //         channel: "some_channel".to_string(),
             //         raw: "raw message".to_string(),
             //         area: None,
+            //         animation_id: "simmer".to_string(),
             //         animation_id: "rainbow-eclipse".to_string(),
             //         can_animate: true,
             //         r: 128,
@@ -382,7 +383,7 @@ impl<'a> StatefulWidget for &mut Scroller<'a> {
             //     },
             // };
             // self.app.chat_log.push(ChannelMessages::TwitchMessage(chat_message));
-
+            //
             // let data = SubMessage::Sub(SubscribeEvent {
             //     area: None,
             //     topic: "topic string".to_string(),

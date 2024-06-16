@@ -4,6 +4,7 @@ use std::{
     fs,
     path::PathBuf,
     sync::{OnceLock, RwLock},
+    time::SystemTime,
 };
 
 use base64::prelude::*;
@@ -15,6 +16,7 @@ use ratatui::{
     widgets::{Block, Widget},
 };
 use serde::{Deserialize, Serialize};
+use time::{OffsetDateTime, UtcOffset};
 
 use crate::{
     tui::{check_for_chat_commands, check_for_irc_actions, MessageParts, Symbol},
@@ -605,7 +607,26 @@ impl Widget for &mut ChatMessage {
         cursor.y = cursor.y.saturating_sub(writeable_area.height) + 1;
 
         if needs_borders {
-            let title = if self.first_msg { "✨First time chatter" } else { "" };
+            let icons: Vec<&str> = vec![
+                "━━━━━━━🔷━━━🦄━━🔴━━━━💜━━🐶━",
+                "━━🔷━━━🐶━━━━━━💜━━🔴━━━🦄━━━",
+                "━━━━━━💜━━━━🔴━━━🦄━━🔷━━━🐶━",
+                "━━🦄━━━━━🔷━━━🐶━━🔴━━━━💜━━━",
+                "━━━━━🐶━━🔴━━━━━💜━━🔷━━━━━🦄",
+            ];
+
+            let title = if self.first_msg {
+                "✨First time chatter"
+            } else if self.animation_id == "simmer" {
+                let now = SystemTime::now();
+                let time: OffsetDateTime = now.into();
+                let seconds = time.second();
+                let index = (seconds as usize) % icons.len();
+
+                icons.get(index).unwrap()
+            } else {
+                ""
+            };
 
             let border_style = if self.first_msg && !is_animated {
                 Style::reset().fg(Color::Rgb(255, 255, 0))
