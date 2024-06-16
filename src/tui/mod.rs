@@ -540,19 +540,19 @@ fn get_list(directory: &str) -> Result<Vec<String>, Box<dyn Error>> {
     Ok(commands)
 }
 
-pub fn check_for_irc_actions(message: &str, display_name: &str) {
+pub fn check_for_irc_actions(message: &str, display_name: &str, client: &mut TwitchIRC) {
     let irc_actions_list = get_list("irc_actions");
     if let Ok(list) = &irc_actions_list {
         for item in list {
             let command = format!("!{}", item);
             if message == command {
-                let _ = execute_command(item, display_name);
+                let _ = execute_command(item, display_name, client);
             }
         }
     }
 }
 
-pub fn execute_command(command: &str, display_name: &str) -> Result<(), Box<dyn Error>> {
+pub fn execute_command(command: &str, display_name: &str, client: &mut TwitchIRC) -> Result<(), Box<dyn Error>> {
     let irc_action = get_action(command);
 
     let found_command = if irc_action.is_ok() {
@@ -565,7 +565,11 @@ pub fn execute_command(command: &str, display_name: &str) -> Result<(), Box<dyn 
         return Ok(());
     };
 
-    let command_result = Command::new(&command_name)
+    let Some((command_name, command_option)) = command_name.split_once(' ') else {
+        return Ok(());
+    };
+
+    let command_result = Command::new(command_name)
         .arg(display_name)
         .stdout(process::Stdio::piped())
         .stderr(process::Stdio::piped())
@@ -573,6 +577,11 @@ pub fn execute_command(command: &str, display_name: &str) -> Result<(), Box<dyn 
         .expect("irc action failed");
 
     let command_success = command_result.status.success();
+    if command_success && command_option == "chat" {
+        if let Ok(stdout) = String::from_utf8(command_result.stdout.clone()) {
+            client.send_privmsg(&stdout);
+        }
+    }
 
     if !command_success {
         send_to_error_log(

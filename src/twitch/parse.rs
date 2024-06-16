@@ -1064,7 +1064,7 @@ fn parse_privmsg(irc_message: IrcMessage, client: &mut TwitchIRC) -> TwitchMessa
     let badges_symbols = get_badges_symbols(&badges, &client.badges);
     let message = irc_message.parameters.to_string();
     check_for_chat_commands(&message, client);
-    check_for_irc_actions(&message, irc_message.sender);
+    check_for_irc_actions(&message, irc_message.sender, client);
 
     TwitchMessage::PrivMessage {
         message: ChatMessage {
