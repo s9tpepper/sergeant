@@ -77,15 +77,70 @@ impl App {
         }
     }
 
+    pub fn handle_events(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
+        let available = event::poll(time::Duration::from_millis(16))?;
+        if available {
+            match event::read()? {
+                // NOTE: it's important to check that the event is a key press event as
+                // crossterm also emits key release and repeat events on Windows.
+                Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
+                    send_to_error_log(
+                        format!(">>> DEBUG: Handling this key event: {:?}", key_event.code),
+                        "".to_string(),
+                    );
+
+                    self.handle_key_event(key_event, terminal).wrap_err_with(|| {
+                        send_to_error_log(
+                            format!(">>> ERROR: Couldnt do this key event: {:?}", key_event.code),
+                            "".to_string(),
+                        );
+
+                        format!("Failed to handle key event: {:?}", key_event.code)
+                    })
+                }
+
+                _ => Ok(()),
+            }
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn handle_key_event(
+        &mut self,
+        key_event: KeyEvent,
+        terminal: &mut Terminal<CrosstermBackend<Stdout>>,
+    ) -> Result<()> {
+        match key_event.code {
+            KeyCode::Char('q') => self.exit(),
+            KeyCode::Char('j') => self.scroll_view_state.scroll_down(),
+            KeyCode::Char('k') => self.scroll_view_state.scroll_up(),
+            KeyCode::Char('f') => self.scroll_view_state.scroll_page_down(),
+            KeyCode::Char('b') => self.scroll_view_state.scroll_page_up(),
+            KeyCode::Char('g') => self.scroll_view_state.scroll_to_top(),
+            KeyCode::Char('G') => self.scroll_view_state.scroll_to_bottom(),
+            _ => {}
+        }
+
+        terminal.draw(|frame| self.render(frame))?;
+
+        Ok(())
+    }
+
     pub fn run(&mut self, rx: Receiver<ChannelMessages>, socket_tx: Sender<ChannelMessages>) -> Result<()> {
         let mut terminal = Terminal::new(CrosstermBackend::new(stdout())).expect("No TUI");
 
         execute!(stdout(), EnterAlternateScreen)?;
+
         enable_raw_mode()?;
 
         let _ = self.restore_chat_log();
 
+        terminal.draw(|frame| self.render(frame))?;
+
         while !self.exit {
+            let _ = self.handle_events(&mut terminal);
+
             if let Ok(message) = rx.try_recv() {
                 match &message {
                     ChannelMessages::TwitchMessage(message) => {
@@ -190,16 +245,17 @@ impl App {
                         "Success".to_string(),
                     );
                 }
-            }
 
-            terminal.draw(|frame| self.render(frame))?;
+                terminal.draw(|frame| self.render(frame))?;
+            }
         }
 
         Ok(())
     }
 
     fn render(&mut self, frame: &mut Frame) {
-        frame.render_widget(self, frame.size());
+        let mut state = self.scroll_view_state;
+        frame.render_stateful_widget(self, frame.size(), &mut state);
     }
 
     fn exit(&mut self) {
@@ -246,63 +302,12 @@ impl App {
     }
 }
 
-impl Widget for &mut App {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        buf.reset();
-
-        let mut scroll_view_state = self.scroll_view_state;
-        let mut scroller = Scroller::new(self);
-        scroller.render(area, buf, &mut scroll_view_state);
-        let _ = scroller.handle_events();
-    }
-}
-
-struct Scroller<'a> {
-    app: &'a mut App,
-}
-
-impl<'a> Scroller<'a> {
-    pub fn new(app: &'a mut App) -> Self {
-        Scroller { app }
-    }
-
-    pub fn handle_events(&mut self) -> Result<()> {
-        let available = event::poll(time::Duration::from_millis(16))?;
-        if available {
-            match event::read()? {
-                // NOTE: it's important to check that the event is a key press event as
-                // crossterm also emits key release and repeat events on Windows.
-                Event::Key(key_event) if key_event.kind == KeyEventKind::Press => self
-                    .handle_key_event(key_event)
-                    .wrap_err_with(|| format!("Failed to handle key event: {:?}", key_event.code)),
-
-                _ => Ok(()),
-            }
-        } else {
-            Ok(())
-        }
-    }
-
-    fn handle_key_event(&mut self, key_event: KeyEvent) -> Result<()> {
-        match key_event.code {
-            KeyCode::Char('q') => self.app.exit(),
-            KeyCode::Char('j') => self.app.scroll_view_state.scroll_down(),
-            KeyCode::Char('k') => self.app.scroll_view_state.scroll_up(),
-            KeyCode::Char('f') => self.app.scroll_view_state.scroll_page_down(),
-            KeyCode::Char('b') => self.app.scroll_view_state.scroll_page_up(),
-            KeyCode::Char('g') => self.app.scroll_view_state.scroll_to_top(),
-            KeyCode::Char('G') => self.app.scroll_view_state.scroll_to_bottom(),
-            _ => {}
-        }
-
-        Ok(())
-    }
-}
-
-impl<'a> StatefulWidget for &mut Scroller<'a> {
+impl StatefulWidget for &mut App {
     type State = ScrollViewState;
 
     fn render(self, area: Rect, buf: &mut Buffer, _state: &mut Self::State) {
+        buf.reset();
+
         let content_size = layout::Size {
             // Subtract one to avoid getting horizontal scrollbar from tui-scrollview
             width: area.width.saturating_sub(1),
@@ -314,8 +319,8 @@ impl<'a> StatefulWidget for &mut Scroller<'a> {
         let mut available_area = area;
         available_area.height = content_size.height;
 
-        if self.app.chat_log.is_empty() {
-            self.app.scroll_view_state.scroll_to_bottom();
+        if self.chat_log.is_empty() {
+            self.scroll_view_state.scroll_to_bottom();
 
             // NOTE: Push messages here to test with
             //
@@ -429,7 +434,7 @@ impl<'a> StatefulWidget for &mut Scroller<'a> {
             //     .push(ChannelMessages::MessageData(MessageData { data }))
         }
 
-        self.app.chat_log.iter_mut().for_each(|message| {
+        self.chat_log.iter_mut().for_each(|message| {
             let message_area = match message {
                 ChannelMessages::TwitchMessage(message) => match message {
                     TwitchMessage::PrivMessage { message } => {
@@ -477,7 +482,7 @@ impl<'a> StatefulWidget for &mut Scroller<'a> {
             }
         });
 
-        scroll_view.render(buf.area, buf, &mut self.app.scroll_view_state);
+        scroll_view.render(buf.area, buf, &mut self.scroll_view_state);
     }
 }
 
@@ -517,14 +522,6 @@ pub fn output(message: TwitchMessage, client: &mut TwitchIRC) {
 pub fn get_list_commands() -> Result<Vec<String>, Box<dyn Error>> {
     get_list("chat_commands")
 }
-
-/// Initialize the terminal
-// pub fn init() -> io::Result<Tui> {
-//     execute!(stdout(), EnterAlternateScreen)?;
-//     enable_raw_mode()?;
-//     Terminal::new(CrosstermBackend::new(stdout()))
-//     // Terminal::new(TestBackend::new(320, 240))
-// }
 
 /// Restore the terminal to its original state
 pub fn restore() -> io::Result<()> {
