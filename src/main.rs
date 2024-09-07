@@ -3,6 +3,7 @@ use dotenv::dotenv;
 use sergeant::eventsub::start_eventsub;
 use sergeant::tui::{install_hooks, restore, App};
 use sergeant::twitch::api::{refresh_token, validate};
+use sergeant::twitch::irc::TwitchIrcClient;
 use sergeant::twitch::{
     announcements::start_announcements, irc::TwitchIRC, parse::get_badges, pubsub::connect_to_pub_sub, ChannelMessages,
 };

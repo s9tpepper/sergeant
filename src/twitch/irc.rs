@@ -26,6 +26,13 @@ pub struct TwitchIRC {
     pub badges: Option<Vec<BadgeItem>>,
 }
 
+pub trait TwitchIrcClient {
+    fn display_msg(&self, message: &str);
+    fn listen(&mut self);
+    fn send_privmsg(&mut self, message: &str);
+    fn get_badges(&self) -> Option<Vec<BadgeItem>>;
+}
+
 const CONN_MAX_RETRIES: u8 = 3;
 pub const MESSAGE_DELIMITER: &str = "\r\n";
 
@@ -112,7 +119,39 @@ impl TwitchIRC {
         }
     }
 
-    pub fn display_msg(&self, message: &str) {
+    fn load_channel_badges(&mut self) -> Result<(), Box<dyn Error>> {
+        // Get channel badges
+        let user = get_user(&self.oauth_token, &self.client_id)?;
+        let channel_badges = ureq::get(
+            format!(
+                "https://api.twitch.tv/helix/chat/badges?broadcaster_id={}",
+                user.id.as_str()
+            )
+            .as_str(),
+        )
+        .set("Client-ID", &self.client_id)
+        .set(
+            "Authorization",
+            &format!("Bearer {}", self.oauth_token.replace("oauth:", "")),
+        )
+        .call();
+
+        if let Ok(response) = channel_badges {
+            let response: TwitchApiResponse<Vec<BadgeItem>> = serde_json::from_reader(response.into_reader())?;
+
+            self.badges = Some(response.data);
+        }
+
+        Ok(())
+    }
+}
+
+impl TwitchIrcClient for TwitchIRC {
+    fn get_badges(&self) -> Option<Vec<BadgeItem>> {
+        self.badges.clone()
+    }
+
+    fn display_msg(&self, message: &str) {
         let _ = self.tx.send(ChannelMessages::TwitchMessage(TwitchMessage::PrivMessage {
             message: ChatMessage {
                 animation_id: String::from(""),
@@ -139,38 +178,12 @@ impl TwitchIRC {
         }));
     }
 
-    pub fn send_privmsg(&mut self, message: &str) {
+    fn send_privmsg(&mut self, message: &str) {
         let message = format!("PRIVMSG #{} :{message}", self.nickname);
         let _ = self.socket.send(message.into());
     }
 
-    fn load_channel_badges(&mut self) -> Result<(), Box<dyn Error>> {
-        // Get channel badges
-        let user = get_user(&self.oauth_token, &self.client_id)?;
-        let channel_badges = ureq::get(
-            format!(
-                "https://api.twitch.tv/helix/chat/badges?broadcaster_id={}",
-                user.id.as_str()
-            )
-            .as_str(),
-        )
-        .set("Client-ID", &self.client_id)
-        .set(
-            "Authorization",
-            &format!("Bearer {}", self.oauth_token.replace("oauth:", "")),
-        )
-        .call();
-
-        if let Ok(response) = channel_badges {
-            let response: TwitchApiResponse<Vec<BadgeItem>> = serde_json::from_reader(response.into_reader())?;
-
-            self.badges = Some(response.data);
-        }
-
-        Ok(())
-    }
-
-    pub fn listen(&mut self) {
+    fn listen(&mut self) {
         let _ = self.load_channel_badges();
 
         loop {

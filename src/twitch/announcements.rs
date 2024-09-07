@@ -1,3 +1,5 @@
+use crate::twitch::irc::TwitchIrcClient;
+
 use std::{
     error::Error,
     fs,

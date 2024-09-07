@@ -23,7 +23,11 @@ use crate::{
     utils::{get_data_directory, unescape},
 };
 
-use super::{api::TwitchApiResponse, irc::TwitchIRC, pubsub::send_to_error_log};
+use super::{
+    api::TwitchApiResponse,
+    irc::{TwitchIRC, TwitchIrcClient},
+    pubsub::send_to_error_log,
+};
 
 const ESCAPE: &str = "\x1b";
 const BELL: &str = "\x07";
@@ -724,7 +728,7 @@ pub struct RedeemMessage {
     pub color: Option<(u8, u8, u8)>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct BadgeVersion {
     id: String,
     // title: String,
@@ -736,7 +740,7 @@ pub struct BadgeVersion {
     // image_url_4x: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BadgeItem {
     set_id: String,
     versions: Vec<BadgeVersion>,
@@ -825,7 +829,7 @@ pub fn get_badges(token: &str, client_id: &str) -> AsyncResult<Vec<BadgeItem>> {
     Ok(response.data)
 }
 
-pub fn parse(mut message: &str, client: &mut TwitchIRC) -> Result<TwitchMessage, Box<dyn Error>> {
+pub fn parse(mut message: &str, client: &mut impl TwitchIrcClient) -> Result<TwitchMessage, Box<dyn Error>> {
     let raw = message;
 
     let mut tags = vec![];
@@ -1072,7 +1076,7 @@ fn parse_clearmsg(irc_message: IrcMessage) -> TwitchMessage {
     }
 }
 
-fn parse_privmsg(irc_message: IrcMessage, client: &mut TwitchIRC) -> TwitchMessage {
+fn parse_privmsg(irc_message: IrcMessage, client: &mut impl TwitchIrcClient) -> TwitchMessage {
     let mut badges: Vec<Badge> = vec![];
     let mut color = "#FF9912".to_string();
     let mut first_msg = false;
@@ -1126,7 +1130,7 @@ fn parse_privmsg(irc_message: IrcMessage, client: &mut TwitchIRC) -> TwitchMessa
         }
     }
 
-    let badges_symbols = get_badges_symbols(&badges, &client.badges);
+    let badges_symbols = get_badges_symbols(&badges, &client.get_badges());
     let message = irc_message.parameters.to_string();
     check_for_chat_commands(&message, client);
     check_for_irc_actions(&message, irc_message.sender, client);
@@ -1203,3 +1207,14 @@ fn parse_usernotice(message: IrcMessage) -> TwitchMessage {
         message: message.raw.to_string(),
     }
 }
+
+// mod parse_tests {
+//     use super::parse;
+//
+//     fn test_parse() {
+//         // pub fn parse(mut message: &str, client: &mut TwitchIRC) -> Result<TwitchMessage, Box<dyn Error>> {
+//         let message = "".to_string();
+//
+//         parse(message, client)
+//     }
+// }
