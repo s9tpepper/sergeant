@@ -16,18 +16,14 @@ use ratatui::{
     widgets::{Block, Widget},
 };
 use serde::{Deserialize, Serialize};
-use time::{OffsetDateTime, UtcOffset};
+use time::OffsetDateTime;
 
 use crate::{
     tui::{check_for_chat_commands, check_for_irc_actions, MessageParts, Symbol},
     utils::{get_data_directory, unescape},
 };
 
-use super::{
-    api::TwitchApiResponse,
-    irc::{TwitchIRC, TwitchIrcClient},
-    pubsub::send_to_error_log,
-};
+use super::{api::TwitchApiResponse, irc::TwitchIrcClient};
 
 const ESCAPE: &str = "\x1b";
 const BELL: &str = "\x07";
@@ -1208,10 +1204,10 @@ fn parse_usernotice(message: IrcMessage) -> TwitchMessage {
     }
 }
 
+#[cfg(test)]
 mod parse_tests {
     use crate::twitch::irc::TwitchIrcClient;
-
-    use super::parse;
+    use crate::twitch::parse::parse;
 
     struct TestTwitchIrc {}
 

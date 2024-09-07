@@ -190,8 +190,11 @@ impl TwitchIrcClient for TwitchIRC {
             if let Ok(message) = self.socket.read() {
                 // NOTE: Twitch could send multiple messages at once, so we need to split them
                 // The messages are separated by '\r\n'
-                let messages = message.to_text().unwrap().split(MESSAGE_DELIMITER);
-                let messages = messages.map(tungstenite::Message::from);
+                let Ok(messages_text) = message.to_text() else {
+                    continue;
+                };
+
+                let messages = messages_text.split(MESSAGE_DELIMITER).map(tungstenite::Message::from);
 
                 messages.for_each(|message| match message {
                     tungstenite::Message::Text(new_message) => match parse(&new_message, self) {

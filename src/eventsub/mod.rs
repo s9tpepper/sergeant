@@ -25,6 +25,7 @@ use self::{
 
 const EVENT_SUB: &str = "wss://eventsub.wss.twitch.tv:443/ws?keepalive_timeout_seconds=30";
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 struct Session {
     id: String,
@@ -35,6 +36,7 @@ struct Session {
     recovery_url: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 struct Metadata {
     message_id: String,

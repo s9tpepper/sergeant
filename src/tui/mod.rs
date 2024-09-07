@@ -2,13 +2,11 @@ use crate::commands::get_action;
 use crate::scrollview::scroll_view::ScrollView;
 use crate::scrollview::state::ScrollViewState;
 use crate::twitch::irc::TwitchIrcClient;
-use crate::utils::unescape;
 
 use color_eyre::config::HookBuilder;
 use color_eyre::eyre;
 
 use ratatui::prelude::*;
-use test_messages::get_raid_message;
 
 use std::io::{self, stdout, Stdout};
 use std::process::{self, Command};
@@ -20,13 +18,12 @@ use std::{panic, time};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use crossterm::{execute, terminal::*};
 use ratatui::backend::CrosstermBackend;
-// use ratatui::{backend::TestBackend, prelude::*};
 
 use color_eyre::{eyre::Result, eyre::WrapErr};
 
 use crate::tui;
+use crate::twitch::parse::Text;
 use crate::twitch::parse::{Emote, RedeemMessage};
-use crate::twitch::parse::{RaidMessage, Text};
 use crate::twitch::pubsub::{send_to_error_log, SubMessage};
 use crate::twitch::ChannelMessages;
 use crate::{
@@ -140,8 +137,9 @@ impl App {
 
         let _ = self.restore_chat_log();
 
-        let test_raid_message = get_raid_message();
-        self.chat_log.insert(0, test_raid_message);
+        // NOTE: Test messages can go here for now
+        // let test_raid_message = get_raid_message();
+        // self.chat_log.insert(0, test_raid_message);
 
         terminal.draw(|frame| self.render(frame))?;
 
@@ -240,7 +238,7 @@ impl App {
                 }
 
                 // NOTE: Comment out for local dev
-                // let _ = self.persist_chat_log();
+                let _ = self.persist_chat_log();
 
                 let socket_tx_send_result = socket_tx.send(message);
                 if let Err(send_error) = socket_tx_send_result {
