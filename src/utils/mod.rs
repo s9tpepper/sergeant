@@ -21,7 +21,12 @@ pub fn get_data_directory(path: Option<&str>) -> Result<PathBuf, Box<dyn Error>>
 }
 
 pub fn unescape(escaped_str: &str) -> String {
-    escaped_str.to_unescaped().unwrap().replace(r"\s", " ")
+    let unescape_result = escaped_str.to_unescaped();
+    if let Ok(unescaped_str) = unescape_result {
+        return unescaped_str.replace(r"\s", " ");
+    }
+
+    escaped_str.to_string().replace(r"\s", " ")
 }
 
 #[test]
@@ -29,4 +34,11 @@ fn test_unescape() {
     let test_string = r"7\\sraiders\\sfrom\\sMatisseTec\\shave\\sjoined!";
 
     assert_eq!(unescape(test_string), r"7 raiders from MatisseTec have joined!");
+}
+
+#[test]
+fn test_unescape_2() {
+    let test_string = r"1\sraiders\sfrom\svei_bean\shave\sjoined!";
+
+    assert_eq!(unescape(test_string), r"1 raiders from vei_bean have joined!");
 }
