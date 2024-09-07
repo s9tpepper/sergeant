@@ -1231,8 +1231,8 @@ mod parse_tests {
 
     #[test]
     fn test_parse() {
-        // pub fn parse(mut message: &str, client: &mut TwitchIRC) -> Result<TwitchMessage, Box<dyn Error>> {
         let mut client = TestTwitchIrc::new();
+
         let message = r"@badge-info=;badges=;color=#FF4500;display-name=vei_bean;emotes=;flags=;id=4c33fcb0-9337-4e68-b7d0-3a3049ad7cfd;login=vei_bean;mod=0;msg-id=raid;msg-param-displayName=vei_bean;msg-param-login=vei_bean;msg-param-profileImageURL=https://static-cdn.jtvnw.net/jtv_user_pictures/618358c1-993a-4a2d-b0b9-a51d1827c659-profile_image-%s.png;msg-param-viewerCount=1;room-id=961536166;subscriber=0;system-msg=1\sraiders\sfrom\svei_bean\shave\sjoined!;tmi-sent-ts=1708304703515;user-id=624578741;user-type=;vip=0 :tmi.twitch.tv USERNOTICE #s9tpepper_".to_string();
 
         let parse_result = parse(&message, &mut client);
