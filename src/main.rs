@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use dotenv::dotenv;
+use sergeant::admin::admin;
 use sergeant::eventsub::start_eventsub;
 use sergeant::tui::{install_hooks, restore, App};
 use sergeant::twitch::api::{refresh_token, validate};
@@ -93,6 +94,8 @@ enum RewardSubCmds {
 
 #[derive(Subcommand)]
 enum Cmds {
+    Admin,
+
     /// Start Twitch Chat client
     Chat {
         /// Your Twitch username
@@ -146,6 +149,75 @@ struct Cli {
     commands: Cmds,
 }
 
+fn main() {
+    // Load ENV vars with DotEnv
+    dotenv().ok();
+
+    let cli = Cli::parse();
+    match cli.commands {
+        Cmds::Admin => start_admin(),
+
+        Cmds::Chat {
+            twitch_name,
+            oauth_token,
+            client_id,
+            skip_announcements,
+        } => {
+            let (name, token, id, refresh) = get_credentials(twitch_name, oauth_token, client_id, None).unwrap();
+
+            let name = Arc::new(name);
+            let id = Arc::new(id);
+            let token = Arc::new(token);
+            let refresh = Arc::new(refresh);
+
+            let _ = start_chat(name, token, id, refresh, skip_announcements);
+        }
+
+        Cmds::Commands { cmd } => match cmd {
+            SubCmds::List => {
+                list_commands();
+            }
+            SubCmds::Add { name, message, timing } => {
+                add_command(&name, &message, timing);
+            }
+            SubCmds::Remove { name } => {
+                remove_command(&name);
+            }
+        },
+
+        Cmds::IrcActions { cmd } => match cmd {
+            IrcActionSubCmds::List => {
+                list_actions();
+            }
+            IrcActionSubCmds::Add { name, cli } => {
+                let _ = add_action(&name, &cli);
+            }
+            IrcActionSubCmds::Remove { name } => {
+                let _ = remove_action(&name);
+            }
+        },
+
+        Cmds::Rewards { cmd } => match cmd {
+            RewardSubCmds::List => {
+                list_rewards();
+            }
+            RewardSubCmds::Add { name, cli } => {
+                let _ = add_reward(&name, &cli);
+            }
+            RewardSubCmds::Remove { name } => {
+                let _ = remove_reward(&name);
+            }
+        },
+
+        // Cmds::SendMessage { message } => {
+        //     send_message(&message);
+        // }
+        Cmds::Login => {
+            start_login_flow();
+        }
+    };
+}
+
 fn get_credentials(
     twitch_name: Option<String>,
     oauth_token: Option<String>,
@@ -178,6 +250,11 @@ fn get_credentials(
             }
         }
     }
+}
+
+// Starts the admin TUI for viewing and editing your commands/etc
+fn start_admin() {
+    admin()
 }
 
 fn start_chat(
@@ -324,71 +401,4 @@ fn start_login_flow() {
     if result.is_err() {
         exit(5);
     }
-}
-
-fn main() {
-    // Load ENV vars with DotEnv
-    dotenv().ok();
-
-    let cli = Cli::parse();
-    match cli.commands {
-        Cmds::Chat {
-            twitch_name,
-            oauth_token,
-            client_id,
-            skip_announcements,
-        } => {
-            let (name, token, id, refresh) = get_credentials(twitch_name, oauth_token, client_id, None).unwrap();
-
-            let name = Arc::new(name);
-            let id = Arc::new(id);
-            let token = Arc::new(token);
-            let refresh = Arc::new(refresh);
-
-            let _ = start_chat(name, token, id, refresh, skip_announcements);
-        }
-
-        Cmds::Commands { cmd } => match cmd {
-            SubCmds::List => {
-                list_commands();
-            }
-            SubCmds::Add { name, message, timing } => {
-                add_command(&name, &message, timing);
-            }
-            SubCmds::Remove { name } => {
-                remove_command(&name);
-            }
-        },
-
-        Cmds::IrcActions { cmd } => match cmd {
-            IrcActionSubCmds::List => {
-                list_actions();
-            }
-            IrcActionSubCmds::Add { name, cli } => {
-                let _ = add_action(&name, &cli);
-            }
-            IrcActionSubCmds::Remove { name } => {
-                let _ = remove_action(&name);
-            }
-        },
-
-        Cmds::Rewards { cmd } => match cmd {
-            RewardSubCmds::List => {
-                list_rewards();
-            }
-            RewardSubCmds::Add { name, cli } => {
-                let _ = add_reward(&name, &cli);
-            }
-            RewardSubCmds::Remove { name } => {
-                let _ = remove_reward(&name);
-            }
-        },
-
-        // Cmds::SendMessage { message } => {
-        //     send_message(&message);
-        // }
-        Cmds::Login => {
-            start_login_flow();
-        }
-    };
 }
