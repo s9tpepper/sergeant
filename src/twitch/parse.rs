@@ -700,7 +700,7 @@ pub struct ClearMessage {
     pub message_id: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct RaidMessage {
     pub r: u8,
     pub g: u8,
