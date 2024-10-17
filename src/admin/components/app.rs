@@ -1,14 +1,46 @@
-use anathema::{component::Component, state::State};
+use anathema::{
+    component::Component,
+    state::{CommonVal, State, Value},
+};
 
 #[derive(Default)]
 pub struct App;
 
 #[derive(Default, State)]
-pub struct AppState {}
+pub struct AppState {
+    main_display: Value<MainDisplay>,
+}
+
+#[derive(Default)]
+enum MainDisplay {
+    #[default]
+    InfoView,
+    CommandsView,
+    AnnouncementsView,
+    RewardsView,
+    IrcActionsView,
+    // NOTE: Maybe don't need login
+    Login,
+}
+
+impl State for MainDisplay {
+    fn to_common(&self) -> Option<anathema::state::CommonVal<'_>> {
+        match self {
+            MainDisplay::InfoView => Some(CommonVal::Str("InfoView")),
+            MainDisplay::CommandsView => Some(CommonVal::Str("CommandsView")),
+            MainDisplay::AnnouncementsView => Some(CommonVal::Str("AnnouncementsView")),
+            MainDisplay::RewardsView => Some(CommonVal::Str("RewardsView")),
+            MainDisplay::IrcActionsView => Some(CommonVal::Str("IrcActionsView")),
+            MainDisplay::Login => Some(CommonVal::Str("Login")),
+        }
+    }
+}
 
 impl AppState {
     pub fn new() -> Self {
-        AppState {}
+        AppState {
+            main_display: MainDisplay::InfoView.into(),
+        }
     }
 }
 
@@ -17,6 +49,62 @@ impl Component for App {
     type Message = String;
 
     fn accept_focus(&self) -> bool {
-        false
+        true
+    }
+
+    fn on_focus(
+        &mut self,
+        _: &mut Self::State,
+        _: anathema::widgets::Elements<'_, '_>,
+        _: anathema::prelude::Context<'_, Self::State>,
+    ) {
+        // println!("app is focused");
+    }
+
+    fn on_key(
+        &mut self,
+        key: anathema::component::KeyEvent,
+        state: &mut Self::State,
+        _: anathema::widgets::Elements<'_, '_>,
+        mut context: anathema::prelude::Context<'_, Self::State>,
+    ) {
+        match key.code {
+            anathema::component::KeyCode::Char(char) => match char {
+                'c' => {
+                    state.main_display.set(MainDisplay::CommandsView);
+                    context.set_focus("id", "commands_view");
+                }
+                'a' => {}
+                'r' => {}
+                'i' => {}
+                'l' => {}
+
+                _ => {}
+            },
+
+            anathema::component::KeyCode::Esc => todo!(),
+
+            _ => {}
+        }
+    }
+
+    fn receive(
+        &mut self,
+        ident: &str,
+        _value: CommonVal<'_>,
+        state: &mut Self::State,
+        _: anathema::widgets::Elements<'_, '_>,
+        mut context: anathema::prelude::Context<'_, Self::State>,
+    ) {
+        match ident {
+            "close_commands_view" => {
+                state.main_display.set(MainDisplay::InfoView);
+                context.set_focus("id", "app");
+            }
+
+            "something" => {}
+
+            _ => {}
+        }
     }
 }

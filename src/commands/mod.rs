@@ -1,3 +1,4 @@
+use anathema::state::{State, Value};
 use core::time::*;
 use serde::{Deserialize, Serialize};
 use std::{error::Error, fs, thread::sleep};
@@ -97,6 +98,47 @@ pub fn get_list(directory: &str) -> Result<Vec<String>, Box<dyn Error>> {
 
 pub fn get_list_commands() -> Result<Vec<String>, Box<dyn Error>> {
     get_list("chat_commands")
+}
+
+#[derive(State)]
+pub struct Command {
+    pub name: Value<String>,
+    pub contents: Value<String>,
+}
+
+pub fn get_list_with_contents(directory: &str) -> Result<Vec<Command>, Box<dyn Error>> {
+    let command_path = get_data_directory(Some(directory))?;
+    let mut commands: Vec<Command> = vec![];
+    let dir_entries = fs::read_dir(command_path)?;
+
+    for entry in dir_entries {
+        let entry = entry?;
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+
+        let file_name = path.file_name();
+        if file_name.is_none() {
+            continue;
+        }
+
+        let file_name = file_name.unwrap();
+        let name = file_name.to_string_lossy().to_string();
+        let contents = fs::read_to_string(path);
+        if contents.is_err() {
+            continue;
+        }
+
+        let contents = contents.unwrap();
+
+        commands.push(Command {
+            name: name.into(),
+            contents: contents.into(),
+        });
+    }
+
+    Ok(commands)
 }
 
 pub fn remove_chat_command(command_name: &str) -> Result<(), Box<dyn Error>> {

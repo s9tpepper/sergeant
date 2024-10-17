@@ -6,7 +6,11 @@ vstack
 
   expand
     zstack
-      @info_view [id: "info_view"]
+      if main_display == "InfoView"
+        @info_view [id: "info_view"]
+
+      if main_display == "CommandsView"
+        @commands_view (close_commands_view -> close_commands_view) [id: "commands_view"]
 
   container [height: 1, background: "#6441a5", foreground: "#000000"]
     expand

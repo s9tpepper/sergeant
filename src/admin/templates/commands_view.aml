@@ -1,0 +1,14 @@
+zstack
+  border [border_style: "╭─╮│╯─╰│"]
+    vstack
+      expand
+        overflow
+          vstack
+            for command in commands
+              hstack [foreground: "dark_grey"]
+                container [width: 15]
+                  text command.name
+                    span ": "
+                text command.contents
+
+  text "╭─Commands List: "

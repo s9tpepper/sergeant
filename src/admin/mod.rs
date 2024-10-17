@@ -7,9 +7,10 @@ use anathema::{
 };
 use components::{
     app::{App, AppState},
+    commands_view::{CommandsView, CommandsViewState},
     info_view::{InfoView, InfoViewState},
 };
-use templates::{APP_TEMPLATE, INFO_VIEW_TEMPLATE};
+use templates::{APP_TEMPLATE, COMMANDS_VIEW_TEMPLATE, INFO_VIEW_TEMPLATE};
 
 mod components;
 mod templates;
@@ -30,10 +31,10 @@ impl Admin {
     }
 
     pub fn run(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let doc = Document::new("@app");
+        let doc = Document::new("@app [id: \"app\"]");
 
         let tui = TuiBackend::builder()
-            .enable_alt_screen()
+            // .enable_alt_screen()
             .enable_raw_mode()
             .hide_cursor()
             .finish();
@@ -59,6 +60,14 @@ impl Admin {
 
     fn register_components(&mut self, builder: &mut RuntimeBuilder<TuiBackend, ()>) {
         let _ = builder.register_component("app", APP_TEMPLATE, App, AppState::new());
+
         let _ = builder.register_component("info_view", INFO_VIEW_TEMPLATE, InfoView, InfoViewState::new());
+
+        let _ = builder.register_component(
+            "commands_view",
+            COMMANDS_VIEW_TEMPLATE,
+            CommandsView,
+            CommandsViewState::new(),
+        );
     }
 }
