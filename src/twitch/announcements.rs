@@ -70,9 +70,9 @@ pub fn get_announcements() -> Result<Vec<Announcement>, Box<dyn Error>> {
 }
 
 pub fn start_announcements(
-    twitch_name: Arc<String>,
-    oauth_token: Arc<String>,
-    client_id: Arc<String>,
+    twitch_name: &str,
+    oauth_token: &str,
+    client_id: &str,
     tx: Sender<ChannelMessages>,
     skip_announcements: bool,
 ) -> Result<(), Box<dyn Error>> {
@@ -81,7 +81,7 @@ pub fn start_announcements(
     }
 
     let mut announcements = get_announcements()?;
-    let mut twitch_irc = TwitchIRC::new(twitch_name.clone(), oauth_token.clone(), client_id.clone(), tx.clone());
+    let mut twitch_irc = TwitchIRC::new(twitch_name, oauth_token, client_id, tx.clone());
 
     loop {
         if let Ok(message) = twitch_irc.socket.read() {

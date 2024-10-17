@@ -36,7 +36,7 @@ pub trait TwitchIrcClient {
 const CONN_MAX_RETRIES: u8 = 3;
 pub const MESSAGE_DELIMITER: &str = "\r\n";
 
-fn connect(twitch_name: &Arc<String>, oauth_token: &Arc<String>, retry: u8) -> WebSocket<MaybeTlsStream<TcpStream>> {
+fn connect(twitch_name: &str, oauth_token: &str, retry: u8) -> WebSocket<MaybeTlsStream<TcpStream>> {
     if retry == CONN_MAX_RETRIES {
         send_to_error_log(
             "Unable to reconnect to Twitch IRC:".to_string(),
@@ -101,13 +101,8 @@ fn connect(twitch_name: &Arc<String>, oauth_token: &Arc<String>, retry: u8) -> W
 }
 
 impl TwitchIRC {
-    pub fn new(
-        twitch_name: Arc<String>,
-        oauth_token: Arc<String>,
-        client_id: Arc<String>,
-        tx: Sender<ChannelMessages>,
-    ) -> Self {
-        let socket = connect(&twitch_name, &oauth_token, 0);
+    pub fn new(twitch_name: &str, oauth_token: &str, client_id: &str, tx: Sender<ChannelMessages>) -> Self {
+        let socket = connect(twitch_name, oauth_token, 0);
 
         TwitchIRC {
             socket,

@@ -305,13 +305,13 @@ fn start_chat(
     let name = twitch_name.clone();
     let id = client_id.clone();
     thread::spawn(move || {
-        let _ = start_announcements(name, token, id, announce_tx, skip_announcements);
+        let _ = start_announcements(&name, &token, &id, announce_tx, skip_announcements);
     });
 
     let id = client_id.clone();
     let token = oauth_token.clone();
-    thread::spawn(|| {
-        let mut twitch_irc = TwitchIRC::new(twitch_name, token, id, chat_tx);
+    thread::spawn(move || {
+        let mut twitch_irc = TwitchIRC::new(&twitch_name, &token, &id, chat_tx);
         twitch_irc.listen();
     });
 
