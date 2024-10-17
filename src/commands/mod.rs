@@ -76,7 +76,7 @@ pub fn add_chat_command(command_name: &str, message: &str, timing: Option<usize>
     Ok(())
 }
 
-fn get_list(directory: &str) -> Result<Vec<String>, Box<dyn Error>> {
+pub fn get_list(directory: &str) -> Result<Vec<String>, Box<dyn Error>> {
     let command_path = get_data_directory(Some(directory))?;
     let mut commands = vec![];
     let dir_entries = fs::read_dir(command_path)?;

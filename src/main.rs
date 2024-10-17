@@ -14,7 +14,7 @@ use sergeant::commands::{
     list_actions, list_rewards, remove_action, remove_chat_command, remove_reward, TokenStatus,
 };
 
-use sergeant::utils::get_data_directory;
+use sergeant::utils::{get_data_directory, read_auth_token};
 use sergeant::websocket::start_websocket;
 use std::{
     error::Error,
@@ -94,6 +94,7 @@ enum RewardSubCmds {
 
 #[derive(Subcommand)]
 enum Cmds {
+    /// Open the admin dashboard
     Admin,
 
     /// Start Twitch Chat client
@@ -232,11 +233,7 @@ fn get_credentials(
         _ => {
             let error_message =
                 "You need to provide credentials via positional args, env vars, or by running the login command";
-            let mut data_dir = get_data_directory(Some("token")).expect(error_message);
-            data_dir.push("oath_token.txt");
-            let token_file = fs::read_to_string(data_dir)?;
-
-            let token_status: TokenStatus = serde_json::from_str(&token_file)?;
+            let token_status: TokenStatus = read_auth_token()?;
 
             if token_status.success {
                 Ok((

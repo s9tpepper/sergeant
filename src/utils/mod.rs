@@ -1,7 +1,20 @@
 use descape::UnescapeExt;
-use std::{error::Error, path::PathBuf};
+use std::{error::Error, fs, path::PathBuf};
 
 use directories::ProjectDirs;
+
+use crate::commands::TokenStatus;
+
+pub fn read_auth_token() -> core::result::Result<TokenStatus, Box<dyn Error>> {
+    let error_message =
+        "You need to provide credentials via positional args, env vars, or by running the login command";
+    let mut data_dir = get_data_directory(Some("token")).expect(error_message);
+    data_dir.push("oath_token.txt");
+
+    let token_file = fs::read_to_string(data_dir)?;
+
+    Ok(serde_json::from_str::<TokenStatus>(&token_file)?)
+}
 
 pub fn get_data_directory(path: Option<&str>) -> Result<PathBuf, Box<dyn Error>> {
     if let Some(project_directories) = ProjectDirs::from("com", "s9tpepper", "FerrisTwitch") {

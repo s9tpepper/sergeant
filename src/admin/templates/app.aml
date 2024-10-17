@@ -1,0 +1,15 @@
+vstack
+  container [height: 1, background: "#6441a5", foreground: "#000000"]
+    expand
+      hstack
+        text " Sergeant"
+
+  expand
+    zstack
+      @info_view [id: "info_view"]
+
+  container [height: 1, background: "#6441a5", foreground: "#000000"]
+    expand
+      hstack
+        spacer
+        text "(C)ommands (A)nnouncements (R)ewards (A)ctions (L)ogin "

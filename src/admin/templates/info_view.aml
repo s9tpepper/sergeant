@@ -1,0 +1,34 @@
+hstack
+  expand
+    zstack
+      border [id: "app_info", foreground: border_color, border_style: "╭─╮│╯─╰│"]
+        vstack
+          expand
+            vstack
+              hstack
+                text "Username: "
+                text username
+              hstack
+                text "Socket Server: "
+                text "127.0.0.1:" socket_server_port
+      text "╭─App Info: "
+
+  expand
+    zstack
+      border [id: "app_menu", foreground: border_color, border_style: "╭─╮│╯─╰│"]
+        vstack
+          expand
+              vstack
+                hstack
+                  text "Commands: "
+                  text commands_count
+                hstack
+                  text "Announcements: "
+                  text announcements_count
+                hstack
+                  text "Rewards: "
+                  text rewards_count
+                hstack
+                  text "IRC Actions: "
+                  text irc_actions_count
+      text "╭─App Stats: "

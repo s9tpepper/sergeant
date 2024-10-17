@@ -25,6 +25,7 @@ pub fn start_websocket(messages_rx: Receiver<ChannelMessages>) {
         }
     });
 
+    // TODO: Make the websocket server port configurable
     let server = TcpListener::bind("0.0.0.0:8765").unwrap();
     for stream in server.incoming() {
         spawn(move || {
