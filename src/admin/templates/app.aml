@@ -14,6 +14,12 @@ vstack
 
   container [height: 1, background: "#6441a5", foreground: "#000000"]
     expand
-      hstack
-        spacer
-        text "(C)ommands (A)nnouncements (R)ewards (A)ctions (L)ogin "
+      if main_display == "InfoView"
+        hstack
+          spacer
+          text "(C)ommands (A)nnouncements (R)ewards (A)ctions (L)ogin "
+
+      if main_display == "CommandsView"
+        hstack
+          spacer
+          text "(A)dd (E)dit (D)elete (B)ack "

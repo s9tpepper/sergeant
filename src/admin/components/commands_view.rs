@@ -5,6 +5,7 @@ use anathema::{
         Component,
         KeyCode::{Char, Esc},
     },
+    prelude::Context,
     state::{List, State, Value},
 };
 
@@ -15,14 +16,14 @@ pub struct CommandsView;
 
 #[derive(State)]
 pub struct CommandsViewState {
+    cursor: Value<u8>,
     commands: Value<List<Command>>,
-    none: Value<u8>,
 }
 
 impl CommandsViewState {
     pub fn new() -> Self {
         CommandsViewState {
-            none: 0.into(),
+            cursor: 0.into(),
             commands: List::empty(),
         }
     }
@@ -31,6 +32,10 @@ impl CommandsViewState {
 impl CommandsView {
     fn load_commands(&self) -> Result<Vec<Command>, Box<dyn Error>> {
         get_list_with_contents("chat_commands")
+    }
+
+    fn go_back(&self, mut context: Context<'_, CommandsViewState>) {
+        context.publish("close_commands_view", |state| &state.cursor);
     }
 }
 
@@ -46,7 +51,7 @@ impl Component for CommandsView {
         &mut self,
         state: &mut Self::State,
         _: anathema::widgets::Elements<'_, '_>,
-        _: anathema::prelude::Context<'_, Self::State>,
+        _: Context<'_, Self::State>,
     ) {
         match self.load_commands() {
             Ok(commands) => {
@@ -83,12 +88,19 @@ impl Component for CommandsView {
         key: anathema::component::KeyEvent,
         _: &mut Self::State,
         _: anathema::widgets::Elements<'_, '_>,
-        mut context: anathema::prelude::Context<'_, Self::State>,
+        context: Context<'_, Self::State>,
     ) {
         match key.code {
-            Char(_char) => {}
+            Char(char) => match char {
+                'a' => {}
+                'e' => {}
+                'd' => {}
+                'b' => self.go_back(context),
 
-            Esc => context.publish("close_commands_view", |state| &state.none),
+                _ => {}
+            },
+
+            Esc => self.go_back(context),
 
             _ => {}
         }
