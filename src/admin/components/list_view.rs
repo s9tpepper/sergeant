@@ -155,7 +155,7 @@ where
         event: anathema::component::KeyEvent,
         state: &mut ListViewState,
         _: anathema::widgets::Elements<'_, '_>,
-        mut context: anathema::prelude::Context<'_, ListViewState>,
+        context: anathema::prelude::Context<'_, ListViewState>,
     ) {
         match event.code {
             anathema::component::KeyCode::Char(char) => match char {
@@ -167,16 +167,16 @@ where
 
             anathema::component::KeyCode::Up => self.move_cursor_up(state),
             anathema::component::KeyCode::Down => self.move_cursor_down(state),
-
-            anathema::component::KeyCode::Esc => {
-                // NOTE: This sends cursor to satisfy publish() but is not used
-                context.publish("cancel_item_window", |state| &state.cursor)
-            }
-
+            anathema::component::KeyCode::Esc => self.send_cancel_view(context),
             anathema::component::KeyCode::Enter => self.send_item_selection(state, context),
 
             _ => {}
         }
+    }
+
+    fn send_cancel_view(&self, mut context: anathema::prelude::Context<'_, ListViewState>) {
+        // NOTE: This sends cursor to satisfy publish() but is not used
+        context.publish("cancel_item_window", |state| &state.cursor)
     }
 
     fn send_delete_selection(

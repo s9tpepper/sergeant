@@ -20,10 +20,6 @@ impl CommandsView {
     pub fn new() -> Self {
         CommandsView { commands: None }
     }
-
-    fn go_back(&self, mut context: Context<'_, ListViewState>) {
-        context.publish("close_commands_view", |state| &state.cursor);
-    }
 }
 
 impl Component for CommandsView {
@@ -80,12 +76,10 @@ impl Component for CommandsView {
                 'a' => context.publish("add_command", |state| &state.cursor),
                 'e' => self.send_item_selection(state, context),
                 'd' => self.send_delete_selection(state, context),
-                'b' => self.go_back(context),
+                'b' => self.send_cancel_view(context),
 
                 _ => ListComponent::on_key(self, event, state, elements, context),
             },
-
-            Esc => self.go_back(context),
 
             _ => ListComponent::on_key(self, event, state, elements, context),
         }
