@@ -91,7 +91,7 @@ impl Component for App {
     fn receive(
         &mut self,
         ident: &str,
-        _value: CommonVal<'_>,
+        value: CommonVal<'_>,
         state: &mut Self::State,
         _: anathema::widgets::Elements<'_, '_>,
         mut context: anathema::prelude::Context<'_, Self::State>,
@@ -102,7 +102,11 @@ impl Component for App {
                 context.set_focus("id", "app");
             }
 
-            "something" => {}
+            "add_command" => println!("Add new command dialog"),
+
+            "edit_command_selection" => println!("Selected item: {value}"),
+
+            "delete_command_selection" => println!("Selected item to delete: {value}"),
 
             _ => {}
         }

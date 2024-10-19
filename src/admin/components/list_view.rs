@@ -161,23 +161,7 @@ where
             anathema::component::KeyCode::Char(char) => match char {
                 'j' => self.move_cursor_down(state),
                 'k' => self.move_cursor_up(state),
-                'd' => {
-                    let selected_index = *state.cursor.to_ref() as usize;
-                    let list = self.get_list();
-                    let original_item = list.get(selected_index);
-
-                    match original_item {
-                        Some(item) => match serde_json::to_string(item) {
-                            Ok(item_json) => {
-                                state.selected_item.set(item_json);
-                                context.publish("delete_item", |state| &state.selected_item)
-                            }
-
-                            Err(_) => context.publish("cancel_item_window", |state| &state.cursor),
-                        },
-                        None => context.publish("cancel_item_window", |state| &state.cursor),
-                    }
-                }
+                'd' => self.send_delete_selection(state, context),
                 _ => {}
             },
 
@@ -189,24 +173,52 @@ where
                 context.publish("cancel_item_window", |state| &state.cursor)
             }
 
-            anathema::component::KeyCode::Enter => {
-                let selected_index = *state.cursor.to_ref() as usize;
-                let list = self.get_list();
-                let original_item = list.get(selected_index);
-
-                match original_item {
-                    Some(item) => match serde_json::to_string(item) {
-                        Ok(item_json) => {
-                            state.selected_item.set(item_json);
-                            context.publish("item_selection", |state| &state.selected_item);
-                        }
-                        Err(_) => context.publish("cancel_item_window", |state| &state.cursor),
-                    },
-                    None => context.publish("cancel_item_window", |state| &state.cursor),
-                }
-            }
+            anathema::component::KeyCode::Enter => self.send_item_selection(state, context),
 
             _ => {}
+        }
+    }
+
+    fn send_delete_selection(
+        &self,
+        state: &mut ListViewState,
+        mut context: anathema::prelude::Context<'_, ListViewState>,
+    ) {
+        let selected_index = *state.cursor.to_ref() as usize;
+        let list = self.get_list();
+        let original_item = list.get(selected_index);
+
+        match original_item {
+            Some(item) => match serde_json::to_string(item) {
+                Ok(item_json) => {
+                    state.selected_item.set(item_json);
+                    context.publish("delete_item_selection", |state| &state.selected_item)
+                }
+
+                Err(_) => context.publish("cancel_item_window", |state| &state.cursor),
+            },
+            None => context.publish("cancel_item_window", |state| &state.cursor),
+        }
+    }
+
+    fn send_item_selection(
+        &self,
+        state: &mut ListViewState,
+        mut context: anathema::prelude::Context<'_, ListViewState>,
+    ) {
+        let selected_index = *state.cursor.to_ref() as usize;
+        let list = self.get_list();
+        let original_item = list.get(selected_index);
+
+        match original_item {
+            Some(item) => match serde_json::to_string(item) {
+                Ok(item_json) => {
+                    state.selected_item.set(item_json);
+                    context.publish("item_selection", |state| &state.selected_item);
+                }
+                Err(_) => context.publish("cancel_item_window", |state| &state.cursor),
+            },
+            None => context.publish("cancel_item_window", |state| &state.cursor),
         }
     }
 

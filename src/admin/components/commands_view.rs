@@ -73,13 +73,13 @@ impl Component for CommandsView {
         event: anathema::component::KeyEvent,
         state: &mut Self::State,
         elements: anathema::widgets::Elements<'_, '_>,
-        context: Context<'_, Self::State>,
+        mut context: Context<'_, Self::State>,
     ) {
         match event.code {
             Char(char) => match char {
-                'a' => {}
-                'e' => {}
-                'd' => {}
+                'a' => context.publish("add_command", |state| &state.cursor),
+                'e' => self.send_item_selection(state, context),
+                'd' => self.send_delete_selection(state, context),
                 'b' => self.go_back(context),
 
                 _ => ListComponent::on_key(self, event, state, elements, context),
