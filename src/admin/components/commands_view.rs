@@ -1,108 +1,154 @@
-use std::error::Error;
-
 use anathema::{
     component::{
         Component,
         KeyCode::{Char, Esc},
     },
     prelude::Context,
-    state::{List, State, Value},
 };
+use serde::{Deserialize, Serialize};
 
 use crate::commands::{get_list_with_contents, Command};
 
+use super::list_view::{Item, ListComponent, ListViewState};
+
 #[derive(Default)]
-pub struct CommandsView;
-
-#[derive(State)]
-pub struct CommandsViewState {
-    cursor: Value<u8>,
-    commands: Value<List<Command>>,
-}
-
-impl CommandsViewState {
-    pub fn new() -> Self {
-        CommandsViewState {
-            cursor: 0.into(),
-            commands: List::empty(),
-        }
-    }
+pub struct CommandsView {
+    commands: Option<Vec<Cmd>>,
 }
 
 impl CommandsView {
-    fn load_commands(&self) -> Result<Vec<Command>, Box<dyn Error>> {
-        get_list_with_contents("chat_commands")
+    pub fn new() -> Self {
+        CommandsView { commands: None }
     }
 
-    fn go_back(&self, mut context: Context<'_, CommandsViewState>) {
+    fn go_back(&self, mut context: Context<'_, ListViewState>) {
         context.publish("close_commands_view", |state| &state.cursor);
     }
 }
 
 impl Component for CommandsView {
-    type State = CommandsViewState;
+    type State = ListViewState;
     type Message = String;
 
     fn accept_focus(&self) -> bool {
         true
     }
 
+    fn resize(
+        &mut self,
+        state: &mut Self::State,
+        _elements: anathema::widgets::Elements<'_, '_>,
+        context: Context<'_, Self::State>,
+    ) {
+        let size = context.viewport.size();
+        if size.height == 0 {
+            return;
+        }
+
+        let visible_items: u8 = (size.height.saturating_sub(5)) as u8;
+        state.visible_items.set(visible_items);
+        state.current_last_index.set(visible_items.saturating_sub(1));
+    }
+
     fn on_focus(
         &mut self,
         state: &mut Self::State,
-        _: anathema::widgets::Elements<'_, '_>,
-        _: Context<'_, Self::State>,
+        elements: anathema::widgets::Elements<'_, '_>,
+        context: Context<'_, Self::State>,
     ) {
-        match self.load_commands() {
-            Ok(commands) => {
-                loop {
-                    if state.commands.len() == 0 {
-                        break;
-                    }
-
-                    state.commands.remove(0);
-                }
-
-                commands.iter().for_each(|command| {
-                    state.commands.push(Command {
-                        name: command.name.to_ref().clone().into(),
-                        contents: command.contents.to_ref().clone().into(),
-                    });
-                });
-            }
-
-            Err(_err) => loop {
-                if state.commands.len() == 0 {
-                    break;
-                }
-
-                state.commands.remove(0);
-
-                // TODO: Raise error message dialog
-            },
+        let size = context.viewport.size();
+        if size.height == 0 {
+            return;
         }
+
+        let visible_items: u8 = (size.height.saturating_sub(5)) as u8;
+        state.visible_items.set(visible_items);
+        state.current_last_index.set(visible_items.saturating_sub(1));
+
+        ListComponent::on_focus(self, state, elements, context);
     }
 
     fn on_key(
         &mut self,
-        key: anathema::component::KeyEvent,
-        _: &mut Self::State,
-        _: anathema::widgets::Elements<'_, '_>,
+        event: anathema::component::KeyEvent,
+        state: &mut Self::State,
+        elements: anathema::widgets::Elements<'_, '_>,
         context: Context<'_, Self::State>,
     ) {
-        match key.code {
+        match event.code {
             Char(char) => match char {
                 'a' => {}
                 'e' => {}
                 'd' => {}
                 'b' => self.go_back(context),
 
-                _ => {}
+                _ => ListComponent::on_key(self, event, state, elements, context),
             },
 
             Esc => self.go_back(context),
 
-            _ => {}
+            _ => ListComponent::on_key(self, event, state, elements, context),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct Cmd {
+    pub name: String,
+    pub contents: String,
+    pub index: usize,
+}
+
+impl From<Command> for Cmd {
+    fn from(value: Command) -> Self {
+        Cmd {
+            name: value.name.to_ref().to_string(),
+            contents: value.contents.to_ref().to_string(),
+            index: 0,
+        }
+    }
+}
+
+impl From<Cmd> for Item {
+    fn from(value: Cmd) -> Self {
+        Item {
+            name: value.name.into(),
+            details: value.contents.into(),
+            index: value.index.into(),
+            color: "#333333".to_string().into(),
+        }
+    }
+}
+
+impl ListComponent<'_, Cmd> for CommandsView {
+    fn get_list(&self) -> Vec<Cmd> {
+        match &self.commands {
+            Some(commands) => commands.to_vec(),
+            None => vec![],
+        }
+    }
+
+    fn load(&mut self, _state: &mut super::list_view::ListViewState) {
+        match self.commands {
+            Some(_) => {}
+            None => match get_list_with_contents("chat_commands") {
+                Ok(commands) => {
+                    let cmds: Vec<Cmd> = commands
+                        .iter()
+                        .enumerate()
+                        .map(|(index, command)| Cmd {
+                            name: command.name.to_ref().clone(),
+                            contents: command.contents.to_ref().clone(),
+                            index,
+                        })
+                        .collect();
+
+                    self.commands = Some(cmds);
+                }
+                Err(_) => {
+                    self.commands = Some(vec![]);
+                }
+            },
         }
     }
 }

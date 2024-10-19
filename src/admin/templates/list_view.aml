@@ -1,6 +1,6 @@
 align [alignment: "center"]
   border [foreground: border_color, border_style: "╭─╮│╯─╰│", min_width: min_width, max_width: max_width]
-    vstack
+    vstack [id: "list_container"]
       container [height: 1, background: title_background, foreground: title_foreground]
         expand
           hstack
@@ -8,11 +8,11 @@ align [alignment: "center"]
             spacer
             text title_subheading
 
-      for project in window_list
-        hstack [fill: row_fill, foreground: item.row_color]
+      for item in window_list
+        hstack [fill: item_row_fill, foreground: item.color]
           text item.name
-          // spacer
-          // text "9"
+          spacer
+          text item.details
 
       container [height: 1, background: footer_background, foreground: footer_foreground]
         expand

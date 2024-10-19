@@ -4,13 +4,15 @@ use anathema::{
     component::ComponentId,
     prelude::{Document, TuiBackend},
     runtime::{Runtime, RuntimeBuilder},
+    state::List,
 };
 use components::{
     app::{App, AppState},
-    commands_view::{CommandsView, CommandsViewState},
+    commands_view::CommandsView,
     info_view::{InfoView, InfoViewState},
+    list_view::ListViewState,
 };
-use templates::{APP_TEMPLATE, COMMANDS_VIEW_TEMPLATE, INFO_VIEW_TEMPLATE};
+use templates::{APP_TEMPLATE, INFO_VIEW_TEMPLATE, LIST_VIEW_TEMPLATE};
 
 mod components;
 mod templates;
@@ -65,9 +67,31 @@ impl Admin {
 
         let _ = builder.register_component(
             "commands_view",
-            COMMANDS_VIEW_TEMPLATE,
-            CommandsView,
-            CommandsViewState::new(),
+            LIST_VIEW_TEMPLATE,
+            CommandsView::new(),
+            ListViewState {
+                cursor: 0.into(),
+                item_count: 0.into(),
+                current_first_index: 0.into(),
+                current_last_index: 4.into(),
+                visible_items: 5.into(),
+                window_list: List::empty(),
+                selected_item: "".to_string().into(),
+                default_color: "#313131".to_string().into(),
+                selected_color: "#ffffff".to_string().into(),
+                min_width: 10.into(),
+                // max_width: usize::MAX.into(),
+                max_width: None.into(),
+                title_background: "yellow".to_string().into(),
+                title_foreground: "#131313".to_string().into(),
+                title_heading: "Commands".to_string().into(),
+                title_subheading: "".to_string().into(),
+                footer_background: "".to_string().into(),
+                footer_foreground: "".to_string().into(),
+                footer_heading: "".to_string().into(),
+                footer_subheading: "".to_string().into(),
+                item_row_fill: "‧".to_string().into(),
+            },
         );
     }
 }

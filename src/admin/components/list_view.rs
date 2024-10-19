@@ -1,29 +1,45 @@
-use std::cmp::{max, min};
+use std::{
+    cmp::{max, min},
+    u16::MAX,
+};
 
 use anathema::state::{List, State, Value};
 use serde::{Deserialize, Serialize};
+use serde_json::Number;
 
 #[derive(Default)]
 pub struct ListView;
 
 #[derive(State)]
-struct Item {
-    name: Value<String>,
-    index: Value<usize>,
-    color: Value<String>,
+pub struct Item {
+    pub name: Value<String>,
+    pub details: Value<String>,
+    pub index: Value<usize>,
+    pub color: Value<String>,
 }
 
 #[derive(State)]
 pub struct ListViewState {
-    cursor: Value<u8>,
-    current_first_index: Value<u8>,
-    current_last_index: Value<u8>,
-    visible_items: Value<u8>,
-    window_list: Value<List<Item>>,
-    item_count: Value<u8>,
-    selected_item: Value<String>,
-    default_color: Value<String>,
-    selected_color: Value<String>,
+    pub cursor: Value<u8>,
+    pub current_first_index: Value<u8>,
+    pub current_last_index: Value<u8>,
+    pub visible_items: Value<u8>,
+    pub window_list: Value<List<Item>>,
+    pub item_count: Value<u8>,
+    pub selected_item: Value<String>,
+    pub default_color: Value<String>,
+    pub selected_color: Value<String>,
+    pub min_width: Value<usize>,
+    pub max_width: Value<Option<usize>>,
+    pub title_background: Value<String>,
+    pub title_foreground: Value<String>,
+    pub title_heading: Value<String>,
+    pub title_subheading: Value<String>,
+    pub footer_background: Value<String>,
+    pub footer_foreground: Value<String>,
+    pub footer_heading: Value<String>,
+    pub footer_subheading: Value<String>,
+    pub item_row_fill: Value<String>,
 }
 
 impl ListViewState {
@@ -38,20 +54,22 @@ impl ListViewState {
             selected_item: "".to_string().into(),
             default_color: "".to_string().into(),
             selected_color: "".to_string().into(),
+            min_width: 0.into(),
+            max_width: None.into(),
+            title_background: "".to_string().into(),
+            title_foreground: "".to_string().into(),
+            title_heading: "".to_string().into(),
+            title_subheading: "".to_string().into(),
+            footer_background: "".to_string().into(),
+            footer_foreground: "".to_string().into(),
+            footer_heading: "".to_string().into(),
+            footer_subheading: "".to_string().into(),
+            item_row_fill: "‧".to_string().into(),
         }
     }
 }
 
-// impl Component for ListView {
-//     type State = ListViewState;
-//     type Message = String;
-//
-//     fn accept_focus(&self) -> bool {
-//         true
-//     }
-// }
-
-trait ListComponent<'a, O>
+pub trait ListComponent<'a, O>
 where
     O: Clone + Into<Item> + Deserialize<'a> + Serialize,
 {
@@ -101,7 +119,12 @@ where
         selected_index: usize,
         state: &mut ListViewState,
     ) {
-        let original_list = &self.get_list()[first_index..=last_index];
+        if self.get_list().is_empty() {
+            return;
+        }
+
+        let range_end = min(last_index, self.get_list().len().saturating_sub(1));
+        let original_list = &self.get_list()[first_index..=range_end];
         let mut new_item_list: Vec<Item> = vec![];
         original_list.iter().for_each(|original_type| {
             new_item_list.push(original_type.clone().into());
@@ -209,5 +232,5 @@ where
         self.update_item_list(first_index, last_index, selected_index, state)
     }
 
-    fn load(&self, state: &mut ListViewState);
+    fn load(&mut self, state: &mut ListViewState);
 }
