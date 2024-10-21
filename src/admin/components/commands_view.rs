@@ -1,15 +1,15 @@
 use anathema::{
-    component::{
-        Component,
-        KeyCode::{Char, Esc},
-    },
+    component::{Component, KeyCode::Char},
     prelude::Context,
 };
 use serde::{Deserialize, Serialize};
 
 use crate::commands::{get_list_with_contents, Command};
 
-use super::list_view::{Item, ListComponent, ListViewState};
+use super::{
+    list_view::{Item, ListComponent, ListViewState},
+    ComponentMessage,
+};
 
 #[derive(Default)]
 pub struct CommandsView {
@@ -28,6 +28,20 @@ impl Component for CommandsView {
 
     fn accept_focus(&self) -> bool {
         true
+    }
+
+    fn message(
+        &mut self,
+        message: Self::Message,
+        state: &mut Self::State,
+        _: anathema::widgets::Elements<'_, '_>,
+        _: Context<'_, Self::State>,
+    ) {
+        if let Ok(msg) = serde_json::from_str::<ComponentMessage>(&message.to_string()) {
+            if msg.r#type == "reload_data" {
+                self.load(state);
+            }
+        }
     }
 
     fn resize(
@@ -123,26 +137,24 @@ impl ListComponent<'_, Cmd> for CommandsView {
     }
 
     fn load(&mut self, _state: &mut super::list_view::ListViewState) {
-        match self.commands {
-            Some(_) => {}
-            None => match get_list_with_contents("chat_commands") {
-                Ok(commands) => {
-                    let cmds: Vec<Cmd> = commands
-                        .iter()
-                        .enumerate()
-                        .map(|(index, command)| Cmd {
-                            name: command.name.to_ref().clone(),
-                            contents: command.contents.to_ref().clone(),
-                            index,
-                        })
-                        .collect();
+        match get_list_with_contents("chat_commands") {
+            Ok(commands) => {
+                let cmds: Vec<Cmd> = commands
+                    .iter()
+                    .enumerate()
+                    .map(|(index, command)| Cmd {
+                        name: command.name.to_ref().clone(),
+                        contents: command.contents.to_ref().clone(),
+                        index,
+                    })
+                    .collect();
 
-                    self.commands = Some(cmds);
-                }
-                Err(_) => {
-                    self.commands = Some(vec![]);
-                }
-            },
+                self.commands = Some(cmds);
+            }
+
+            Err(_) => {
+                self.commands = Some(vec![]);
+            }
         }
     }
 }

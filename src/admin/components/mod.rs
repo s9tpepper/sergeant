@@ -5,7 +5,9 @@ use serde::{Deserialize, Serialize};
 
 pub mod app;
 pub mod commands_view;
+pub mod floating;
 pub mod info_view;
+pub mod inputs;
 pub mod list_view;
 
 #[derive(Debug, Serialize, Deserialize)]

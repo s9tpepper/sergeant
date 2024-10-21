@@ -5,7 +5,9 @@ use anathema::{
     state::{CommonVal, State, Value},
 };
 
-use super::{ComponentMessage, Messenger};
+use crate::commands::add_chat_command;
+
+use super::{floating::add_command::Command, ComponentMessage, Messenger};
 
 #[derive(Default)]
 pub struct App {
@@ -15,6 +17,29 @@ pub struct App {
 #[derive(Default, State)]
 pub struct AppState {
     main_display: Value<MainDisplay>,
+    floating_window: Value<FloatingWindow>,
+}
+
+#[derive(Default)]
+enum FloatingWindow {
+    #[default]
+    None,
+    AddCommand,
+    DeleteCommand,
+    EditCommand,
+    AddAnnouncement,
+}
+
+impl State for FloatingWindow {
+    fn to_common(&self) -> Option<CommonVal<'_>> {
+        match self {
+            FloatingWindow::None => Some(CommonVal::Str("None")),
+            FloatingWindow::AddCommand => Some(CommonVal::Str("AddCommand")),
+            FloatingWindow::DeleteCommand => Some(CommonVal::Str("DeleteCommand")),
+            FloatingWindow::EditCommand => Some(CommonVal::Str("EditCommand")),
+            FloatingWindow::AddAnnouncement => Some(CommonVal::Str("AddAnnouncement")),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -46,6 +71,7 @@ impl AppState {
     pub fn new() -> Self {
         AppState {
             main_display: MainDisplay::InfoView.into(),
+            floating_window: FloatingWindow::None.into(),
         }
     }
 }
@@ -106,7 +132,7 @@ impl Component for App {
                 _ => {}
             },
 
-            anathema::component::KeyCode::Esc => todo!(),
+            anathema::component::KeyCode::Esc => {}
 
             _ => {}
         }
@@ -126,7 +152,36 @@ impl Component for App {
                 context.set_focus("id", "app");
             }
 
-            "add_command" => println!("Add new command dialog"),
+            "add_command" => {
+                state.floating_window.set(FloatingWindow::AddCommand);
+                context.set_focus("id", "add_command_window");
+            }
+            "cancel_add_command" => state.floating_window.set(FloatingWindow::None),
+            "submit_add_command" => {
+                state.floating_window.set(FloatingWindow::None);
+                context.set_focus("id", "commands_view");
+
+                let command: Command = value.into();
+
+                match add_chat_command(&command.name.to_ref(), &command.output.to_ref(), None) {
+                    Ok(_) => {
+                        if let Some(id) = self.component_ids.get("commands_view") {
+                            let _ = self.send_message(
+                                *id,
+                                ComponentMessage {
+                                    r#type: "reload_data",
+                                    payload: "",
+                                },
+                                context.emitter.clone(),
+                            );
+                        }
+                    }
+
+                    Err(_) => {
+                        // TODO: bring up a message window with an error message
+                    }
+                };
+            }
 
             "edit_command_selection" => println!("Selected item: {value}"),
 

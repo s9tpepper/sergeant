@@ -1,30 +1,37 @@
-vstack
-  container [height: 1, background: "#6441a5", foreground: "#000000"]
-    expand
-      hstack
-        text " Sergeant"
-
-  expand
-    zstack
-      if main_display == "InfoView"
-        @info_view [id: "info_view"]
-
-      if main_display == "CommandsView"
-        @commands_view (
-          cancel_item_window -> close_commands_view,
-          item_selection -> edit_command_selection,
-          delete_item_selection -> delete_command_selection,
-          add_command -> add_command
-        ) [id: "commands_view"]
-
-  container [height: 1, background: "#6441a5", foreground: "#000000"]
-    expand
-      if main_display == "InfoView"
+zstack
+  vstack
+    container [height: 1, background: "#6441a5", foreground: "#000000"]
+      expand
         hstack
-          spacer
-          text "(C)ommands (A)nnouncements (R)ewards (A)ctions (L)ogin "
+          text " Sergeant"
 
-      if main_display == "CommandsView"
-        hstack
-          spacer
-          text "(A)dd (E)dit (D)elete (B)ack "
+    expand
+      zstack
+        if main_display == "InfoView"
+          @info_view [id: "info_view"]
+
+        if main_display == "CommandsView"
+          @commands_view (
+            cancel_item_window -> close_commands_view,
+            item_selection -> edit_command_selection,
+            delete_item_selection -> delete_command_selection,
+            add_command -> add_command
+          ) [id: "commands_view"]
+
+    container [height: 1, background: "#6441a5", foreground: "#000000"]
+      expand
+        if main_display == "InfoView"
+          hstack
+            spacer
+            text "(C)ommands (A)nnouncements (R)ewards (A)ctions (L)ogin "
+
+        if main_display == "CommandsView"
+          hstack
+            spacer
+            text "(A)dd (E)dit (D)elete (B)ack "
+
+  if floating_window == "AddCommand"
+    @add_command_window (
+      submit_add_command -> submit_add_command,
+      cancel_add_command -> cancel_add_command,
+    ) [id: "add_command_window"]

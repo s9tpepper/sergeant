@@ -9,10 +9,12 @@ use anathema::{
 use components::{
     app::{App, AppState},
     commands_view::CommandsView,
+    floating::add_command::{AddCommand, AddCommandState},
     info_view::{InfoView, InfoViewState},
+    inputs::{InputState, TextInput},
     list_view::ListViewState,
 };
-use templates::{APP_TEMPLATE, INFO_VIEW_TEMPLATE, LIST_VIEW_TEMPLATE};
+use templates::{ADD_COMMAND_TEMPLATE, APP_TEMPLATE, INFO_VIEW_TEMPLATE, LIST_VIEW_TEMPLATE, TEXT_INPUT_TEMPLATE};
 
 mod components;
 mod templates;
@@ -75,6 +77,16 @@ impl Admin {
         if self.component_ids.is_none() {
             panic!("Component IDs map is broken");
         }
+
+        let _ = builder.register_prototype("text_input", TEXT_INPUT_TEMPLATE, || TextInput, InputState::new);
+
+        let add_command_id = builder.register_component(
+            "add_command_window",
+            ADD_COMMAND_TEMPLATE,
+            AddCommand,
+            AddCommandState::new(),
+        );
+        self.register_component_id("add_command_window", add_command_id);
 
         let info_view_id = builder.register_component("info_view", INFO_VIEW_TEMPLATE, InfoView, InfoViewState::new());
         self.register_component_id("info_view", info_view_id);
