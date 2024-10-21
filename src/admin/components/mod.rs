@@ -1,7 +1,8 @@
 use std::error::Error;
 
 use anathema::component::{ComponentId, Emitter};
-use serde::{Deserialize, Serialize};
+
+use super::messages::ComponentMessages;
 
 pub mod app;
 pub mod commands_view;
@@ -10,23 +11,24 @@ pub mod info_view;
 pub mod inputs;
 pub mod list_view;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ComponentMessage<'msg> {
-    r#type: &'msg str,
-    payload: &'msg str,
+pub trait ComponentMessage {
+    #[allow(dead_code)]
+    fn get_type(&self) -> String;
 }
 
 pub trait Messenger {
     fn send_message(
         &self,
         target: ComponentId<String>,
-        message: ComponentMessage,
+        message: ComponentMessages,
         emitter: Emitter,
     ) -> Result<(), Box<dyn Error>> {
-        if let Ok(msg) = serde_json::to_string(&message) {
-            emitter.emit(target, msg)?
+        match serde_json::to_string(&message) {
+            Ok(msg) => {
+                emitter.emit(target, msg)?;
+                Ok(())
+            }
+            Err(error) => Err(Box::new(error)),
         }
-
-        Err("Unable to send message".into())
     }
 }

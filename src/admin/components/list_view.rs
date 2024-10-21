@@ -14,7 +14,7 @@ pub struct Item {
     pub color: Value<String>,
 }
 
-#[derive(State)]
+#[derive(Default, State)]
 pub struct ListViewState {
     pub cursor: Value<u8>,
     pub current_first_index: Value<u8>,
@@ -188,7 +188,7 @@ where
             Some(item) => match serde_json::to_string(item) {
                 Ok(item_json) => {
                     state.selected_item.set(item_json);
-                    context.publish("delete_item_selection", |state| &state.selected_item)
+                    context.publish("delete_item_selection", |state| &state.selected_item);
                 }
 
                 Err(_) => context.publish("cancel_item_window", |state| &state.cursor),

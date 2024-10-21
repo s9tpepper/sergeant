@@ -1,0 +1,16 @@
+align [alignment: "center"]
+  border  [foreground: "#ffffff", border_style: "╭─╮│╯─╰│"]
+    vstack [fill: " "]
+      container [max_height: 1, max_width: 60, background: "#ffffff", foreground: "#000000"]
+        expand
+          hstack
+            text title
+      padding [padding: 1]
+        text message
+
+      hstack [width: 60]
+        spacer
+        text [background: "#ffffff", foreground: #000000] " (Y)es "
+        spacer
+        text [background: "#ffffff", foreground: #000000] " (N)o "
+        spacer

@@ -35,3 +35,6 @@ zstack
       submit_add_command -> submit_add_command,
       cancel_add_command -> cancel_add_command,
     ) [id: "add_command_window"]
+
+  if floating_window == "Confirm"
+    @confirm_window [id: "confirm_window"]

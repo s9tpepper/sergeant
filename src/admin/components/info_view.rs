@@ -6,6 +6,7 @@ use anathema::{
 };
 
 use crate::{
+    admin::messages::ComponentMessages,
     commands::{get_list, get_list_commands},
     twitch::{announcements::get_announcements, pubsub::send_to_error_log},
     utils::read_auth_token,
@@ -103,12 +104,13 @@ impl Component for InfoView {
         _: anathema::widgets::Elements<'_, '_>,
         _: anathema::prelude::Context<'_, Self::State>,
     ) {
-        let component_message = serde_json::from_str::<ComponentMessage>(&message);
+        let component_message = serde_json::from_str::<ComponentMessages>(&message);
 
         match component_message {
-            Ok(msg) => match msg.r#type {
-                "load_data" => self.load_info(state),
-                "todo" => {}
+            Ok(msg) => match msg {
+                ComponentMessages::InfoViewLoad(_) => self.load_info(state),
+
+                ComponentMessages::DeleteCommandConfirmMessage(_) => {}
 
                 _ => {}
             },

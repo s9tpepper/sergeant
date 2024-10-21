@@ -4,7 +4,10 @@ use anathema::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::commands::{get_list_with_contents, Command};
+use crate::{
+    admin::messages::ComponentMessages,
+    commands::{get_list_with_contents, Command},
+};
 
 use super::{
     list_view::{Item, ListComponent, ListViewState},
@@ -37,9 +40,11 @@ impl Component for CommandsView {
         _: anathema::widgets::Elements<'_, '_>,
         _: Context<'_, Self::State>,
     ) {
-        if let Ok(msg) = serde_json::from_str::<ComponentMessage>(&message.to_string()) {
-            if msg.r#type == "reload_data" {
-                self.load(state);
+        if let Ok(msg) = serde_json::from_str::<ComponentMessages>(&message.to_string()) {
+            match msg {
+                ComponentMessages::CommandsViewReload(_) => self.load(state),
+
+                _ => {}
             }
         }
     }
@@ -100,8 +105,8 @@ impl Component for CommandsView {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-struct Cmd {
+#[derive(Default, Debug, Clone, Deserialize, Serialize)]
+pub struct Cmd {
     pub name: String,
     pub contents: String,
     pub index: usize,

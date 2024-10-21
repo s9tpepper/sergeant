@@ -9,14 +9,20 @@ use anathema::{
 use components::{
     app::{App, AppState},
     commands_view::CommandsView,
-    floating::add_command::{AddCommand, AddCommandState},
+    floating::{
+        add_command::{AddCommand, AddCommandState},
+        confirm::{Confirm, ConfirmState},
+    },
     info_view::{InfoView, InfoViewState},
     inputs::{InputState, TextInput},
     list_view::ListViewState,
 };
-use templates::{ADD_COMMAND_TEMPLATE, APP_TEMPLATE, INFO_VIEW_TEMPLATE, LIST_VIEW_TEMPLATE, TEXT_INPUT_TEMPLATE};
+use templates::{
+    ADD_COMMAND_TEMPLATE, APP_TEMPLATE, CONFIRM_TEMPLATE, INFO_VIEW_TEMPLATE, LIST_VIEW_TEMPLATE, TEXT_INPUT_TEMPLATE,
+};
 
 mod components;
+mod messages;
 mod templates;
 
 pub fn admin() {
@@ -91,32 +97,26 @@ impl Admin {
         let info_view_id = builder.register_component("info_view", INFO_VIEW_TEMPLATE, InfoView, InfoViewState::new());
         self.register_component_id("info_view", info_view_id);
 
+        let confirm_window_id =
+            builder.register_component("confirm_window", CONFIRM_TEMPLATE, Confirm::new(), ConfirmState::new());
+        self.register_component_id("confirm_window", confirm_window_id);
+
         let commands_view_id = builder.register_component(
             "commands_view",
             LIST_VIEW_TEMPLATE,
             CommandsView::new(),
             ListViewState {
-                cursor: 0.into(),
-                item_count: 0.into(),
-                current_first_index: 0.into(),
+                item_row_fill: "‧".to_string().into(),
                 current_last_index: 4.into(),
                 visible_items: 5.into(),
-                window_list: List::empty(),
-                selected_item: "".to_string().into(),
                 default_color: "#313131".to_string().into(),
                 selected_color: "#ffffff".to_string().into(),
                 min_width: 10.into(),
-                // max_width: usize::MAX.into(),
-                max_width: None.into(),
                 title_background: "yellow".to_string().into(),
                 title_foreground: "#131313".to_string().into(),
                 title_heading: "Commands".to_string().into(),
-                title_subheading: "".to_string().into(),
-                footer_background: "".to_string().into(),
-                footer_foreground: "".to_string().into(),
-                footer_heading: "".to_string().into(),
-                footer_subheading: "".to_string().into(),
-                item_row_fill: "‧".to_string().into(),
+                window_list: List::empty(),
+                ..Default::default()
             },
         );
         self.register_component_id("commands_view", commands_view_id);

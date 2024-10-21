@@ -5,9 +5,15 @@ use anathema::{
     state::{CommonVal, State, Value},
 };
 
-use crate::commands::add_chat_command;
+use crate::{
+    admin::messages::{
+        CommandsViewReload, ComponentMessages, DeleteCommandConfirmMessage, DeleteCommandConfirmationDetails,
+        InfoViewLoad,
+    },
+    commands::add_chat_command,
+};
 
-use super::{floating::add_command::Command, ComponentMessage, Messenger};
+use super::{commands_view::Cmd, floating::add_command::Command, ComponentMessage, Messenger};
 
 #[derive(Default)]
 pub struct App {
@@ -28,6 +34,7 @@ enum FloatingWindow {
     DeleteCommand,
     EditCommand,
     AddAnnouncement,
+    Confirm,
 }
 
 impl State for FloatingWindow {
@@ -38,6 +45,7 @@ impl State for FloatingWindow {
             FloatingWindow::DeleteCommand => Some(CommonVal::Str("DeleteCommand")),
             FloatingWindow::EditCommand => Some(CommonVal::Str("EditCommand")),
             FloatingWindow::AddAnnouncement => Some(CommonVal::Str("AddAnnouncement")),
+            FloatingWindow::Confirm => Some(CommonVal::Str("Confirm")),
         }
     }
 }
@@ -97,10 +105,7 @@ impl Component for App {
                 if let Some(id) = self.component_ids.get("info_view") {
                     let _ = self.send_message(
                         *id,
-                        ComponentMessage {
-                            r#type: "load_data",
-                            payload: "",
-                        },
+                        ComponentMessages::InfoViewLoad(InfoViewLoad {}),
                         context.emitter.clone(),
                     );
                 }
@@ -171,10 +176,7 @@ impl Component for App {
                         if let Some(id) = self.component_ids.get("commands_view") {
                             let _ = self.send_message(
                                 *id,
-                                ComponentMessage {
-                                    r#type: "reload_data",
-                                    payload: "",
-                                },
+                                ComponentMessages::CommandsViewReload(CommandsViewReload {}),
                                 context.emitter.clone(),
                             );
                         }
@@ -188,7 +190,29 @@ impl Component for App {
 
             "edit_command_selection" => println!("Selected item: {value}"),
 
-            "delete_command_selection" => println!("Selected item to delete: {value}"),
+            "delete_command_selection" => {
+                if let Ok(item) = serde_json::from_str::<Cmd>(&value.to_string()) {
+                    if let Some(id) = self.component_ids.get("confirm_window") {
+                        state.floating_window.set(FloatingWindow::Confirm);
+
+                        let message = format!("Are you sure you want to delete: {}", item.name);
+                        let confirmation_details = DeleteCommandConfirmationDetails {
+                            title: "Delete Command",
+                            waiting: "commands_view",
+                            message: &message,
+                            item,
+                        };
+
+                        let _ = self.send_message(
+                            *id,
+                            ComponentMessages::DeleteCommandConfirmMessage(DeleteCommandConfirmMessage {
+                                payload: confirmation_details,
+                            }),
+                            context.emitter.clone(),
+                        );
+                    }
+                }
+            }
 
             _ => {}
         }
