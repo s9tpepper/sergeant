@@ -156,7 +156,10 @@ impl Component for App {
                 state.floating_window.set(FloatingWindow::AddCommand);
                 context.set_focus("id", "add_command_window");
             }
-            "cancel_add_command" => state.floating_window.set(FloatingWindow::None),
+            "cancel_add_command" => {
+                state.floating_window.set(FloatingWindow::None);
+                context.set_focus("id", "commands_view");
+            }
             "submit_add_command" => {
                 state.floating_window.set(FloatingWindow::None);
                 context.set_focus("id", "commands_view");
