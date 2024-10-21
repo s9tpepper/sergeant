@@ -11,6 +11,8 @@ use crate::{
     utils::read_auth_token,
 };
 
+use super::ComponentMessage;
+
 #[derive(Default)]
 pub struct InfoView;
 
@@ -92,5 +94,25 @@ impl Component for InfoView {
         _: anathema::prelude::Context<'_, Self::State>,
     ) {
         self.load_info(state);
+    }
+
+    fn message(
+        &mut self,
+        message: Self::Message,
+        state: &mut Self::State,
+        _: anathema::widgets::Elements<'_, '_>,
+        _: anathema::prelude::Context<'_, Self::State>,
+    ) {
+        let component_message = serde_json::from_str::<ComponentMessage>(&message);
+
+        match component_message {
+            Ok(msg) => match msg.r#type {
+                "load_data" => self.load_info(state),
+                "todo" => {}
+
+                _ => {}
+            },
+            Err(error) => send_to_error_log(error.to_string(), "Could not deserialize message to info_view".into()),
+        }
     }
 }

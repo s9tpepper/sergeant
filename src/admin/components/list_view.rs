@@ -1,11 +1,7 @@
-use std::{
-    cmp::{max, min},
-    u16::MAX,
-};
+use std::cmp::{max, min};
 
 use anathema::state::{List, State, Value};
 use serde::{Deserialize, Serialize};
-use serde_json::Number;
 
 #[derive(Default)]
 pub struct ListView;

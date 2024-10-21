@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anathema::{
     component::ComponentId,
     prelude::{Document, TuiBackend},
-    runtime::{Runtime, RuntimeBuilder},
+    runtime::{Error, Runtime, RuntimeBuilder},
     state::List,
 };
 use components::{
@@ -22,13 +22,24 @@ pub fn admin() {
 }
 
 struct Admin {
-    component_ids: HashMap<String, ComponentId<String>>,
+    component_ids: Option<HashMap<String, ComponentId<String>>>,
 }
 
 impl Admin {
     pub fn new() -> Self {
         Admin {
-            component_ids: HashMap::new(),
+            component_ids: Some(HashMap::new()),
+        }
+    }
+
+    fn register_component_id(&mut self, name: &str, component_id: Result<ComponentId<String>, Error>) {
+        if self.component_ids.is_none() {
+            return;
+        }
+
+        let component_ids = self.component_ids.as_mut().unwrap();
+        if let Ok(id) = component_id {
+            component_ids.insert(name.to_string(), id);
         }
     }
 
@@ -61,11 +72,14 @@ impl Admin {
     }
 
     fn register_components(&mut self, builder: &mut RuntimeBuilder<TuiBackend, ()>) {
-        let _ = builder.register_component("app", APP_TEMPLATE, App, AppState::new());
+        if self.component_ids.is_none() {
+            panic!("Component IDs map is broken");
+        }
 
-        let _ = builder.register_component("info_view", INFO_VIEW_TEMPLATE, InfoView, InfoViewState::new());
+        let info_view_id = builder.register_component("info_view", INFO_VIEW_TEMPLATE, InfoView, InfoViewState::new());
+        self.register_component_id("info_view", info_view_id);
 
-        let _ = builder.register_component(
+        let commands_view_id = builder.register_component(
             "commands_view",
             LIST_VIEW_TEMPLATE,
             CommandsView::new(),
@@ -93,5 +107,10 @@ impl Admin {
                 item_row_fill: "‧".to_string().into(),
             },
         );
+        self.register_component_id("commands_view", commands_view_id);
+
+        let component_ids = self.component_ids.take().unwrap();
+        let app = App { component_ids };
+        let _ = builder.register_component("app", APP_TEMPLATE, app, AppState::new());
     }
 }

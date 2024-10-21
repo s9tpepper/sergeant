@@ -1,10 +1,16 @@
+use std::collections::HashMap;
+
 use anathema::{
-    component::Component,
+    component::{Component, ComponentId},
     state::{CommonVal, State, Value},
 };
 
+use super::{ComponentMessage, Messenger};
+
 #[derive(Default)]
-pub struct App;
+pub struct App {
+    pub component_ids: HashMap<String, ComponentId<String>>,
+}
 
 #[derive(Default, State)]
 pub struct AppState {
@@ -44,6 +50,8 @@ impl AppState {
     }
 }
 
+impl Messenger for App {}
+
 impl Component for App {
     type State = AppState;
     type Message = String;
@@ -54,11 +62,27 @@ impl Component for App {
 
     fn on_focus(
         &mut self,
-        _: &mut Self::State,
+        state: &mut Self::State,
         _: anathema::widgets::Elements<'_, '_>,
-        _: anathema::prelude::Context<'_, Self::State>,
+        context: anathema::prelude::Context<'_, Self::State>,
     ) {
-        // println!("app is focused");
+        match *state.main_display.to_ref() {
+            MainDisplay::InfoView => {
+                if let Some(id) = self.component_ids.get("info_view") {
+                    let _ = self.send_message(
+                        *id,
+                        ComponentMessage {
+                            r#type: "load_data",
+                            payload: "",
+                        },
+                        context.emitter.clone(),
+                    );
+                }
+            }
+            MainDisplay::CommandsView => {}
+
+            _ => {}
+        }
     }
 
     fn on_key(
