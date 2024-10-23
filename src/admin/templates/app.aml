@@ -37,4 +37,7 @@ zstack
     ) [id: "add_command_window"]
 
   if floating_window == "Confirm"
-    @confirm_window [id: "confirm_window"]
+    @confirm_window (
+      cancel_confirmation -> cancel_confirmation,
+      confirm_delete_command -> confirm_delete_command
+    ) [id: "confirm_window"]

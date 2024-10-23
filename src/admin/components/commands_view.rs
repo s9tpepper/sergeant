@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     admin::messages::ComponentMessages,
-    commands::{get_list_with_contents, Command},
+    commands::{self, get_list_with_contents, remove_chat_command, Command},
 };
 
 use super::{
@@ -43,6 +43,16 @@ impl Component for CommandsView {
         if let Ok(msg) = serde_json::from_str::<ComponentMessages>(&message.to_string()) {
             match msg {
                 ComponentMessages::CommandsViewReload(_) => self.load(state),
+
+                ComponentMessages::DeleteCommandConfirmMessage(delete_confirmed) => {
+                    match remove_chat_command(&delete_confirmed.payload.item.name) {
+                        Ok(_) => {
+                            self.load(state);
+                            self.refresh(state);
+                        }
+                        Err(_) => todo!(),
+                    }
+                }
 
                 _ => {}
             }

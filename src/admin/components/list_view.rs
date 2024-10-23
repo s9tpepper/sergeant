@@ -108,6 +108,14 @@ where
         self.update_item_list(first_index.into(), last_index.into(), new_cursor.into(), state);
     }
 
+    fn refresh(&self, state: &mut ListViewState) {
+        let first_index: usize = *state.current_first_index.to_ref() as usize;
+        let last_index: usize = *state.current_last_index.to_ref() as usize;
+        let selected_index: usize = *state.cursor.to_ref() as usize;
+
+        self.update_item_list(first_index, last_index, selected_index, state);
+    }
+
     fn update_item_list(
         &self,
         first_index: usize,

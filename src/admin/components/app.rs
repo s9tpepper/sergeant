@@ -11,6 +11,7 @@ use crate::{
         InfoViewLoad,
     },
     commands::add_chat_command,
+    twitch::pubsub::send_to_error_log,
 };
 
 use super::{commands_view::Cmd, floating::add_command::Command, ComponentMessage, Messenger};
@@ -18,6 +19,24 @@ use super::{commands_view::Cmd, floating::add_command::Command, ComponentMessage
 #[derive(Default)]
 pub struct App {
     pub component_ids: HashMap<String, ComponentId<String>>,
+}
+
+impl App {
+    fn reset_floating_window(&self, state: &mut AppState, mut context: anathema::prelude::Context<'_, AppState>) {
+        match *state.main_display.to_ref() {
+            MainDisplay::InfoView => context.set_focus("id", "info_view"),
+            MainDisplay::CommandsView => context.set_focus("id", "commands_view"),
+
+            // TODO: Implement rest when they exist
+            // MainDisplay::AnnouncementsView => todo!(),
+            // MainDisplay::RewardsView => todo!(),
+            // MainDisplay::IrcActionsView => todo!(),
+            // MainDisplay::Login => todo!(),
+            _ => {}
+        }
+
+        state.floating_window.set(FloatingWindow::None);
+    }
 }
 
 #[derive(Default, State)]
@@ -194,6 +213,7 @@ impl Component for App {
                 if let Ok(item) = serde_json::from_str::<Cmd>(&value.to_string()) {
                     if let Some(id) = self.component_ids.get("confirm_window") {
                         state.floating_window.set(FloatingWindow::Confirm);
+                        context.set_focus("id", "confirm_window");
 
                         let message = format!("Are you sure you want to delete: {}", item.name);
                         let confirmation_details = DeleteCommandConfirmationDetails {
@@ -212,6 +232,30 @@ impl Component for App {
                         );
                     }
                 }
+            }
+
+            "cancel_confirmation" => {
+                self.reset_floating_window(state, context);
+            }
+
+            "confirm_delete_command" => {
+                match serde_json::from_str::<ComponentMessages>(&value.to_string()) {
+                    Ok(component_messages) => {
+                        if let ComponentMessages::DeleteCommandConfirmMessage(delete_msg) = component_messages {
+                            if let Some(id) = self.component_ids.get(delete_msg.payload.waiting) {
+                                let _ = self.send_message(
+                                    *id,
+                                    ComponentMessages::DeleteCommandConfirmMessage(delete_msg),
+                                    context.emitter.clone(),
+                                );
+                            }
+                        }
+                    }
+
+                    Err(error) => send_to_error_log(error.to_string(), format!("Could not deserialize {}", value)),
+                }
+
+                self.reset_floating_window(state, context);
             }
 
             _ => {}
