@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr, thread::sleep, time::Duration};
 
 use anathema::{
     component::{Component, ComponentId},
@@ -43,6 +43,7 @@ impl App {
 pub struct AppState {
     main_display: Value<MainDisplay>,
     floating_window: Value<FloatingWindow>,
+    error_message: Value<String>,
 }
 
 #[derive(Default)]
@@ -50,10 +51,10 @@ enum FloatingWindow {
     #[default]
     None,
     AddCommand,
-    DeleteCommand,
     EditCommand,
     AddAnnouncement,
     Confirm,
+    Error,
 }
 
 impl State for FloatingWindow {
@@ -61,10 +62,10 @@ impl State for FloatingWindow {
         match self {
             FloatingWindow::None => Some(CommonVal::Str("None")),
             FloatingWindow::AddCommand => Some(CommonVal::Str("AddCommand")),
-            FloatingWindow::DeleteCommand => Some(CommonVal::Str("DeleteCommand")),
             FloatingWindow::EditCommand => Some(CommonVal::Str("EditCommand")),
             FloatingWindow::AddAnnouncement => Some(CommonVal::Str("AddAnnouncement")),
             FloatingWindow::Confirm => Some(CommonVal::Str("Confirm")),
+            FloatingWindow::Error => Some(CommonVal::Str("Error")),
         }
     }
 }
@@ -99,6 +100,7 @@ impl AppState {
         AppState {
             main_display: MainDisplay::InfoView.into(),
             floating_window: FloatingWindow::None.into(),
+            error_message: String::from("").into(),
         }
     }
 }
@@ -255,6 +257,23 @@ impl Component for App {
                     Err(error) => send_to_error_log(error.to_string(), format!("Could not deserialize {}", value)),
                 }
 
+                self.reset_floating_window(state, context);
+            }
+
+            "show_delete_command_error" => {
+                state.floating_window.set(FloatingWindow::Error);
+                state.error_message.set(String::from("Could not delete command"));
+                context.set_focus("id", "error_window");
+
+                if let Some(id) = self.component_ids.get("error_window") {
+                    let _ = self.send_message(
+                        *id,
+                        ComponentMessages::CommandsViewReload(CommandsViewReload {}),
+                        context.emitter.clone(),
+                    );
+                }
+
+                sleep(Duration::from_secs(5));
                 self.reset_floating_window(state, context);
             }
 

@@ -1,0 +1,7 @@
+align [alignment: "center"]
+  border [foreground: "red", border_style: "╭─╮│╯─╰│"]
+    vstack [fill: " "]
+      container [foreground: "#000000", background: "red", width: 30]
+        text "Error"
+      padding [padding: 1]
+        text error_message

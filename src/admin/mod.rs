@@ -12,13 +12,15 @@ use components::{
     floating::{
         add_command::{AddCommand, AddCommandState},
         confirm::{Confirm, ConfirmState},
+        error::{ErrorState, ErrorWindow},
     },
     info_view::{InfoView, InfoViewState},
     inputs::{InputState, TextInput},
     list_view::ListViewState,
 };
 use templates::{
-    ADD_COMMAND_TEMPLATE, APP_TEMPLATE, CONFIRM_TEMPLATE, INFO_VIEW_TEMPLATE, LIST_VIEW_TEMPLATE, TEXT_INPUT_TEMPLATE,
+    ADD_COMMAND_TEMPLATE, APP_TEMPLATE, CONFIRM_TEMPLATE, ERROR_TEMPLATE, INFO_VIEW_TEMPLATE, LIST_VIEW_TEMPLATE,
+    TEXT_INPUT_TEMPLATE,
 };
 
 mod components;
@@ -120,6 +122,10 @@ impl Admin {
             },
         );
         self.register_component_id("commands_view", commands_view_id);
+
+        let error_window_id =
+            builder.register_component("error_window", ERROR_TEMPLATE, ErrorWindow, ErrorState::new());
+        self.register_component_id("error_window", error_window_id);
 
         let component_ids = self.component_ids.take().unwrap();
         let app = App { component_ids };

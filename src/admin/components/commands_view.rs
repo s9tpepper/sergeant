@@ -38,7 +38,7 @@ impl Component for CommandsView {
         message: Self::Message,
         state: &mut Self::State,
         _: anathema::widgets::Elements<'_, '_>,
-        _: Context<'_, Self::State>,
+        mut context: Context<'_, Self::State>,
     ) {
         if let Ok(msg) = serde_json::from_str::<ComponentMessages>(&message.to_string()) {
             match msg {
@@ -50,7 +50,7 @@ impl Component for CommandsView {
                             self.load(state);
                             self.refresh(state);
                         }
-                        Err(_) => todo!(),
+                        Err(_) => context.publish("show_delete_command_error", |state| &state.cursor),
                     }
                 }
 

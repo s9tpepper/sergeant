@@ -6,3 +6,4 @@ pub const TEXT_INPUT_TEMPLATE: &str = "./src/admin/templates/textinput.aml";
 // Floating Windows
 pub const ADD_COMMAND_TEMPLATE: &str = "./src/admin/templates/floating/add_command.aml";
 pub const CONFIRM_TEMPLATE: &str = "./src/admin/templates/floating/confirm.aml";
+pub const ERROR_TEMPLATE: &str = "./src/admin/templates/floating/error.aml";

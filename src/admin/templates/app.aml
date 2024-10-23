@@ -15,7 +15,8 @@ zstack
             cancel_item_window -> close_commands_view,
             item_selection -> edit_command_selection,
             delete_item_selection -> delete_command_selection,
-            add_command -> add_command
+            add_command -> add_command,
+            show_delete_command_error -> show_delete_command_error
           ) [id: "commands_view"]
 
     container [height: 1, background: "#6441a5", foreground: "#000000"]
@@ -41,3 +42,6 @@ zstack
       cancel_confirmation -> cancel_confirmation,
       confirm_delete_command -> confirm_delete_command
     ) [id: "confirm_window"]
+
+  if floating_window == "Error"
+    @error_window [id: "error_window"]
