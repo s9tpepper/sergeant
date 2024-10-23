@@ -209,7 +209,54 @@ impl Component for App {
                 };
             }
 
-            "edit_command_selection" => println!("Selected item: {value}"),
+            "edit_command_selection" => {
+                if let Ok(item) = serde_json::from_str::<Cmd>(&value.to_string()) {
+                    state.floating_window.set(FloatingWindow::EditCommand);
+                    context.set_focus("id", "edit_command_window");
+
+                    if let Some(id) = self.component_ids.get("cmd_name_input") {
+                        let _ = context.emitter.emit(*id, item.name);
+                    }
+
+                    if let Some(id) = self.component_ids.get("cmd_output_input") {
+                        let _ = context.emitter.emit(*id, item.contents);
+                    }
+                }
+            }
+
+            "cancel_edit_command" => {
+                if let Some(id) = self.component_ids.get("cmd_name_input") {
+                    let _ = context.emitter.emit(*id, String::from(""));
+                }
+
+                if let Some(id) = self.component_ids.get("cmd_output_input") {
+                    let _ = context.emitter.emit(*id, String::from(""));
+                }
+
+                self.reset_floating_window(state, context);
+            }
+
+            "submit_edit_command" => {
+                let command: Command = value.into();
+
+                match add_chat_command(&command.name.to_ref(), &command.output.to_ref(), None) {
+                    Ok(_) => {
+                        if let Some(id) = self.component_ids.get("commands_view") {
+                            let _ = self.send_message(
+                                *id,
+                                ComponentMessages::CommandsViewReload(CommandsViewReload {}),
+                                context.emitter.clone(),
+                            );
+                        }
+                    }
+
+                    Err(_) => {
+                        // TODO: bring up a message window with an error message
+                    }
+                };
+
+                self.reset_floating_window(state, context);
+            }
 
             "delete_command_selection" => {
                 if let Ok(item) = serde_json::from_str::<Cmd>(&value.to_string()) {

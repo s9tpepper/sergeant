@@ -8,10 +8,13 @@ use anathema::{
 };
 use components::{
     app::{App, AppState},
+    cmd_name_input::{self, CmdNameInput},
+    cmd_output_input::CmdOutputInput,
     commands_view::CommandsView,
     floating::{
         add_command::{AddCommand, AddCommandState},
         confirm::{Confirm, ConfirmState},
+        edit_command::{EditCommand, EditCommandState},
         error::{ErrorState, ErrorWindow},
     },
     info_view::{InfoView, InfoViewState},
@@ -19,8 +22,8 @@ use components::{
     list_view::ListViewState,
 };
 use templates::{
-    ADD_COMMAND_TEMPLATE, APP_TEMPLATE, CONFIRM_TEMPLATE, ERROR_TEMPLATE, INFO_VIEW_TEMPLATE, LIST_VIEW_TEMPLATE,
-    TEXT_INPUT_TEMPLATE,
+    ADD_COMMAND_TEMPLATE, APP_TEMPLATE, CONFIRM_TEMPLATE, EDIT_COMMAND_TEMPLATE, ERROR_TEMPLATE, INFO_VIEW_TEMPLATE,
+    LIST_VIEW_TEMPLATE, TEXT_INPUT_TEMPLATE,
 };
 
 mod components;
@@ -126,6 +129,26 @@ impl Admin {
         let error_window_id =
             builder.register_component("error_window", ERROR_TEMPLATE, ErrorWindow, ErrorState::new());
         self.register_component_id("error_window", error_window_id);
+
+        let cmd_name_input_id =
+            builder.register_component("cmd_name_input", TEXT_INPUT_TEMPLATE, CmdNameInput, InputState::new());
+        self.register_component_id("cmd_name_input", cmd_name_input_id);
+
+        let cmd_output_input_id = builder.register_component(
+            "cmd_output_input",
+            TEXT_INPUT_TEMPLATE,
+            CmdOutputInput,
+            InputState::new(),
+        );
+        self.register_component_id("cmd_output_input", cmd_output_input_id);
+
+        let edit_command_window_id = builder.register_component(
+            "edit_command_window",
+            EDIT_COMMAND_TEMPLATE,
+            EditCommand,
+            EditCommandState::new(),
+        );
+        self.register_component_id("edit_command_window", edit_command_window_id);
 
         let component_ids = self.component_ids.take().unwrap();
         let app = App { component_ids };

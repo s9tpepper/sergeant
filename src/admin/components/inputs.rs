@@ -74,8 +74,15 @@ impl InputReceiver for TextInput {}
 
 pub trait InputReceiver {
     #[allow(dead_code)]
-    fn _message(&mut self, message: String, state: &mut InputState, _: Elements<'_, '_>, _: Context<'_, InputState>) {
+    fn _message(
+        &mut self,
+        message: String,
+        state: &mut InputState,
+        _: Elements<'_, '_>,
+        mut context: Context<'_, InputState>,
+    ) {
         state.input.set(message);
+        context.publish("text_change", |state| &state.input)
     }
 
     #[allow(dead_code)]
