@@ -1,7 +1,8 @@
-use std::{collections::HashMap, str::FromStr, thread::sleep, time::Duration};
+use std::{collections::HashMap, fs, str::FromStr, thread::sleep, time::Duration};
 
 use anathema::{
     component::{Component, ComponentId},
+    default_widgets::Overflow,
     state::{CommonVal, State, Value},
 };
 
@@ -12,6 +13,7 @@ use crate::{
     },
     commands::add_chat_command,
     twitch::pubsub::send_to_error_log,
+    utils::get_data_directory,
 };
 
 use super::{commands_view::Cmd, floating::add_command::Command, ComponentMessage, Messenger};
@@ -44,6 +46,7 @@ pub struct AppState {
     main_display: Value<MainDisplay>,
     floating_window: Value<FloatingWindow>,
     error_message: Value<String>,
+    logs: Value<String>,
 }
 
 #[derive(Default)]
@@ -80,6 +83,7 @@ enum MainDisplay {
     IrcActionsView,
     // NOTE: Maybe don't need login
     Login,
+    LogsView,
 }
 
 impl State for MainDisplay {
@@ -91,6 +95,7 @@ impl State for MainDisplay {
             MainDisplay::RewardsView => Some(CommonVal::Str("RewardsView")),
             MainDisplay::IrcActionsView => Some(CommonVal::Str("IrcActionsView")),
             MainDisplay::Login => Some(CommonVal::Str("Login")),
+            MainDisplay::LogsView => Some(CommonVal::Str("LogsView")),
         }
     }
 }
@@ -101,6 +106,7 @@ impl AppState {
             main_display: MainDisplay::InfoView.into(),
             floating_window: FloatingWindow::None.into(),
             error_message: String::from("").into(),
+            logs: String::from("").into(),
         }
     }
 }
@@ -141,7 +147,7 @@ impl Component for App {
         &mut self,
         key: anathema::component::KeyEvent,
         state: &mut Self::State,
-        _: anathema::widgets::Elements<'_, '_>,
+        mut elements: anathema::widgets::Elements<'_, '_>,
         mut context: anathema::prelude::Context<'_, Self::State>,
     ) {
         match key.code {
@@ -154,6 +160,53 @@ impl Component for App {
                 'r' => {}
                 'i' => {}
                 'l' => {}
+                'g' => {
+                    state.main_display.set(MainDisplay::LogsView);
+                    let mut error_log = get_data_directory(Some("error_log")).unwrap();
+                    error_log.push("log.txt");
+                    match fs::read_to_string(error_log) {
+                        Ok(logs) => state.logs.set(logs),
+                        Err(_) => state.logs.set(String::from("Logs unavailable.")),
+                    }
+                }
+                'b' => {
+                    state.main_display.set(MainDisplay::InfoView);
+                    context.set_focus("id", "app");
+                }
+
+                'd' => {
+                    if key.ctrl {
+                        if let MainDisplay::LogsView = *state.main_display.to_ref() {
+                            elements
+                                .by_attribute("id", "logs_container")
+                                .first(|element, _attributes| {
+                                    let size = element.size();
+                                    if size.height > 0 {
+                                        let scroll_by = size.height.saturating_div(2);
+                                        let overflow = element.to::<Overflow>();
+                                        overflow.scroll_down_by(scroll_by as i32);
+                                    }
+                                })
+                        }
+                    }
+                }
+
+                'u' => {
+                    if key.ctrl {
+                        if let MainDisplay::LogsView = *state.main_display.to_ref() {
+                            elements
+                                .by_attribute("id", "logs_container")
+                                .first(|element, _attributes| {
+                                    let size = element.size();
+                                    if size.height > 0 {
+                                        let scroll_by = size.height.saturating_div(2);
+                                        let overflow = element.to::<Overflow>();
+                                        overflow.scroll_up_by(scroll_by as i32);
+                                    }
+                                })
+                        }
+                    }
+                }
 
                 _ => {}
             },
