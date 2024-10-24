@@ -1,22 +1,52 @@
+use std::collections::HashMap;
+
 use anathema::{
-    component::{Component, KeyCode::Char},
-    prelude::Context,
+    component::{Component, ComponentId, KeyCode::Char},
+    prelude::{Context, TuiBackend},
+    runtime::RuntimeBuilder,
+    state::List,
 };
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    admin::messages::ComponentMessages,
-    commands::{self, get_list_with_contents, remove_chat_command, Command},
+    admin::{messages::ComponentMessages, templates::LIST_VIEW_TEMPLATE, AppComponent},
+    commands::{get_list_with_contents, remove_chat_command, Command},
 };
 
-use super::{
-    list_view::{Item, ListComponent, ListViewState},
-    ComponentMessage,
-};
+use super::list_view::{Item, ListComponent, ListViewState};
 
 #[derive(Default)]
 pub struct CommandsView {
     commands: Option<Vec<Cmd>>,
+}
+
+impl AppComponent for CommandsView {}
+impl CommandsView {
+    pub fn register(
+        builder: &mut RuntimeBuilder<TuiBackend, ()>,
+        component_ids: &mut HashMap<String, ComponentId<String>>,
+    ) {
+        <crate::admin::components::floating::add_command::AddCommand as AppComponent>::register_component(
+            builder,
+            "commands_view",
+            LIST_VIEW_TEMPLATE,
+            CommandsView::new(),
+            ListViewState {
+                item_row_fill: "‧".to_string().into(),
+                current_last_index: 4.into(),
+                visible_items: 5.into(),
+                default_color: "#313131".to_string().into(),
+                selected_color: "#ffffff".to_string().into(),
+                min_width: 10.into(),
+                title_background: "yellow".to_string().into(),
+                title_foreground: "#131313".to_string().into(),
+                title_heading: "Commands".to_string().into(),
+                window_list: List::empty(),
+                ..Default::default()
+            },
+            component_ids,
+        )
+    }
 }
 
 impl CommandsView {

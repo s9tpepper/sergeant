@@ -1,10 +1,34 @@
+use std::collections::HashMap;
+
 use anathema::{
-    component::{Component, KeyCode},
+    component::{Component, ComponentId, KeyCode},
+    prelude::TuiBackend,
+    runtime::{Error, RuntimeBuilder},
     state::{CommonVal, State, Value},
 };
 
+use crate::admin::{templates::ADD_COMMAND_TEMPLATE, AppComponent};
+
 #[derive(Default)]
 pub struct AddCommand;
+
+impl AddCommand {
+    pub fn register(
+        builder: &mut RuntimeBuilder<TuiBackend, ()>,
+        component_ids: &mut HashMap<String, ComponentId<String>>,
+    ) {
+        <crate::admin::components::floating::add_command::AddCommand as AppComponent>::register_component(
+            builder,
+            "add_command_window",
+            ADD_COMMAND_TEMPLATE,
+            AddCommand,
+            AddCommandState::new(),
+            component_ids,
+        )
+    }
+}
+
+impl AppComponent for AddCommand {}
 
 #[derive(Default, State)]
 pub struct AddCommandState {

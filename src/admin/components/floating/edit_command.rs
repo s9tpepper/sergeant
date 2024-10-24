@@ -1,12 +1,35 @@
+use std::collections::HashMap;
+
 use anathema::{
-    component::{Component, KeyCode},
+    component::{Component, ComponentId, KeyCode},
+    prelude::TuiBackend,
+    runtime::RuntimeBuilder,
     state::{State, Value},
 };
+
+use crate::admin::{templates::EDIT_COMMAND_TEMPLATE, AppComponent};
 
 use super::add_command::Command;
 
 #[derive(Default)]
 pub struct EditCommand;
+
+impl AppComponent for EditCommand {}
+impl EditCommand {
+    pub fn register(
+        builder: &mut RuntimeBuilder<TuiBackend, ()>,
+        component_ids: &mut HashMap<String, ComponentId<String>>,
+    ) {
+        <crate::admin::components::floating::add_command::AddCommand as AppComponent>::register_component(
+            builder,
+            "edit_command_window",
+            EDIT_COMMAND_TEMPLATE,
+            EditCommand,
+            EditCommandState::new(),
+            component_ids,
+        )
+    }
+}
 
 #[derive(Default, State)]
 pub struct EditCommandState {

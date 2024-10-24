@@ -1,12 +1,33 @@
+use std::collections::HashMap;
+
 use anathema::{
-    component::Component,
+    component::{Component, ComponentId},
+    prelude::TuiBackend,
+    runtime::RuntimeBuilder,
     state::{State, Value},
 };
 
-use crate::admin::messages::ComponentMessages;
+use crate::admin::{messages::ComponentMessages, templates::CONFIRM_TEMPLATE, AppComponent};
 
 #[derive(Default)]
 pub struct Confirm {}
+
+impl AppComponent for Confirm {}
+impl Confirm {
+    pub fn register(
+        builder: &mut RuntimeBuilder<TuiBackend, ()>,
+        component_ids: &mut HashMap<String, ComponentId<String>>,
+    ) {
+        <crate::admin::components::floating::add_command::AddCommand as AppComponent>::register_component(
+            builder,
+            "confirm_window",
+            CONFIRM_TEMPLATE,
+            Confirm::new(),
+            ConfirmState::new(),
+            component_ids,
+        )
+    }
+}
 
 impl Confirm {
     pub fn new() -> Self {

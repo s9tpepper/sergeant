@@ -1,9 +1,35 @@
-use anathema::{component::Component, prelude::Context, widgets::Elements};
+use std::collections::HashMap;
+
+use anathema::{
+    component::{Component, ComponentId},
+    prelude::{Context, TuiBackend},
+    runtime::RuntimeBuilder,
+    widgets::Elements,
+};
+
+use crate::admin::{templates::TEXT_INPUT_TEMPLATE, AppComponent};
 
 use super::inputs::{InputReceiver, InputState};
 
 #[derive(Default)]
 pub struct CmdOutputInput;
+
+impl AppComponent for CmdOutputInput {}
+impl CmdOutputInput {
+    pub fn register(
+        builder: &mut RuntimeBuilder<TuiBackend, ()>,
+        component_ids: &mut HashMap<String, ComponentId<String>>,
+    ) {
+        <crate::admin::components::floating::add_command::AddCommand as AppComponent>::register_component(
+            builder,
+            "cmd_output_input",
+            TEXT_INPUT_TEMPLATE,
+            CmdOutputInput,
+            InputState::new(),
+            component_ids,
+        )
+    }
+}
 
 impl InputReceiver for CmdOutputInput {}
 

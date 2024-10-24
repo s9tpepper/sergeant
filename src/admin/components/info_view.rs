@@ -1,21 +1,39 @@
-use std::error::Error;
+use std::{collections::HashMap, error::Error};
 
 use anathema::{
-    component::Component,
+    component::{Component, ComponentId},
+    prelude::TuiBackend,
+    runtime::RuntimeBuilder,
     state::{State, Value},
 };
 
 use crate::{
-    admin::messages::ComponentMessages,
+    admin::{messages::ComponentMessages, templates::INFO_VIEW_TEMPLATE, AppComponent},
     commands::{get_list, get_list_commands},
     twitch::{announcements::get_announcements, pubsub::send_to_error_log},
     utils::read_auth_token,
 };
 
-use super::ComponentMessage;
-
 #[derive(Default)]
 pub struct InfoView;
+
+impl InfoView {
+    pub fn register(
+        builder: &mut RuntimeBuilder<TuiBackend, ()>,
+        component_ids: &mut HashMap<String, ComponentId<String>>,
+    ) {
+        <crate::admin::components::floating::add_command::AddCommand as AppComponent>::register_component(
+            builder,
+            "info_view",
+            INFO_VIEW_TEMPLATE,
+            InfoView,
+            InfoViewState::new(),
+            component_ids,
+        )
+    }
+}
+
+impl AppComponent for InfoView {}
 
 #[derive(Default, State)]
 pub struct InfoViewState {

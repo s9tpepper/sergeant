@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use anathema::{
-    component::ComponentId,
-    prelude::{Document, TuiBackend},
+    component::{Component, ComponentId},
+    prelude::{Document, ToSourceKind, TuiBackend},
     runtime::{Error, Runtime, RuntimeBuilder},
     state::List,
 };
@@ -91,67 +91,35 @@ impl Admin {
 
         let _ = builder.register_prototype("text_input", TEXT_INPUT_TEMPLATE, || TextInput, InputState::new);
 
-        let add_command_id = builder.register_component(
-            "add_command_window",
-            ADD_COMMAND_TEMPLATE,
-            AddCommand,
-            AddCommandState::new(),
-        );
-        self.register_component_id("add_command_window", add_command_id);
+        let component_ids = self.component_ids.as_mut().unwrap();
 
-        let info_view_id = builder.register_component("info_view", INFO_VIEW_TEMPLATE, InfoView, InfoViewState::new());
-        self.register_component_id("info_view", info_view_id);
-
-        let confirm_window_id =
-            builder.register_component("confirm_window", CONFIRM_TEMPLATE, Confirm::new(), ConfirmState::new());
-        self.register_component_id("confirm_window", confirm_window_id);
-
-        let commands_view_id = builder.register_component(
-            "commands_view",
-            LIST_VIEW_TEMPLATE,
-            CommandsView::new(),
-            ListViewState {
-                item_row_fill: "‧".to_string().into(),
-                current_last_index: 4.into(),
-                visible_items: 5.into(),
-                default_color: "#313131".to_string().into(),
-                selected_color: "#ffffff".to_string().into(),
-                min_width: 10.into(),
-                title_background: "yellow".to_string().into(),
-                title_foreground: "#131313".to_string().into(),
-                title_heading: "Commands".to_string().into(),
-                window_list: List::empty(),
-                ..Default::default()
-            },
-        );
-        self.register_component_id("commands_view", commands_view_id);
-
-        let error_window_id =
-            builder.register_component("error_window", ERROR_TEMPLATE, ErrorWindow, ErrorState::new());
-        self.register_component_id("error_window", error_window_id);
-
-        let cmd_name_input_id =
-            builder.register_component("cmd_name_input", TEXT_INPUT_TEMPLATE, CmdNameInput, InputState::new());
-        self.register_component_id("cmd_name_input", cmd_name_input_id);
-
-        let cmd_output_input_id = builder.register_component(
-            "cmd_output_input",
-            TEXT_INPUT_TEMPLATE,
-            CmdOutputInput,
-            InputState::new(),
-        );
-        self.register_component_id("cmd_output_input", cmd_output_input_id);
-
-        let edit_command_window_id = builder.register_component(
-            "edit_command_window",
-            EDIT_COMMAND_TEMPLATE,
-            EditCommand,
-            EditCommandState::new(),
-        );
-        self.register_component_id("edit_command_window", edit_command_window_id);
+        AddCommand::register(builder, component_ids);
+        InfoView::register(builder, component_ids);
+        Confirm::register(builder, component_ids);
+        CommandsView::register(builder, component_ids);
+        ErrorWindow::register(builder, component_ids);
+        CmdNameInput::register(builder, component_ids);
+        CmdOutputInput::register(builder, component_ids);
+        EditCommand::register(builder, component_ids);
 
         let component_ids = self.component_ids.take().unwrap();
         let app = App { component_ids };
         let _ = builder.register_component("app", APP_TEMPLATE, app, AppState::new());
+    }
+}
+
+pub trait AppComponent {
+    fn register_component<C: Component<Message = String> + 'static>(
+        builder: &mut RuntimeBuilder<TuiBackend, ()>,
+        ident: impl Into<String>,
+        template: impl ToSourceKind,
+        component: C,
+        state: C::State,
+        component_ids: &mut HashMap<String, ComponentId<String>>,
+    ) {
+        let component_ident: String = ident.into();
+        if let Ok(id) = builder.register_component(component_ident.clone(), template, component, state) {
+            component_ids.insert(component_ident, id);
+        }
     }
 }

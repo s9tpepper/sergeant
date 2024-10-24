@@ -4,6 +4,7 @@ use anathema::component::{ComponentId, Emitter};
 
 use super::messages::ComponentMessages;
 
+pub mod announcements;
 pub mod app;
 pub mod cmd_name_input;
 pub mod cmd_output_input;
