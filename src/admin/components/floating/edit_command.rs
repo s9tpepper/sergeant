@@ -7,7 +7,15 @@ use anathema::{
     state::{State, Value},
 };
 
-use crate::admin::{templates::EDIT_COMMAND_TEMPLATE, AppComponent};
+use crate::{
+    admin::{
+        components::{app::AppMessageHandler, MessageSender},
+        messages::{CommandsViewReload, ComponentMessages},
+        templates::EDIT_COMMAND_TEMPLATE,
+        AppComponent,
+    },
+    commands::add_chat_command,
+};
 
 use super::add_command::Command;
 
@@ -45,6 +53,61 @@ impl EditCommandState {
                 common: String::from("::::").into(),
             }
             .into(),
+        }
+    }
+}
+
+impl AppMessageHandler for EditCommand {
+    fn handle_message<F>(
+        value: anathema::state::CommonVal<'_>,
+        ident: impl Into<String>,
+        state: &mut crate::admin::components::app::AppState,
+        context: anathema::prelude::Context<'_, crate::admin::components::app::AppState>,
+        component_ids: &HashMap<String, ComponentId<String>>,
+        fun: F,
+    ) where
+        F: Fn(
+            &mut crate::admin::components::app::AppState,
+            anathema::prelude::Context<'_, crate::admin::components::app::AppState>,
+        ),
+    {
+        let event: String = ident.into();
+        match event.as_str() {
+            "edit_command__cancel" => {
+                if let Some(id) = component_ids.get("cmd_name_input") {
+                    let _ = context.emitter.emit(*id, String::from(""));
+                }
+
+                if let Some(id) = component_ids.get("cmd_output_input") {
+                    let _ = context.emitter.emit(*id, String::from(""));
+                }
+
+                fun(state, context);
+            }
+
+            "edit_command__submit" => {
+                let command: Command = value.into();
+
+                match add_chat_command(&command.name.to_ref(), &command.output.to_ref(), None) {
+                    Ok(_) => {
+                        if let Some(id) = component_ids.get("commands_view") {
+                            let _ = MessageSender::send_message(
+                                *id,
+                                ComponentMessages::CommandsViewReload(CommandsViewReload {}),
+                                context.emitter.clone(),
+                            );
+                        }
+                    }
+
+                    Err(_) => {
+                        // TODO: bring up a message window with an error message
+                    }
+                };
+
+                fun(state, context);
+            }
+
+            _ => {}
         }
     }
 }

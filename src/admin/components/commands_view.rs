@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, thread::sleep, time::Duration};
 
 use anathema::{
     component::{Component, ComponentId, KeyCode::Char},
@@ -9,11 +9,21 @@ use anathema::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    admin::{messages::ComponentMessages, templates::LIST_VIEW_TEMPLATE, AppComponent},
+    admin::{
+        messages::{
+            CommandsViewReload, ComponentMessages, DeleteCommandConfirmMessage, DeleteCommandConfirmationDetails,
+        },
+        templates::LIST_VIEW_TEMPLATE,
+        AppComponent,
+    },
     commands::{get_list_with_contents, remove_chat_command, Command},
 };
 
-use super::list_view::{Item, ListComponent, ListViewState};
+use super::{
+    app::{AppMessageHandler, FloatingWindow, MainDisplay},
+    list_view::{Item, ListComponent, ListViewState},
+    MessageSender,
+};
 
 #[derive(Default)]
 pub struct CommandsView {
@@ -52,6 +62,91 @@ impl CommandsView {
 impl CommandsView {
     pub fn new() -> Self {
         CommandsView { commands: None }
+    }
+}
+
+impl AppMessageHandler for CommandsView {
+    fn handle_message<F>(
+        value: anathema::state::CommonVal<'_>,
+        ident: impl Into<String>,
+        state: &mut super::app::AppState,
+        mut context: Context<'_, super::app::AppState>,
+        component_ids: &HashMap<String, ComponentId<String>>,
+        fun: F,
+    ) where
+        F: Fn(&mut super::app::AppState, Context<'_, super::app::AppState>),
+    {
+        let event: String = ident.into();
+        match event.as_str() {
+            "commands__close_view" => {
+                state.main_display.set(MainDisplay::InfoView);
+                context.set_focus("id", "app");
+            }
+
+            "commands__add" => {
+                state.floating_window.set(FloatingWindow::AddCommand);
+                context.set_focus("id", "add_command_window");
+            }
+
+            "commands__edit_selection" => {
+                if let Ok(item) = serde_json::from_str::<Cmd>(&value.to_string()) {
+                    state.floating_window.set(FloatingWindow::EditCommand);
+                    context.set_focus("id", "edit_command_window");
+
+                    if let Some(id) = component_ids.get("cmd_name_input") {
+                        let _ = context.emitter.emit(*id, item.name);
+                    }
+
+                    if let Some(id) = component_ids.get("cmd_output_input") {
+                        let _ = context.emitter.emit(*id, item.contents);
+                    }
+                }
+            }
+
+            "commands__delete_selection" => {
+                if let Ok(item) = serde_json::from_str::<Cmd>(&value.to_string()) {
+                    if let Some(id) = component_ids.get("confirm_window") {
+                        state.floating_window.set(FloatingWindow::Confirm);
+                        context.set_focus("id", "confirm_window");
+
+                        let message = format!("Are you sure you want to delete: {}", item.name);
+                        let confirmation_details = DeleteCommandConfirmationDetails {
+                            title: "Delete Command",
+                            waiting: "commands_view",
+                            message: &message,
+                            item,
+                        };
+
+                        let _ = MessageSender::send_message(
+                            *id,
+                            ComponentMessages::DeleteCommandConfirmMessage(DeleteCommandConfirmMessage {
+                                payload: confirmation_details,
+                            }),
+                            context.emitter.clone(),
+                        );
+                    }
+                }
+            }
+
+            "commands__show_delete_error" => {
+                state.floating_window.set(FloatingWindow::Error);
+                state.error_message.set(String::from("Could not delete command"));
+                context.set_focus("id", "error_window");
+
+                if let Some(id) = component_ids.get("error_window") {
+                    let _ = MessageSender::send_message(
+                        *id,
+                        ComponentMessages::CommandsViewReload(CommandsViewReload {}),
+                        context.emitter.clone(),
+                    );
+                }
+
+                sleep(Duration::from_secs(5));
+                fun(state, context);
+            }
+
+            _ => {}
+        }
     }
 }
 
@@ -132,7 +227,7 @@ impl Component for CommandsView {
     ) {
         match event.code {
             Char(char) => match char {
-                'a' => context.publish("add_command", |state| &state.cursor),
+                'a' => context.publish("commands__add", |state| &state.cursor),
                 'e' => self.send_item_selection(state, context),
                 'd' => self.send_delete_selection(state, context),
                 'b' => self.send_cancel_view(context),

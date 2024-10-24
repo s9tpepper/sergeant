@@ -3,28 +3,19 @@ use std::collections::HashMap;
 use anathema::{
     component::{Component, ComponentId},
     prelude::{Document, ToSourceKind, TuiBackend},
-    runtime::{Error, Runtime, RuntimeBuilder},
-    state::List,
+    runtime::{Runtime, RuntimeBuilder},
 };
 use components::{
+    announcements::AnnouncementsView,
     app::{App, AppState},
-    cmd_name_input::{self, CmdNameInput},
+    cmd_name_input::CmdNameInput,
     cmd_output_input::CmdOutputInput,
     commands_view::CommandsView,
-    floating::{
-        add_command::{AddCommand, AddCommandState},
-        confirm::{Confirm, ConfirmState},
-        edit_command::{EditCommand, EditCommandState},
-        error::{ErrorState, ErrorWindow},
-    },
-    info_view::{InfoView, InfoViewState},
+    floating::{add_command::AddCommand, confirm::Confirm, edit_command::EditCommand, error::ErrorWindow},
+    info_view::InfoView,
     inputs::{InputState, TextInput},
-    list_view::ListViewState,
 };
-use templates::{
-    ADD_COMMAND_TEMPLATE, APP_TEMPLATE, CONFIRM_TEMPLATE, EDIT_COMMAND_TEMPLATE, ERROR_TEMPLATE, INFO_VIEW_TEMPLATE,
-    LIST_VIEW_TEMPLATE, TEXT_INPUT_TEMPLATE,
-};
+use templates::{APP_TEMPLATE, TEXT_INPUT_TEMPLATE};
 
 mod components;
 mod messages;
@@ -42,17 +33,6 @@ impl Admin {
     pub fn new() -> Self {
         Admin {
             component_ids: Some(HashMap::new()),
-        }
-    }
-
-    fn register_component_id(&mut self, name: &str, component_id: Result<ComponentId<String>, Error>) {
-        if self.component_ids.is_none() {
-            return;
-        }
-
-        let component_ids = self.component_ids.as_mut().unwrap();
-        if let Ok(id) = component_id {
-            component_ids.insert(name.to_string(), id);
         }
     }
 
@@ -101,6 +81,7 @@ impl Admin {
         CmdNameInput::register(builder, component_ids);
         CmdOutputInput::register(builder, component_ids);
         EditCommand::register(builder, component_ids);
+        AnnouncementsView::register(builder, component_ids);
 
         let component_ids = self.component_ids.take().unwrap();
         let app = App { component_ids };

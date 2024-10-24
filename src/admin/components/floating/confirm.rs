@@ -1,13 +1,24 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 
 use anathema::{
-    component::{Component, ComponentId},
-    prelude::TuiBackend,
+    component::{Component, ComponentId, Emitter},
+    prelude::{Context, TuiBackend},
     runtime::RuntimeBuilder,
-    state::{State, Value},
+    state::{CommonVal, State, Value},
 };
 
-use crate::admin::{messages::ComponentMessages, templates::CONFIRM_TEMPLATE, AppComponent};
+use crate::{
+    admin::{
+        components::{
+            app::{AppMessageHandler, AppState},
+            MessageSender, Messenger,
+        },
+        messages::ComponentMessages,
+        templates::CONFIRM_TEMPLATE,
+        AppComponent,
+    },
+    twitch::pubsub::send_to_error_log,
+};
 
 #[derive(Default)]
 pub struct Confirm {}
@@ -26,6 +37,50 @@ impl Confirm {
             ConfirmState::new(),
             component_ids,
         )
+    }
+}
+
+impl Messenger for Confirm {}
+
+impl AppMessageHandler for Confirm {
+    fn handle_message<F>(
+        value: CommonVal<'_>,
+        ident: impl Into<String>,
+        state: &mut AppState,
+        context: Context<'_, AppState>,
+        component_ids: &HashMap<String, ComponentId<String>>,
+        fun: F,
+    ) where
+        F: Fn(&mut AppState, Context<'_, AppState>),
+    {
+        let event: String = ident.into();
+        match event.as_str() {
+            "confirm__cancel" => {
+                fun(state, context);
+            }
+
+            "confirm__delete_command" => {
+                match serde_json::from_str::<ComponentMessages>(&value.to_string()) {
+                    Ok(component_messages) => {
+                        if let ComponentMessages::DeleteCommandConfirmMessage(delete_msg) = component_messages {
+                            if let Some(id) = component_ids.get(delete_msg.payload.waiting) {
+                                let _ = MessageSender::send_message(
+                                    *id,
+                                    ComponentMessages::DeleteCommandConfirmMessage(delete_msg),
+                                    context.emitter.clone(),
+                                );
+                            }
+                        }
+                    }
+
+                    Err(error) => send_to_error_log(error.to_string(), format!("Could not deserialize {}", value)),
+                }
+
+                fun(state, context);
+            }
+
+            _ => {}
+        }
     }
 }
 
@@ -75,7 +130,7 @@ impl Component for Confirm {
                     match serde_json::from_str::<ComponentMessages>(&state.component_message.to_ref()) {
                         Ok(msg) => match msg {
                             ComponentMessages::DeleteCommandConfirmMessage(_) => {
-                                context.publish("confirm_delete_command", |state| &state.component_message);
+                                context.publish("confirm__delete_command", |state| &state.component_message);
                             }
 
                             ComponentMessages::InfoViewLoad(_) => {}

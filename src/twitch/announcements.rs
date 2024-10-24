@@ -3,11 +3,12 @@ use crate::twitch::irc::TwitchIrcClient;
 use std::{
     error::Error,
     fs,
-    sync::{mpsc::Sender, Arc},
+    sync::mpsc::Sender,
     thread::sleep,
     time::{Duration, SystemTime},
 };
 
+use clap::builder::OsStr;
 use ratatui::layout::Rect;
 use serde::{Deserialize, Serialize};
 
@@ -21,6 +22,7 @@ use super::{
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Announcement {
+    pub name: String,
     pub timing: Duration,
     pub message: String,
     pub start: SystemTime,
@@ -31,6 +33,7 @@ pub struct Announcement {
 impl Clone for Announcement {
     fn clone(&self) -> Self {
         Self {
+            name: self.name.clone(),
             timing: self.timing,
             message: self.message.clone(),
             start: self.start,
@@ -48,6 +51,9 @@ pub fn get_announcements() -> Result<Vec<Announcement>, Box<dyn Error>> {
         let entry = entry?;
         let path = entry.path();
         if path.is_file() {
+            let default_file_name = &OsStr::from("unknown_name");
+            let name = path.file_name().unwrap_or(default_file_name);
+
             let file_contents = fs::read_to_string(&path)?;
             if let Some((timing, message)) = file_contents.split_once('\n') {
                 let timing = Duration::from_secs(timing.parse::<u64>()? * 60);
@@ -55,6 +61,7 @@ pub fn get_announcements() -> Result<Vec<Announcement>, Box<dyn Error>> {
                 let message = message.to_string();
                 let area = None;
                 let announcement = Announcement {
+                    name: String::from(name.to_str().unwrap_or("unknown_name")),
                     timing,
                     message,
                     start,

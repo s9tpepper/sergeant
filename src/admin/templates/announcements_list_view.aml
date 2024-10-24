@@ -1,0 +1,20 @@
+align [alignment: "center"]
+  zstack
+    border [foreground: border_color, border_style: "╭─╮│╯─╰│", min_width: min_width, max_width: max_width]
+      vstack [id: "list_container"]
+        for item in window_list
+          vstack [foreground: item.color]
+            expand [axis: "horizontal", background: item.color]
+              text [foreground: "#000000", background: item.color] loop+1 ". " item.name
+            text item.details
+
+        container [height: 1, background: footer_background, foreground: footer_foreground]
+          expand
+            hstack
+              text footer_heading
+              spacer
+              text footer_subheading
+    hstack
+      text "╭─" title_heading
+      spacer
+      text title_subheading

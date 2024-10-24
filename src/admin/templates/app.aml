@@ -12,12 +12,21 @@ zstack
 
         if main_display == "CommandsView"
           @commands_view (
-            cancel_item_window -> close_commands_view,
-            item_selection -> edit_command_selection,
-            delete_item_selection -> delete_command_selection,
-            add_command -> add_command,
-            show_delete_command_error -> show_delete_command_error
+            cancel_item_window -> commands__close_view,
+            item_selection -> commands__edit_selection,
+            delete_item_selection -> commands__delete_selection,
+            commands__add -> commands__add,
+            show_delete_command_error -> commands__show_delete_error
           ) [id: "commands_view"]
+
+        if main_display == "AnnouncementsView"
+          @announcements_view (
+            cancel_item_window -> close_announcements_view,
+            item_selection -> edit_announcement_selection,
+            delete_item_selection -> delete_announcement_selection,
+            add_announcement -> add_announcement,
+            show_delete_announcement_error -> show_delete_announcement_error
+          ) [id: "announcements_view"]
 
         if main_display == "LogsView"
           zstack
@@ -41,6 +50,11 @@ zstack
             spacer
             text "(A)dd (E)dit (D)elete (B)ack "
 
+        if main_display == "AnnouncementsView"
+          hstack
+            spacer
+            text "(A)dd (E)dit (D)elete (B)ack "
+
         if main_display == "LogsView"
           hstack
             spacer
@@ -48,20 +62,20 @@ zstack
 
   if floating_window == "AddCommand"
     @add_command_window (
-      submit_add_command -> submit_add_command,
-      cancel_add_command -> cancel_add_command,
+      submit_add_command -> add_command__submit,
+      cancel_add_command -> add_command__cancel,
     ) [id: "add_command_window"]
 
   if floating_window == "EditCommand"
     @edit_command_window (
-      submit_edit_command -> submit_edit_command,
-      cancel_edit_command -> cancel_edit_command,
+      submit_edit_command -> edit_command__submit,
+      cancel_edit_command -> edit_command__cancel,
     ) [id: "edit_command_window"]
 
   if floating_window == "Confirm"
     @confirm_window (
-      cancel_confirmation -> cancel_confirmation,
-      confirm_delete_command -> confirm_delete_command
+      cancel_confirmation -> confirm__cancel,
+      confirm__delete_command -> confirm__delete_command
     ) [id: "confirm_window"]
 
   if floating_window == "Error"

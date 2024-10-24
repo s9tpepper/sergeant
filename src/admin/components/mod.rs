@@ -19,9 +19,10 @@ pub trait ComponentMessage {
     fn get_type(&self) -> String;
 }
 
-pub trait Messenger {
+pub struct MessageSender {}
+
+impl MessageSender {
     fn send_message(
-        &self,
         target: ComponentId<String>,
         message: ComponentMessages,
         emitter: Emitter,
@@ -33,5 +34,16 @@ pub trait Messenger {
             }
             Err(error) => Err(Box::new(error)),
         }
+    }
+}
+
+pub trait Messenger {
+    fn send_message(
+        &self,
+        target: ComponentId<String>,
+        message: ComponentMessages,
+        emitter: Emitter,
+    ) -> Result<(), Box<dyn Error>> {
+        MessageSender::send_message(target, message, emitter)
     }
 }

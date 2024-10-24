@@ -1,22 +1,22 @@
-use std::{collections::HashMap, fs, str::FromStr, thread::sleep, time::Duration};
+use std::{collections::HashMap, fs};
 
 use anathema::{
     component::{Component, ComponentId},
     default_widgets::Overflow,
+    prelude::Context,
     state::{CommonVal, State, Value},
 };
 
 use crate::{
-    admin::messages::{
-        CommandsViewReload, ComponentMessages, DeleteCommandConfirmMessage, DeleteCommandConfirmationDetails,
-        InfoViewLoad,
-    },
-    commands::add_chat_command,
-    twitch::pubsub::send_to_error_log,
+    admin::messages::{ComponentMessages, InfoViewLoad},
     utils::get_data_directory,
 };
 
-use super::{commands_view::Cmd, floating::add_command::Command, ComponentMessage, Messenger};
+use super::{
+    commands_view::CommandsView,
+    floating::{add_command::AddCommand, confirm::Confirm, edit_command::EditCommand},
+    Messenger,
+};
 
 #[derive(Default)]
 pub struct App {
@@ -43,14 +43,14 @@ impl App {
 
 #[derive(Default, State)]
 pub struct AppState {
-    main_display: Value<MainDisplay>,
-    floating_window: Value<FloatingWindow>,
-    error_message: Value<String>,
-    logs: Value<String>,
+    pub main_display: Value<MainDisplay>,
+    pub floating_window: Value<FloatingWindow>,
+    pub error_message: Value<String>,
+    pub logs: Value<String>,
 }
 
 #[derive(Default)]
-enum FloatingWindow {
+pub enum FloatingWindow {
     #[default]
     None,
     AddCommand,
@@ -74,7 +74,7 @@ impl State for FloatingWindow {
 }
 
 #[derive(Default)]
-enum MainDisplay {
+pub enum MainDisplay {
     #[default]
     InfoView,
     CommandsView,
@@ -160,6 +160,10 @@ impl Component for App {
                 'r' => {}
                 'i' => {}
                 'l' => {}
+                'n' => {
+                    state.main_display.set(MainDisplay::AnnouncementsView);
+                    context.set_focus("id", "announcements_view");
+                }
                 'g' => {
                     state.main_display.set(MainDisplay::LogsView);
                     let mut error_log = get_data_directory(Some("error_log")).unwrap();
@@ -223,161 +227,53 @@ impl Component for App {
         value: CommonVal<'_>,
         state: &mut Self::State,
         _: anathema::widgets::Elements<'_, '_>,
-        mut context: anathema::prelude::Context<'_, Self::State>,
+        context: anathema::prelude::Context<'_, Self::State>,
     ) {
-        match ident {
-            "close_commands_view" => {
-                state.main_display.set(MainDisplay::InfoView);
-                context.set_focus("id", "app");
-            }
-
-            "add_command" => {
-                state.floating_window.set(FloatingWindow::AddCommand);
-                context.set_focus("id", "add_command_window");
-            }
-            "cancel_add_command" => {
-                state.floating_window.set(FloatingWindow::None);
-                context.set_focus("id", "commands_view");
-            }
-            "submit_add_command" => {
-                state.floating_window.set(FloatingWindow::None);
-                context.set_focus("id", "commands_view");
-
-                let command: Command = value.into();
-
-                match add_chat_command(&command.name.to_ref(), &command.output.to_ref(), None) {
-                    Ok(_) => {
-                        if let Some(id) = self.component_ids.get("commands_view") {
-                            let _ = self.send_message(
-                                *id,
-                                ComponentMessages::CommandsViewReload(CommandsViewReload {}),
-                                context.emitter.clone(),
-                            );
-                        }
-                    }
-
-                    Err(_) => {
-                        // TODO: bring up a message window with an error message
-                    }
-                };
-            }
-
-            "edit_command_selection" => {
-                if let Ok(item) = serde_json::from_str::<Cmd>(&value.to_string()) {
-                    state.floating_window.set(FloatingWindow::EditCommand);
-                    context.set_focus("id", "edit_command_window");
-
-                    if let Some(id) = self.component_ids.get("cmd_name_input") {
-                        let _ = context.emitter.emit(*id, item.name);
-                    }
-
-                    if let Some(id) = self.component_ids.get("cmd_output_input") {
-                        let _ = context.emitter.emit(*id, item.contents);
-                    }
-                }
-            }
-
-            "cancel_edit_command" => {
-                if let Some(id) = self.component_ids.get("cmd_name_input") {
-                    let _ = context.emitter.emit(*id, String::from(""));
+        if let Some((component_name, _)) = ident.split_once("__") {
+            match component_name {
+                "confirm" => {
+                    Confirm::handle_message(value, ident, state, context, &self.component_ids, |state, context| {
+                        self.reset_floating_window(state, context)
+                    });
                 }
 
-                if let Some(id) = self.component_ids.get("cmd_output_input") {
-                    let _ = context.emitter.emit(*id, String::from(""));
-                }
-
-                self.reset_floating_window(state, context);
-            }
-
-            "submit_edit_command" => {
-                let command: Command = value.into();
-
-                match add_chat_command(&command.name.to_ref(), &command.output.to_ref(), None) {
-                    Ok(_) => {
-                        if let Some(id) = self.component_ids.get("commands_view") {
-                            let _ = self.send_message(
-                                *id,
-                                ComponentMessages::CommandsViewReload(CommandsViewReload {}),
-                                context.emitter.clone(),
-                            );
-                        }
-                    }
-
-                    Err(_) => {
-                        // TODO: bring up a message window with an error message
-                    }
-                };
-
-                self.reset_floating_window(state, context);
-            }
-
-            "delete_command_selection" => {
-                if let Ok(item) = serde_json::from_str::<Cmd>(&value.to_string()) {
-                    if let Some(id) = self.component_ids.get("confirm_window") {
-                        state.floating_window.set(FloatingWindow::Confirm);
-                        context.set_focus("id", "confirm_window");
-
-                        let message = format!("Are you sure you want to delete: {}", item.name);
-                        let confirmation_details = DeleteCommandConfirmationDetails {
-                            title: "Delete Command",
-                            waiting: "commands_view",
-                            message: &message,
-                            item,
-                        };
-
-                        let _ = self.send_message(
-                            *id,
-                            ComponentMessages::DeleteCommandConfirmMessage(DeleteCommandConfirmMessage {
-                                payload: confirmation_details,
-                            }),
-                            context.emitter.clone(),
-                        );
-                    }
-                }
-            }
-
-            "cancel_confirmation" => {
-                self.reset_floating_window(state, context);
-            }
-
-            "confirm_delete_command" => {
-                match serde_json::from_str::<ComponentMessages>(&value.to_string()) {
-                    Ok(component_messages) => {
-                        if let ComponentMessages::DeleteCommandConfirmMessage(delete_msg) = component_messages {
-                            if let Some(id) = self.component_ids.get(delete_msg.payload.waiting) {
-                                let _ = self.send_message(
-                                    *id,
-                                    ComponentMessages::DeleteCommandConfirmMessage(delete_msg),
-                                    context.emitter.clone(),
-                                );
-                            }
-                        }
-                    }
-
-                    Err(error) => send_to_error_log(error.to_string(), format!("Could not deserialize {}", value)),
-                }
-
-                self.reset_floating_window(state, context);
-            }
-
-            "show_delete_command_error" => {
-                state.floating_window.set(FloatingWindow::Error);
-                state.error_message.set(String::from("Could not delete command"));
-                context.set_focus("id", "error_window");
-
-                if let Some(id) = self.component_ids.get("error_window") {
-                    let _ = self.send_message(
-                        *id,
-                        ComponentMessages::CommandsViewReload(CommandsViewReload {}),
-                        context.emitter.clone(),
+                "commands" => {
+                    CommandsView::handle_message(
+                        value,
+                        ident,
+                        state,
+                        context,
+                        &self.component_ids,
+                        |state, context| self.reset_floating_window(state, context),
                     );
                 }
 
-                sleep(Duration::from_secs(5));
-                self.reset_floating_window(state, context);
-            }
+                "add_command" => {
+                    AddCommand::handle_message(value, ident, state, context, &self.component_ids, |state, context| {
+                        self.reset_floating_window(state, context)
+                    });
+                }
 
-            _ => {}
+                "edit_command" => {
+                    EditCommand::handle_message(value, ident, state, context, &self.component_ids, |state, context| {
+                        self.reset_floating_window(state, context)
+                    })
+                }
+
+                _ => {}
+            }
         }
     }
+}
+
+pub trait AppMessageHandler {
+    fn handle_message<F>(
+        value: CommonVal<'_>,
+        ident: impl Into<String>,
+        state: &mut AppState,
+        context: Context<'_, AppState>,
+        component_ids: &HashMap<String, ComponentId<String>>,
+        fun: F,
+    ) where
+        F: Fn(&mut AppState, Context<'_, AppState>);
 }
