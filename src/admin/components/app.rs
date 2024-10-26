@@ -16,7 +16,8 @@ use super::{
     announcements::AnnouncementsView,
     commands_view::CommandsView,
     floating::{
-        add_announcement::AddAnnouncement, add_command::AddCommand, confirm::Confirm, edit_command::EditCommand,
+        add_announcement::AddAnnouncement, add_command::AddCommand, confirm::Confirm,
+        edit_announcement::EditAnnouncement, edit_command::EditCommand,
     },
     Messenger,
 };
@@ -59,6 +60,7 @@ pub enum FloatingWindow {
     AddCommand,
     EditCommand,
     AddAnnouncement,
+    EditAnnouncement,
     Confirm,
     Error,
 }
@@ -70,6 +72,7 @@ impl State for FloatingWindow {
             FloatingWindow::AddCommand => Some(CommonVal::Str("AddCommand")),
             FloatingWindow::EditCommand => Some(CommonVal::Str("EditCommand")),
             FloatingWindow::AddAnnouncement => Some(CommonVal::Str("AddAnnouncement")),
+            FloatingWindow::EditAnnouncement => Some(CommonVal::Str("EditAnnouncement")),
             FloatingWindow::Confirm => Some(CommonVal::Str("Confirm")),
             FloatingWindow::Error => Some(CommonVal::Str("Error")),
         }
@@ -244,6 +247,15 @@ impl Component for App {
                 ),
 
                 "add_announcement" => AddAnnouncement::handle_message(
+                    value,
+                    ident,
+                    state,
+                    context,
+                    &self.component_ids,
+                    |state, context| self.reset_floating_window(state, context),
+                ),
+
+                "edit_announcement" => EditAnnouncement::handle_message(
                     value,
                     ident,
                     state,

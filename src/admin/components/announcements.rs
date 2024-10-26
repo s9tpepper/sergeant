@@ -20,6 +20,7 @@ use crate::{
 
 use super::{
     app::{AppMessageHandler, FloatingWindow},
+    floating::add_announcement::Announcement,
     list_view::{Item, ListComponent, ListViewState},
     MessageSender,
 };
@@ -49,11 +50,31 @@ impl AppMessageHandler for AnnouncementsView {
                 state.floating_window.set(super::app::FloatingWindow::AddAnnouncement);
                 context.set_focus("id", "add_announcement_window");
             }
+
             "announcements__close" => {
                 state.main_display.set(super::app::MainDisplay::InfoView);
                 context.set_focus("id", "app");
             }
-            "announcements__edit_selection" => {}
+
+            "announcements__edit_selection" => {
+                if let Ok(item) = serde_json::from_str::<Announce>(&value.to_string()) {
+                    state.floating_window.set(FloatingWindow::EditAnnouncement);
+                    context.set_focus("id", "edit_announcement_window");
+
+                    if let Some(id) = component_ids.get("announce_name_input") {
+                        let _ = context.emitter.emit(*id, item.name);
+                    }
+
+                    if let Some(id) = component_ids.get("announce_message_input") {
+                        let _ = context.emitter.emit(*id, item.message);
+                    }
+
+                    if let Some(id) = component_ids.get("announce_timing_input") {
+                        let _ = context.emitter.emit(*id, item.timing.to_string());
+                    }
+                }
+            }
+
             "announcements__delete_selection" => {
                 if let Ok(item) = serde_json::from_str::<Announce>(&value.to_string()) {
                     if let Some(id) = component_ids.get("confirm_window") {

@@ -6,8 +6,6 @@ use super::messages::ComponentMessages;
 
 pub mod announcements;
 pub mod app;
-pub mod cmd_name_input;
-pub mod cmd_output_input;
 pub mod commands_view;
 pub mod edit_input;
 pub mod floating;

@@ -84,5 +84,11 @@ zstack
       add_announcement__cancel -> add_announcement__cancel
     ) [id: "add_announcement_window"]
 
+  if floating_window == "EditAnnouncement"
+    @edit_announcement_window (
+      edit_announcement__submit -> edit_announcement__submit,
+      edit_announcement__cancel -> edit_announcement__cancel
+    ) [id: "edit_announcement_window"]
+
   if floating_window == "Error"
     @error_window [id: "error_window"]

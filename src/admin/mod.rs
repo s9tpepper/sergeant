@@ -8,13 +8,11 @@ use anathema::{
 use components::{
     announcements::AnnouncementsView,
     app::{App, AppState},
-    cmd_name_input::CmdNameInput,
-    cmd_output_input::CmdOutputInput,
     commands_view::CommandsView,
     edit_input::EditInput,
     floating::{
-        add_announcement::AddAnnouncement, add_command::AddCommand, confirm::Confirm, edit_command::EditCommand,
-        error::ErrorWindow,
+        add_announcement::AddAnnouncement, add_command::AddCommand, confirm::Confirm,
+        edit_announcement::EditAnnouncement, edit_command::EditCommand, error::ErrorWindow,
     },
     info_view::InfoView,
     inputs::{InputState, TextInput},
@@ -97,6 +95,25 @@ impl Admin {
         EditCommand::register(builder, component_ids);
         AnnouncementsView::register(builder, component_ids);
         AddAnnouncement::register(builder, component_ids);
+        EditInput::register(
+            "announce_name_input",
+            "edit_announcement_window".to_string(),
+            builder,
+            component_ids,
+        );
+        EditInput::register(
+            "announce_message_input",
+            "edit_announcement_window".to_string(),
+            builder,
+            component_ids,
+        );
+        EditInput::register(
+            "announce_timing_input",
+            "edit_announcement_window".to_string(),
+            builder,
+            component_ids,
+        );
+        EditAnnouncement::register(builder, component_ids);
 
         let component_ids = self.component_ids.take().unwrap();
         let app = App { component_ids };
