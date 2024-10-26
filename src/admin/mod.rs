@@ -11,6 +11,7 @@ use components::{
     cmd_name_input::CmdNameInput,
     cmd_output_input::CmdOutputInput,
     commands_view::CommandsView,
+    edit_input::EditInput,
     floating::{
         add_announcement::AddAnnouncement, add_command::AddCommand, confirm::Confirm, edit_command::EditCommand,
         error::ErrorWindow,
@@ -81,8 +82,18 @@ impl Admin {
         Confirm::register(builder, component_ids);
         CommandsView::register(builder, component_ids);
         ErrorWindow::register(builder, component_ids);
-        CmdNameInput::register(builder, component_ids);
-        CmdOutputInput::register(builder, component_ids);
+        EditInput::register(
+            "cmd_name_input",
+            "edit_command_window".to_string(),
+            builder,
+            component_ids,
+        );
+        EditInput::register(
+            "cmd_output_input",
+            "edit_command_window".to_string(),
+            builder,
+            component_ids,
+        );
         EditCommand::register(builder, component_ids);
         AnnouncementsView::register(builder, component_ids);
         AddAnnouncement::register(builder, component_ids);

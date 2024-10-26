@@ -9,6 +9,7 @@ pub mod app;
 pub mod cmd_name_input;
 pub mod cmd_output_input;
 pub mod commands_view;
+pub mod edit_input;
 pub mod floating;
 pub mod info_view;
 pub mod inputs;

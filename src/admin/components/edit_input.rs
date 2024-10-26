@@ -4,6 +4,7 @@ use anathema::{
     component::{Component, ComponentId},
     prelude::{Context, TuiBackend},
     runtime::RuntimeBuilder,
+    state::CommonVal,
     widgets::Elements,
 };
 
@@ -12,33 +13,39 @@ use crate::admin::{templates::TEXT_INPUT_TEMPLATE, AppComponent};
 use super::inputs::{InputReceiver, InputState};
 
 #[derive(Default)]
-pub struct CmdOutputInput;
+pub struct EditInput {
+    return_focus_id: String,
+}
 
-impl AppComponent for CmdOutputInput {}
-impl CmdOutputInput {
+impl AppComponent for EditInput {}
+impl EditInput {
     pub fn register(
+        ident: impl Into<String>,
+        return_focus_id: String,
         builder: &mut RuntimeBuilder<TuiBackend, ()>,
         component_ids: &mut HashMap<String, ComponentId<String>>,
     ) {
         <crate::admin::components::floating::add_command::AddCommand as AppComponent>::register_component(
             builder,
-            "cmd_output_input",
+            ident,
             TEXT_INPUT_TEMPLATE,
-            CmdOutputInput,
+            EditInput { return_focus_id },
             InputState::new(),
             component_ids,
         )
     }
 }
 
-impl InputReceiver for CmdOutputInput {}
+impl InputReceiver for EditInput {}
 
-impl Component for CmdOutputInput {
+impl Component for EditInput {
     type State = InputState;
     type Message = String;
 
     fn on_blur(&mut self, state: &mut Self::State, elements: Elements<'_, '_>, mut context: Context<'_, Self::State>) {
-        context.set_focus("id", "edit_command_window");
+        // NOTE: How terrible is this?
+        let id = Box::new(self.return_focus_id.clone());
+        context.set_focus("id", CommonVal::Str(id.leak()));
 
         self._on_blur(state, elements, context);
     }
