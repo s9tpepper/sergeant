@@ -1,7 +1,7 @@
-use std::{collections::HashMap, hash::Hash};
+use std::collections::HashMap;
 
 use anathema::{
-    component::{Component, ComponentId, Emitter},
+    component::{Component, ComponentId},
     prelude::{Context, TuiBackend},
     runtime::RuntimeBuilder,
     state::{CommonVal, State, Value},
