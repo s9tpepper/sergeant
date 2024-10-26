@@ -16,7 +16,7 @@ use crate::{
         templates::LIST_VIEW_TEMPLATE,
         AppComponent,
     },
-    commands::{get_list_with_contents, remove_chat_command, Command},
+    commands::{get_list_with_contents, remove_chat_command, SgtFile},
 };
 
 use super::{
@@ -247,8 +247,8 @@ pub struct Cmd {
     pub index: usize,
 }
 
-impl From<Command> for Cmd {
-    fn from(value: Command) -> Self {
+impl From<SgtFile> for Cmd {
+    fn from(value: SgtFile) -> Self {
         Cmd {
             name: value.name.to_ref().to_string(),
             contents: value.contents.to_ref().to_string(),

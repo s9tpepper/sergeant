@@ -101,14 +101,14 @@ pub fn get_list_commands() -> Result<Vec<String>, Box<dyn Error>> {
 }
 
 #[derive(State)]
-pub struct Command {
+pub struct SgtFile {
     pub name: Value<String>,
     pub contents: Value<String>,
 }
 
-pub fn get_list_with_contents(directory: &str) -> Result<Vec<Command>, Box<dyn Error>> {
+pub fn get_list_with_contents(directory: &str) -> Result<Vec<SgtFile>, Box<dyn Error>> {
     let command_path = get_data_directory(Some(directory))?;
-    let mut commands: Vec<Command> = vec![];
+    let mut commands: Vec<SgtFile> = vec![];
     let dir_entries = fs::read_dir(command_path)?;
 
     for entry in dir_entries {
@@ -132,7 +132,7 @@ pub fn get_list_with_contents(directory: &str) -> Result<Vec<Command>, Box<dyn E
 
         let contents = contents.unwrap();
 
-        commands.push(Command {
+        commands.push(SgtFile {
             name: name.into(),
             contents: contents.into(),
         });

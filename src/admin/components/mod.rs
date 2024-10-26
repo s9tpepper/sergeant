@@ -12,6 +12,7 @@ pub mod floating;
 pub mod info_view;
 pub mod inputs;
 pub mod list_view;
+pub mod rewards_view;
 
 pub trait ComponentMessage {
     #[allow(dead_code)]
