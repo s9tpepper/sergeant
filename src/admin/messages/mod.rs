@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::components::{announcements::Announce, commands_view::Cmd, ComponentMessage};
+use super::components::{announcements::Announce, commands_view::Cmd, rewards_view::Reward, ComponentMessage};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct DeleteCommandConfirmationDetails<'msg> {
@@ -8,6 +8,14 @@ pub struct DeleteCommandConfirmationDetails<'msg> {
     pub message: &'msg str,
     pub waiting: &'msg str,
     pub item: Cmd,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct DeleteRewardConfirmationDetails<'msg> {
+    pub title: &'msg str,
+    pub message: &'msg str,
+    pub waiting: &'msg str,
+    pub item: Reward,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -24,6 +32,8 @@ pub enum ComponentMessages<'msg> {
     DeleteCommandConfirmMessage(DeleteCommandConfirmMessage<'msg>),
     CommandsViewReload(CommandsViewReload),
     AnnouncementsViewReload(AnnouncementsViewReload),
+    RewardsViewReload(RewardsViewReload),
+    DeleteRewardConfirmMessage(DeleteRewardConfirmMessage<'msg>),
     DeleteAnnoucementConfirmMessage(DeleteAnnouncementConfirmMessage<'msg>),
     InfoViewLoad(InfoViewLoad),
 }
@@ -40,6 +50,12 @@ pub struct DeleteCommandConfirmMessage<'msg> {
     pub payload: DeleteCommandConfirmationDetails<'msg>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DeleteRewardConfirmMessage<'msg> {
+    #[serde(borrow)]
+    pub payload: DeleteRewardConfirmationDetails<'msg>,
+}
+
 impl<'msg> ComponentMessage for DeleteCommandConfirmMessage<'msg> {
     fn get_type(&self) -> String {
         String::from("delete_command_confirmation")
@@ -49,6 +65,14 @@ impl<'msg> ComponentMessage for DeleteCommandConfirmMessage<'msg> {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AnnouncementsViewReload;
 impl ComponentMessage for AnnouncementsViewReload {
+    fn get_type(&self) -> String {
+        String::from("reload_data")
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RewardsViewReload;
+impl ComponentMessage for RewardsViewReload {
     fn get_type(&self) -> String {
         String::from("reload_data")
     }

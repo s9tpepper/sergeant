@@ -11,11 +11,12 @@ use components::{
     commands_view::CommandsView,
     edit_input::EditInput,
     floating::{
-        add_announcement::AddAnnouncement, add_command::AddCommand, confirm::Confirm,
-        edit_announcement::EditAnnouncement, edit_command::EditCommand, error::ErrorWindow,
+        add_announcement::AddAnnouncement, add_command::AddCommand, add_reward::AddReward, confirm::Confirm,
+        edit_announcement::EditAnnouncement, edit_command::EditCommand, edit_reward::EditReward, error::ErrorWindow,
     },
     info_view::InfoView,
     inputs::{InputState, TextInput},
+    rewards_view::RewardsView,
 };
 use templates::{APP_TEMPLATE, TEXT_INPUT_TEMPLATE};
 
@@ -74,12 +75,6 @@ impl Admin {
         let _ = builder.register_prototype("text_input", TEXT_INPUT_TEMPLATE, || TextInput, InputState::new);
 
         let component_ids = self.component_ids.as_mut().unwrap();
-
-        AddCommand::register(builder, component_ids);
-        InfoView::register(builder, component_ids);
-        Confirm::register(builder, component_ids);
-        CommandsView::register(builder, component_ids);
-        ErrorWindow::register(builder, component_ids);
         EditInput::register(
             "cmd_name_input",
             "edit_command_window".to_string(),
@@ -92,9 +87,6 @@ impl Admin {
             builder,
             component_ids,
         );
-        EditCommand::register(builder, component_ids);
-        AnnouncementsView::register(builder, component_ids);
-        AddAnnouncement::register(builder, component_ids);
         EditInput::register(
             "announce_name_input",
             "edit_announcement_window".to_string(),
@@ -113,7 +105,31 @@ impl Admin {
             builder,
             component_ids,
         );
+        EditInput::register(
+            "reward_name_input",
+            "edit_reward_window".to_string(),
+            builder,
+            component_ids,
+        );
+        EditInput::register(
+            "reward_shell_command_input",
+            "edit_reward_window".to_string(),
+            builder,
+            component_ids,
+        );
+
+        AddCommand::register(builder, component_ids);
+        InfoView::register(builder, component_ids);
+        Confirm::register(builder, component_ids);
+        CommandsView::register(builder, component_ids);
+        ErrorWindow::register(builder, component_ids);
+        EditCommand::register(builder, component_ids);
+        AnnouncementsView::register(builder, component_ids);
+        AddAnnouncement::register(builder, component_ids);
         EditAnnouncement::register(builder, component_ids);
+        RewardsView::register(builder, component_ids);
+        AddReward::register(builder, component_ids);
+        EditReward::register(builder, component_ids);
 
         let component_ids = self.component_ids.take().unwrap();
         let app = App { component_ids };

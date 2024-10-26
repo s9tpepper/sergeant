@@ -16,9 +16,10 @@ use super::{
     announcements::AnnouncementsView,
     commands_view::CommandsView,
     floating::{
-        add_announcement::AddAnnouncement, add_command::AddCommand, confirm::Confirm,
-        edit_announcement::EditAnnouncement, edit_command::EditCommand,
+        add_announcement::AddAnnouncement, add_command::AddCommand, add_reward::AddReward, confirm::Confirm,
+        edit_announcement::EditAnnouncement, edit_command::EditCommand, edit_reward::EditReward,
     },
+    rewards_view::RewardsView,
     Messenger,
 };
 
@@ -33,9 +34,9 @@ impl App {
             MainDisplay::InfoView => context.set_focus("id", "info_view"),
             MainDisplay::CommandsView => context.set_focus("id", "commands_view"),
             MainDisplay::AnnouncementsView => context.set_focus("id", "announcements_view"),
+            MainDisplay::RewardsView => context.set_focus("id", "rewards_view"),
 
             // TODO: Implement rest when they exist
-            // MainDisplay::RewardsView => todo!(),
             // MainDisplay::IrcActionsView => todo!(),
             // MainDisplay::Login => todo!(),
             _ => {}
@@ -61,6 +62,8 @@ pub enum FloatingWindow {
     EditCommand,
     AddAnnouncement,
     EditAnnouncement,
+    AddReward,
+    EditReward,
     Confirm,
     Error,
 }
@@ -73,6 +76,8 @@ impl State for FloatingWindow {
             FloatingWindow::EditCommand => Some(CommonVal::Str("EditCommand")),
             FloatingWindow::AddAnnouncement => Some(CommonVal::Str("AddAnnouncement")),
             FloatingWindow::EditAnnouncement => Some(CommonVal::Str("EditAnnouncement")),
+            FloatingWindow::AddReward => Some(CommonVal::Str("AddReward")),
+            FloatingWindow::EditReward => Some(CommonVal::Str("EditReward")),
             FloatingWindow::Confirm => Some(CommonVal::Str("Confirm")),
             FloatingWindow::Error => Some(CommonVal::Str("Error")),
         }
@@ -162,14 +167,22 @@ impl Component for App {
                     state.main_display.set(MainDisplay::CommandsView);
                     context.set_focus("id", "commands_view");
                 }
+
                 'a' => {}
-                'r' => {}
+
+                'r' => {
+                    state.main_display.set(MainDisplay::RewardsView);
+                    context.set_focus("id", "rewards_view");
+                }
+
                 'i' => {}
                 'l' => {}
+
                 'n' => {
                     state.main_display.set(MainDisplay::AnnouncementsView);
                     context.set_focus("id", "announcements_view");
                 }
+
                 'g' => {
                     state.main_display.set(MainDisplay::LogsView);
                     let mut error_log = get_data_directory(Some("error_log")).unwrap();
@@ -179,6 +192,7 @@ impl Component for App {
                         Err(_) => state.logs.set(String::from("Logs unavailable.")),
                     }
                 }
+
                 'b' => {
                     state.main_display.set(MainDisplay::InfoView);
                     context.set_focus("id", "app");
@@ -237,6 +251,24 @@ impl Component for App {
     ) {
         if let Some((component_name, _)) = ident.split_once("__") {
             match component_name {
+                "rewards" => {
+                    RewardsView::handle_message(value, ident, state, context, &self.component_ids, |state, context| {
+                        self.reset_floating_window(state, context)
+                    })
+                }
+
+                "add_reward" => {
+                    AddReward::handle_message(value, ident, state, context, &self.component_ids, |state, context| {
+                        self.reset_floating_window(state, context)
+                    })
+                }
+
+                "edit_reward" => {
+                    EditReward::handle_message(value, ident, state, context, &self.component_ids, |state, context| {
+                        self.reset_floating_window(state, context)
+                    })
+                }
+
                 "announcements" => AnnouncementsView::handle_message(
                     value,
                     ident,

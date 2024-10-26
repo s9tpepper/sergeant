@@ -28,6 +28,15 @@ zstack
             show_delete_announcement_error -> announcements__show_delete_error
           ) [id: "announcements_view"]
 
+        if main_display == "RewardsView"
+          @rewards_view (
+            cancel_item_window -> rewards__close,
+            item_selection -> rewards__edit_selection,
+            delete_item_selection -> rewards__delete_selection,
+            rewards__add -> rewards__add,
+            show_delete_announcement_error -> rewards__show_delete_error
+          ) [id: "rewards_view"]
+
         if main_display == "LogsView"
           zstack
             border [border_style: "╭─╮│╯─╰│"]
@@ -51,6 +60,11 @@ zstack
             text "(A)dd (E)dit (D)elete (B)ack "
 
         if main_display == "AnnouncementsView"
+          hstack
+            spacer
+            text "(A)dd (E)dit (D)elete (B)ack "
+
+        if main_display == "RewardsView"
           hstack
             spacer
             text "(A)dd (E)dit (D)elete (B)ack "
@@ -89,6 +103,18 @@ zstack
       edit_announcement__submit -> edit_announcement__submit,
       edit_announcement__cancel -> edit_announcement__cancel
     ) [id: "edit_announcement_window"]
+
+  if floating_window == "AddReward"
+    @add_reward_window (
+      add_reward__submit -> add_reward__submit,
+      add_reward__cancel -> add_reward__cancel
+    ) [id: "add_reward_window"]
+
+  if floating_window == "EditReward"
+    @edit_reward_window(
+      edit_reward__submit -> edit_reward__submit,
+      edit_reward__cancel -> edit_reward__cancel
+    ) [id: "edit_reward_window"]
 
   if floating_window == "Error"
     @error_window [id: "error_window"]

@@ -11,3 +11,5 @@ pub const ERROR_TEMPLATE: &str = "./src/admin/templates/floating/error.aml";
 pub const EDIT_COMMAND_TEMPLATE: &str = "./src/admin/templates/floating/edit_command.aml";
 pub const ADD_ANNOUNCEMENT_TEMPLATE: &str = "./src/admin/templates/floating/add_announcement.aml";
 pub const EDIT_ANNOUNCEMENT_TEMPLATE: &str = "./src/admin/templates/floating/edit_announcement.aml";
+pub const ADD_REWARD_TEMPLATE: &str = "./src/admin/templates/floating/add_reward.aml";
+pub const EDIT_REWARD_TEMPLATE: &str = "./src/admin/templates/floating/edit_reward.aml";

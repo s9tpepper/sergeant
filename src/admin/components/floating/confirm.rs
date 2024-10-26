@@ -82,6 +82,16 @@ impl AppMessageHandler for Confirm {
                             }
                         }
 
+                        ComponentMessages::DeleteRewardConfirmMessage(delete_msg) => {
+                            if let Some(id) = component_ids.get(delete_msg.payload.waiting) {
+                                let _ = MessageSender::send_message(
+                                    *id,
+                                    ComponentMessages::DeleteRewardConfirmMessage(delete_msg),
+                                    context.emitter.clone(),
+                                );
+                            }
+                        }
+
                         _ => (),
                     },
 
@@ -167,6 +177,12 @@ impl Component for Confirm {
                 }
 
                 ComponentMessages::DeleteAnnoucementConfirmMessage(delete_msg) => {
+                    state.title.set(delete_msg.payload.title.to_string());
+                    state.message.set(delete_msg.payload.message.to_string());
+                    state.waiting.set(delete_msg.payload.waiting.to_string());
+                }
+
+                ComponentMessages::DeleteRewardConfirmMessage(delete_msg) => {
                     state.title.set(delete_msg.payload.title.to_string());
                     state.message.set(delete_msg.payload.message.to_string());
                     state.waiting.set(delete_msg.payload.waiting.to_string());
