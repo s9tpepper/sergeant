@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::components::{commands_view::Cmd, ComponentMessage};
+use super::components::{announcements::Announce, commands_view::Cmd, ComponentMessage};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct DeleteCommandConfirmationDetails<'msg> {
@@ -10,13 +10,28 @@ pub struct DeleteCommandConfirmationDetails<'msg> {
     pub item: Cmd,
 }
 
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct DeleteAnnouncementConfirmationDetails<'msg> {
+    pub title: &'msg str,
+    pub message: &'msg str,
+    pub waiting: &'msg str,
+    pub item: Announce,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ComponentMessages<'msg> {
     #[serde(borrow)]
     DeleteCommandConfirmMessage(DeleteCommandConfirmMessage<'msg>),
     CommandsViewReload(CommandsViewReload),
     AnnouncementsViewReload(AnnouncementsViewReload),
+    DeleteAnnoucementConfirmMessage(DeleteAnnouncementConfirmMessage<'msg>),
     InfoViewLoad(InfoViewLoad),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DeleteAnnouncementConfirmMessage<'msg> {
+    #[serde(borrow)]
+    pub payload: DeleteAnnouncementConfirmationDetails<'msg>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

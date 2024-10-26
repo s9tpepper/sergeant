@@ -75,7 +75,7 @@ zstack
   if floating_window == "Confirm"
     @confirm_window (
       cancel_confirmation -> confirm__cancel,
-      confirm__delete_command -> confirm__delete_command
+      submit_confirmation -> confirm__action
     ) [id: "confirm_window"]
 
   if floating_window == "AddAnnouncement"

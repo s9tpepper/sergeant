@@ -9,14 +9,19 @@ use anathema::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    admin::{messages::ComponentMessages, templates::ANNOUNCEMENTS_LIST_VIEW_TEMPLATE, AppComponent},
+    admin::{
+        messages::{ComponentMessages, DeleteAnnouncementConfirmMessage, DeleteAnnouncementConfirmationDetails},
+        templates::ANNOUNCEMENTS_LIST_VIEW_TEMPLATE,
+        AppComponent,
+    },
     commands::remove_chat_command,
     twitch::announcements::get_announcements,
 };
 
 use super::{
-    app::AppMessageHandler,
+    app::{AppMessageHandler, FloatingWindow},
     list_view::{Item, ListComponent, ListViewState},
+    MessageSender,
 };
 
 #[derive(Default)]
@@ -28,11 +33,11 @@ impl AppComponent for AnnouncementsView {}
 
 impl AppMessageHandler for AnnouncementsView {
     fn handle_message<F>(
-        _value: anathema::state::CommonVal<'_>,
+        value: anathema::state::CommonVal<'_>,
         ident: impl Into<String>,
         state: &mut super::app::AppState,
         mut context: Context<'_, super::app::AppState>,
-        _component_ids: &HashMap<String, ComponentId<String>>,
+        component_ids: &HashMap<String, ComponentId<String>>,
         _fun: F,
     ) where
         F: Fn(&mut super::app::AppState, Context<'_, super::app::AppState>),
@@ -49,7 +54,30 @@ impl AppMessageHandler for AnnouncementsView {
                 context.set_focus("id", "app");
             }
             "announcements__edit_selection" => {}
-            "announcements__delete_selection" => {}
+            "announcements__delete_selection" => {
+                if let Ok(item) = serde_json::from_str::<Announce>(&value.to_string()) {
+                    if let Some(id) = component_ids.get("confirm_window") {
+                        state.floating_window.set(FloatingWindow::Confirm);
+                        context.set_focus("id", "confirm_window");
+
+                        let message = format!("Are you sure you want to delete: {}", item.name);
+                        let confirmation_details = DeleteAnnouncementConfirmationDetails {
+                            title: "Delete Announcement",
+                            waiting: "announcements_view",
+                            message: &message,
+                            item,
+                        };
+
+                        let _ = MessageSender::send_message(
+                            *id,
+                            ComponentMessages::DeleteAnnoucementConfirmMessage(DeleteAnnouncementConfirmMessage {
+                                payload: confirmation_details,
+                            }),
+                            context.emitter.clone(),
+                        );
+                    }
+                }
+            }
             "announcements__show_delete_error" => {}
 
             _ => {}
@@ -111,7 +139,7 @@ impl Component for AnnouncementsView {
                 ComponentMessages::AnnouncementsViewReload(_) => self.load(state),
 
                 // TODO: Update this delete confirm when delete is implemented for announcements
-                ComponentMessages::DeleteCommandConfirmMessage(delete_confirmed) => {
+                ComponentMessages::DeleteAnnoucementConfirmMessage(delete_confirmed) => {
                     match remove_chat_command(&delete_confirmed.payload.item.name) {
                         Ok(_) => {
                             self.load(state);

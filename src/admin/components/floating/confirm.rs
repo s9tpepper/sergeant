@@ -59,10 +59,10 @@ impl AppMessageHandler for Confirm {
                 fun(state, context);
             }
 
-            "confirm__delete_command" => {
+            "confirm__action" => {
                 match serde_json::from_str::<ComponentMessages>(&value.to_string()) {
-                    Ok(component_messages) => {
-                        if let ComponentMessages::DeleteCommandConfirmMessage(delete_msg) = component_messages {
+                    Ok(component_messages) => match component_messages {
+                        ComponentMessages::DeleteCommandConfirmMessage(delete_msg) => {
                             if let Some(id) = component_ids.get(delete_msg.payload.waiting) {
                                 let _ = MessageSender::send_message(
                                     *id,
@@ -71,7 +71,19 @@ impl AppMessageHandler for Confirm {
                                 );
                             }
                         }
-                    }
+
+                        ComponentMessages::DeleteAnnoucementConfirmMessage(delete_msg) => {
+                            if let Some(id) = component_ids.get(delete_msg.payload.waiting) {
+                                let _ = MessageSender::send_message(
+                                    *id,
+                                    ComponentMessages::DeleteAnnoucementConfirmMessage(delete_msg),
+                                    context.emitter.clone(),
+                                );
+                            }
+                        }
+
+                        _ => (),
+                    },
 
                     Err(error) => send_to_error_log(error.to_string(), format!("Could not deserialize {}", value)),
                 }
@@ -120,32 +132,17 @@ impl Component for Confirm {
     fn on_key(
         &mut self,
         key: anathema::component::KeyEvent,
-        state: &mut Self::State,
+        _: &mut Self::State,
         _: anathema::widgets::Elements<'_, '_>,
         mut context: anathema::prelude::Context<'_, Self::State>,
     ) {
         match key.code {
             anathema::component::KeyCode::Char(char) => match char {
-                'y' => {
-                    match serde_json::from_str::<ComponentMessages>(&state.component_message.to_ref()) {
-                        Ok(msg) => match msg {
-                            ComponentMessages::DeleteCommandConfirmMessage(_) => {
-                                context.publish("confirm__delete_command", |state| &state.component_message);
-                            }
-
-                            ComponentMessages::InfoViewLoad(_) => {}
-
-                            _ => {}
-                        },
-                        Err(err) => {
-                            // println!("Could not deserialize ComponentMessage: {}", self.message);
-                            println!("{}", err);
-                        }
-                    }
-                }
+                'y' => context.publish("submit_confirmation", |state| &state.component_message),
                 'n' => context.publish("cancel_confirmation", |state| &state.waiting),
                 _ => {}
             },
+
             anathema::component::KeyCode::Esc => context.publish("cancel_confirmation", |state| &state.waiting),
 
             _ => {}
@@ -169,7 +166,11 @@ impl Component for Confirm {
                     state.waiting.set(delete_msg.payload.waiting.to_string());
                 }
 
-                ComponentMessages::InfoViewLoad(_) => {}
+                ComponentMessages::DeleteAnnoucementConfirmMessage(delete_msg) => {
+                    state.title.set(delete_msg.payload.title.to_string());
+                    state.message.set(delete_msg.payload.message.to_string());
+                    state.waiting.set(delete_msg.payload.waiting.to_string());
+                }
 
                 _ => {}
             },
