@@ -21,11 +21,11 @@ zstack
 
         if main_display == "AnnouncementsView"
           @announcements_view (
-            cancel_item_window -> close_announcements_view,
-            item_selection -> edit_announcement_selection,
-            delete_item_selection -> delete_announcement_selection,
-            add_announcement -> add_announcement,
-            show_delete_announcement_error -> show_delete_announcement_error
+            cancel_item_window -> announcements__close,
+            item_selection -> announcements__edit_selection,
+            delete_item_selection -> announcements__delete_selection,
+            add_announcement -> announcements__add,
+            show_delete_announcement_error -> announcements__show_delete_error
           ) [id: "announcements_view"]
 
         if main_display == "LogsView"
@@ -77,6 +77,12 @@ zstack
       cancel_confirmation -> confirm__cancel,
       confirm__delete_command -> confirm__delete_command
     ) [id: "confirm_window"]
+
+  if floating_window == "AddAnnouncement"
+    @add_announcement_window (
+      add_announcement__submit -> add_announcement__submit,
+      add_announcement__cancel -> add_announcement__cancel
+    ) [id: "add_announcement_window"]
 
   if floating_window == "Error"
     @error_window [id: "error_window"]

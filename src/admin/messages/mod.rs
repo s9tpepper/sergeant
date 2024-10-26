@@ -15,6 +15,7 @@ pub enum ComponentMessages<'msg> {
     #[serde(borrow)]
     DeleteCommandConfirmMessage(DeleteCommandConfirmMessage<'msg>),
     CommandsViewReload(CommandsViewReload),
+    AnnouncementsViewReload(AnnouncementsViewReload),
     InfoViewLoad(InfoViewLoad),
 }
 
@@ -27,6 +28,14 @@ pub struct DeleteCommandConfirmMessage<'msg> {
 impl<'msg> ComponentMessage for DeleteCommandConfirmMessage<'msg> {
     fn get_type(&self) -> String {
         String::from("delete_command_confirmation")
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AnnouncementsViewReload;
+impl ComponentMessage for AnnouncementsViewReload {
+    fn get_type(&self) -> String {
+        String::from("reload_data")
     }
 }
 

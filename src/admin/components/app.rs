@@ -13,8 +13,11 @@ use crate::{
 };
 
 use super::{
+    announcements::AnnouncementsView,
     commands_view::CommandsView,
-    floating::{add_command::AddCommand, confirm::Confirm, edit_command::EditCommand},
+    floating::{
+        add_announcement::AddAnnouncement, add_command::AddCommand, confirm::Confirm, edit_command::EditCommand,
+    },
     Messenger,
 };
 
@@ -28,9 +31,9 @@ impl App {
         match *state.main_display.to_ref() {
             MainDisplay::InfoView => context.set_focus("id", "info_view"),
             MainDisplay::CommandsView => context.set_focus("id", "commands_view"),
+            MainDisplay::AnnouncementsView => context.set_focus("id", "announcements_view"),
 
             // TODO: Implement rest when they exist
-            // MainDisplay::AnnouncementsView => todo!(),
             // MainDisplay::RewardsView => todo!(),
             // MainDisplay::IrcActionsView => todo!(),
             // MainDisplay::Login => todo!(),
@@ -231,21 +234,34 @@ impl Component for App {
     ) {
         if let Some((component_name, _)) = ident.split_once("__") {
             match component_name {
+                "announcements" => AnnouncementsView::handle_message(
+                    value,
+                    ident,
+                    state,
+                    context,
+                    &self.component_ids,
+                    |state, context| self.reset_floating_window(state, context),
+                ),
+
+                "add_announcement" => AddAnnouncement::handle_message(
+                    value,
+                    ident,
+                    state,
+                    context,
+                    &self.component_ids,
+                    |state, context| self.reset_floating_window(state, context),
+                ),
+
                 "confirm" => {
                     Confirm::handle_message(value, ident, state, context, &self.component_ids, |state, context| {
                         self.reset_floating_window(state, context)
-                    });
+                    })
                 }
 
                 "commands" => {
-                    CommandsView::handle_message(
-                        value,
-                        ident,
-                        state,
-                        context,
-                        &self.component_ids,
-                        |state, context| self.reset_floating_window(state, context),
-                    );
+                    CommandsView::handle_message(value, ident, state, context, &self.component_ids, |state, context| {
+                        self.reset_floating_window(state, context)
+                    })
                 }
 
                 "add_command" => {

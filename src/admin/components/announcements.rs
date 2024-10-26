@@ -14,7 +14,10 @@ use crate::{
     twitch::announcements::get_announcements,
 };
 
-use super::list_view::{Item, ListComponent, ListViewState};
+use super::{
+    app::AppMessageHandler,
+    list_view::{Item, ListComponent, ListViewState},
+};
 
 #[derive(Default)]
 pub struct AnnouncementsView {
@@ -22,6 +25,38 @@ pub struct AnnouncementsView {
 }
 
 impl AppComponent for AnnouncementsView {}
+
+impl AppMessageHandler for AnnouncementsView {
+    fn handle_message<F>(
+        _value: anathema::state::CommonVal<'_>,
+        ident: impl Into<String>,
+        state: &mut super::app::AppState,
+        mut context: Context<'_, super::app::AppState>,
+        _component_ids: &HashMap<String, ComponentId<String>>,
+        _fun: F,
+    ) where
+        F: Fn(&mut super::app::AppState, Context<'_, super::app::AppState>),
+    {
+        let event: String = ident.into();
+
+        match event.as_str() {
+            "announcements__add" => {
+                state.floating_window.set(super::app::FloatingWindow::AddAnnouncement);
+                context.set_focus("id", "add_announcement_window");
+            }
+            "announcements__close" => {
+                state.main_display.set(super::app::MainDisplay::InfoView);
+                context.set_focus("id", "app");
+            }
+            "announcements__edit_selection" => {}
+            "announcements__delete_selection" => {}
+            "announcements__show_delete_error" => {}
+
+            _ => {}
+        }
+    }
+}
+
 impl AnnouncementsView {
     pub fn register(
         builder: &mut RuntimeBuilder<TuiBackend, ()>,
@@ -73,9 +108,9 @@ impl Component for AnnouncementsView {
     ) {
         if let Ok(msg) = serde_json::from_str::<ComponentMessages>(&message.to_string()) {
             match msg {
-                // TODO: Fix these messages to be specific for announcements
-                ComponentMessages::CommandsViewReload(_) => self.load(state),
+                ComponentMessages::AnnouncementsViewReload(_) => self.load(state),
 
+                // TODO: Update this delete confirm when delete is implemented for announcements
                 ComponentMessages::DeleteCommandConfirmMessage(delete_confirmed) => {
                     match remove_chat_command(&delete_confirmed.payload.item.name) {
                         Ok(_) => {

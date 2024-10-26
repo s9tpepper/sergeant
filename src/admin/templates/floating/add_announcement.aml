@@ -1,0 +1,39 @@
+align [alignment: "center"]
+  border  [foreground: "#ffffff", border_style: "╭─╮│╯─╰│"]
+    vstack [fill: " "]
+      container [max_height: 1, max_width: 60, background: "#ffffff", foreground: "#000000"]
+        expand
+          hstack
+            text " Add Announcement"
+      padding [padding: 1]
+        vstack
+          zstack
+            border [width: 58, border_style: "╭─╮│╯─╰│"]
+              @text_input (
+                text_change -> add_announcement__name_update,
+                escape -> add_announcement__name_focus_change
+              ) [id: "add_announcement_name_input"]
+            text "╭─(N)ame:"
+
+          zstack
+            border [width: 58, border_style: "╭─╮│╯─╰│"]
+              @text_input (
+                text_change -> add_announcement__message_update,
+                escape -> add_announcement__message_focus_change
+              ) [id: "add_announcement_message_input"]
+            text "╭─(A)nnouncement:"
+
+          zstack
+            border [width: 58, border_style: "╭─╮│╯─╰│"]
+              @text_input (
+                text_change -> add_announcement__timing_update,
+                escape -> add_announcement__timing_focus_change
+              ) [id: "add_announcement_timing_input"]
+            text "╭─(T)iming (Minutes):"
+
+      hstack [width: 60]
+        spacer
+        text [background: "#ffffff", foreground: #000000] " (S)ubmit "
+        spacer
+        text [background: "#ffffff", foreground: #000000] " (C)ancel "
+        spacer

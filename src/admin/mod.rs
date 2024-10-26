@@ -11,7 +11,10 @@ use components::{
     cmd_name_input::CmdNameInput,
     cmd_output_input::CmdOutputInput,
     commands_view::CommandsView,
-    floating::{add_command::AddCommand, confirm::Confirm, edit_command::EditCommand, error::ErrorWindow},
+    floating::{
+        add_announcement::AddAnnouncement, add_command::AddCommand, confirm::Confirm, edit_command::EditCommand,
+        error::ErrorWindow,
+    },
     info_view::InfoView,
     inputs::{InputState, TextInput},
 };
@@ -82,6 +85,7 @@ impl Admin {
         CmdOutputInput::register(builder, component_ids);
         EditCommand::register(builder, component_ids);
         AnnouncementsView::register(builder, component_ids);
+        AddAnnouncement::register(builder, component_ids);
 
         let component_ids = self.component_ids.take().unwrap();
         let app = App { component_ids };
