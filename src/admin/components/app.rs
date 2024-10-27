@@ -13,11 +13,12 @@ use crate::{
 };
 
 use super::{
+    actions_view::ActionsView,
     announcements::AnnouncementsView,
     commands_view::CommandsView,
     floating::{
-        add_announcement::AddAnnouncement, add_command::AddCommand, add_reward::AddReward, confirm::Confirm,
-        edit_announcement::EditAnnouncement, edit_command::EditCommand, edit_reward::EditReward,
+        add_action::AddAction, add_announcement::AddAnnouncement, add_command::AddCommand, add_reward::AddReward,
+        confirm::Confirm, edit_announcement::EditAnnouncement, edit_command::EditCommand, edit_reward::EditReward,
     },
     rewards_view::RewardsView,
     Messenger,
@@ -35,9 +36,9 @@ impl App {
             MainDisplay::CommandsView => context.set_focus("id", "commands_view"),
             MainDisplay::AnnouncementsView => context.set_focus("id", "announcements_view"),
             MainDisplay::RewardsView => context.set_focus("id", "rewards_view"),
+            MainDisplay::ActionsView => context.set_focus("id", "actions_view"),
 
             // TODO: Implement rest when they exist
-            // MainDisplay::IrcActionsView => todo!(),
             // MainDisplay::Login => todo!(),
             _ => {}
         }
@@ -256,6 +257,18 @@ impl Component for App {
     ) {
         if let Some((component_name, _)) = ident.split_once("__") {
             match component_name {
+                "actions" => {
+                    ActionsView::handle_message(value, ident, state, context, &self.component_ids, |state, context| {
+                        self.reset_floating_window(state, context)
+                    })
+                }
+
+                "add_action" => {
+                    AddAction::handle_message(value, ident, state, context, &self.component_ids, |state, context| {
+                        self.reset_floating_window(state, context)
+                    })
+                }
+
                 "rewards" => {
                     RewardsView::handle_message(value, ident, state, context, &self.component_ids, |state, context| {
                         self.reset_floating_window(state, context)

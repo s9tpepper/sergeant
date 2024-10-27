@@ -223,7 +223,7 @@ impl Component for ActionsView {
     ) {
         match event.code {
             Char(char) => match char {
-                'a' => context.publish("rewards__add", |state| &state.cursor),
+                'a' => context.publish("actions__add", |state| &state.cursor),
                 'e' => self.send_item_selection(state, context),
                 'd' => self.send_delete_selection(state, context),
                 'b' => self.send_cancel_view(context),

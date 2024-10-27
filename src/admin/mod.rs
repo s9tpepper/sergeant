@@ -12,8 +12,9 @@ use components::{
     commands_view::CommandsView,
     edit_input::EditInput,
     floating::{
-        add_announcement::AddAnnouncement, add_command::AddCommand, add_reward::AddReward, confirm::Confirm,
-        edit_announcement::EditAnnouncement, edit_command::EditCommand, edit_reward::EditReward, error::ErrorWindow,
+        add_action::AddAction, add_announcement::AddAnnouncement, add_command::AddCommand, add_reward::AddReward,
+        confirm::Confirm, edit_announcement::EditAnnouncement, edit_command::EditCommand, edit_reward::EditReward,
+        error::ErrorWindow,
     },
     info_view::InfoView,
     inputs::{InputState, TextInput},
@@ -118,6 +119,24 @@ impl Admin {
             builder,
             component_ids,
         );
+        EditInput::register(
+            "add_action_name_input",
+            "add_action_window".to_string(),
+            builder,
+            component_ids,
+        );
+        EditInput::register(
+            "add_action_command_input",
+            "add_action_window".to_string(),
+            builder,
+            component_ids,
+        );
+        EditInput::register(
+            "add_action_option_input",
+            "add_action_window".to_string(),
+            builder,
+            component_ids,
+        );
 
         AddCommand::register(builder, component_ids);
         InfoView::register(builder, component_ids);
@@ -132,6 +151,7 @@ impl Admin {
         AddReward::register(builder, component_ids);
         EditReward::register(builder, component_ids);
         ActionsView::register(builder, component_ids);
+        AddAction::register(builder, component_ids);
 
         let component_ids = self.component_ids.take().unwrap();
         let app = App { component_ids };

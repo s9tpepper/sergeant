@@ -13,3 +13,4 @@ pub const ADD_ANNOUNCEMENT_TEMPLATE: &str = "./src/admin/templates/floating/add_
 pub const EDIT_ANNOUNCEMENT_TEMPLATE: &str = "./src/admin/templates/floating/edit_announcement.aml";
 pub const ADD_REWARD_TEMPLATE: &str = "./src/admin/templates/floating/add_reward.aml";
 pub const EDIT_REWARD_TEMPLATE: &str = "./src/admin/templates/floating/edit_reward.aml";
+pub const ADD_ACTION_TEMPLATE: &str = "./src/admin/templates/floating/add_action.aml";

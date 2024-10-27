@@ -81,8 +81,13 @@ pub trait InputReceiver {
         _: Elements<'_, '_>,
         mut context: Context<'_, InputState>,
     ) {
-        state.input.set(message);
-        context.publish("text_change", |state| &state.input)
+        let position = message.len();
+        state.input.set(message.clone());
+        state.cursor_prefix.set(message);
+        state.cursor_position.set(position);
+        state.cursor_char.set(" ".to_string());
+
+        context.publish("text_change", |state| &state.input);
     }
 
     #[allow(dead_code)]

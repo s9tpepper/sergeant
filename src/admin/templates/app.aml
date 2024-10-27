@@ -130,5 +130,11 @@ zstack
       edit_reward__cancel -> edit_reward__cancel
     ) [id: "edit_reward_window"]
 
+  if floating_window == "AddAction"
+    @add_action_window(
+      add_action__submit -> add_action__submit,
+      add_action__cancel -> add_action__cancel,
+    ) [id: "add_action_window"]
+
   if floating_window == "Error"
     @error_window [id: "error_window"]

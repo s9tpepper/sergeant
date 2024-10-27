@@ -52,6 +52,6 @@ impl Component for ErrorWindow {
         _: anathema::widgets::Elements<'_, '_>,
         _: anathema::prelude::Context<'_, Self::State>,
     ) {
-        println!("hello");
+        println!("Error Window got focused");
     }
 }

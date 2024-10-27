@@ -1,3 +1,4 @@
+pub mod add_action;
 pub mod add_announcement;
 pub mod add_command;
 pub mod add_reward;
