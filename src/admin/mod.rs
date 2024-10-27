@@ -6,6 +6,7 @@ use anathema::{
     runtime::{Runtime, RuntimeBuilder},
 };
 use components::{
+    actions_view::ActionsView,
     announcements::AnnouncementsView,
     app::{App, AppState},
     commands_view::CommandsView,
@@ -130,6 +131,7 @@ impl Admin {
         RewardsView::register(builder, component_ids);
         AddReward::register(builder, component_ids);
         EditReward::register(builder, component_ids);
+        ActionsView::register(builder, component_ids);
 
         let component_ids = self.component_ids.take().unwrap();
         let app = App { component_ids };

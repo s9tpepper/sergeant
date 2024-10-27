@@ -37,6 +37,15 @@ zstack
             show_delete_announcement_error -> rewards__show_delete_error
           ) [id: "rewards_view"]
 
+        if main_display == "ActionsView"
+          @actions_view (
+            cancel_item_window -> actions__close,
+            item_selection -> actions__edit_selection,
+            delete_item_selection -> actions__delete_selection,
+            actions__add -> actions__add,
+            show_delete_announcement_error -> actions__show_delete_error
+          ) [id: "actions_view"]
+
         if main_display == "LogsView"
           zstack
             border [border_style: "╭─╮│╯─╰│"]
@@ -65,6 +74,11 @@ zstack
             text "(A)dd (E)dit (D)elete (B)ack "
 
         if main_display == "RewardsView"
+          hstack
+            spacer
+            text "(A)dd (E)dit (D)elete (B)ack "
+
+        if main_display == "ActionsView"
           hstack
             spacer
             text "(A)dd (E)dit (D)elete (B)ack "

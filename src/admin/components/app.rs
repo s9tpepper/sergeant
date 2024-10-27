@@ -64,6 +64,7 @@ pub enum FloatingWindow {
     EditAnnouncement,
     AddReward,
     EditReward,
+    AddAction,
     Confirm,
     Error,
 }
@@ -78,6 +79,7 @@ impl State for FloatingWindow {
             FloatingWindow::EditAnnouncement => Some(CommonVal::Str("EditAnnouncement")),
             FloatingWindow::AddReward => Some(CommonVal::Str("AddReward")),
             FloatingWindow::EditReward => Some(CommonVal::Str("EditReward")),
+            FloatingWindow::AddAction => Some(CommonVal::Str("AddAction")),
             FloatingWindow::Confirm => Some(CommonVal::Str("Confirm")),
             FloatingWindow::Error => Some(CommonVal::Str("Error")),
         }
@@ -91,7 +93,7 @@ pub enum MainDisplay {
     CommandsView,
     AnnouncementsView,
     RewardsView,
-    IrcActionsView,
+    ActionsView,
     // NOTE: Maybe don't need login
     Login,
     LogsView,
@@ -104,7 +106,7 @@ impl State for MainDisplay {
             MainDisplay::CommandsView => Some(CommonVal::Str("CommandsView")),
             MainDisplay::AnnouncementsView => Some(CommonVal::Str("AnnouncementsView")),
             MainDisplay::RewardsView => Some(CommonVal::Str("RewardsView")),
-            MainDisplay::IrcActionsView => Some(CommonVal::Str("IrcActionsView")),
+            MainDisplay::ActionsView => Some(CommonVal::Str("ActionsView")),
             MainDisplay::Login => Some(CommonVal::Str("Login")),
             MainDisplay::LogsView => Some(CommonVal::Str("LogsView")),
         }
@@ -168,7 +170,10 @@ impl Component for App {
                     context.set_focus("id", "commands_view");
                 }
 
-                'a' => {}
+                'a' => {
+                    state.main_display.set(MainDisplay::ActionsView);
+                    context.set_focus("id", "actions_view");
+                }
 
                 'r' => {
                     state.main_display.set(MainDisplay::RewardsView);
