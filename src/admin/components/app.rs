@@ -32,11 +32,11 @@ pub struct App {
 impl App {
     fn reset_floating_window(&self, state: &mut AppState, mut context: anathema::prelude::Context<'_, AppState>) {
         match *state.main_display.to_ref() {
-            MainDisplay::InfoView => context.set_focus("id", "info_view"),
-            MainDisplay::CommandsView => context.set_focus("id", "commands_view"),
-            MainDisplay::AnnouncementsView => context.set_focus("id", "announcements_view"),
-            MainDisplay::RewardsView => context.set_focus("id", "rewards_view"),
-            MainDisplay::ActionsView => context.set_focus("id", "actions_view"),
+            MainDisplay::Info => context.set_focus("id", "info_view"),
+            MainDisplay::Commands => context.set_focus("id", "commands_view"),
+            MainDisplay::Announcements => context.set_focus("id", "announcements_view"),
+            MainDisplay::Rewards => context.set_focus("id", "rewards_view"),
+            MainDisplay::Actions => context.set_focus("id", "actions_view"),
 
             // TODO: Implement rest when they exist
             // MainDisplay::Login => todo!(),
@@ -90,26 +90,26 @@ impl State for FloatingWindow {
 #[derive(Default)]
 pub enum MainDisplay {
     #[default]
-    InfoView,
-    CommandsView,
-    AnnouncementsView,
-    RewardsView,
-    ActionsView,
+    Info,
+    Commands,
+    Announcements,
+    Rewards,
+    Actions,
     // NOTE: Maybe don't need login
-    Login,
-    LogsView,
+    // Login,
+    Logs,
 }
 
 impl State for MainDisplay {
     fn to_common(&self) -> Option<anathema::state::CommonVal<'_>> {
         match self {
-            MainDisplay::InfoView => Some(CommonVal::Str("InfoView")),
-            MainDisplay::CommandsView => Some(CommonVal::Str("CommandsView")),
-            MainDisplay::AnnouncementsView => Some(CommonVal::Str("AnnouncementsView")),
-            MainDisplay::RewardsView => Some(CommonVal::Str("RewardsView")),
-            MainDisplay::ActionsView => Some(CommonVal::Str("ActionsView")),
-            MainDisplay::Login => Some(CommonVal::Str("Login")),
-            MainDisplay::LogsView => Some(CommonVal::Str("LogsView")),
+            MainDisplay::Info => Some(CommonVal::Str("Info")),
+            MainDisplay::Commands => Some(CommonVal::Str("Commands")),
+            MainDisplay::Announcements => Some(CommonVal::Str("Announcements")),
+            MainDisplay::Rewards => Some(CommonVal::Str("Rewards")),
+            MainDisplay::Actions => Some(CommonVal::Str("Actions")),
+            // MainDisplay::Login => Some(CommonVal::Str("Login")),
+            MainDisplay::Logs => Some(CommonVal::Str("Logs")),
         }
     }
 }
@@ -117,7 +117,7 @@ impl State for MainDisplay {
 impl AppState {
     pub fn new() -> Self {
         AppState {
-            main_display: MainDisplay::InfoView.into(),
+            main_display: MainDisplay::Info.into(),
             floating_window: FloatingWindow::None.into(),
             error_message: String::from("").into(),
             logs: String::from("").into(),
@@ -142,7 +142,7 @@ impl Component for App {
         context: anathema::prelude::Context<'_, Self::State>,
     ) {
         match *state.main_display.to_ref() {
-            MainDisplay::InfoView => {
+            MainDisplay::Info => {
                 if let Some(id) = self.component_ids.get("info_view") {
                     let _ = self.send_message(
                         *id,
@@ -151,7 +151,7 @@ impl Component for App {
                     );
                 }
             }
-            MainDisplay::CommandsView => {}
+            MainDisplay::Commands => {}
 
             _ => {}
         }
@@ -167,17 +167,17 @@ impl Component for App {
         match key.code {
             anathema::component::KeyCode::Char(char) => match char {
                 'c' => {
-                    state.main_display.set(MainDisplay::CommandsView);
+                    state.main_display.set(MainDisplay::Commands);
                     context.set_focus("id", "commands_view");
                 }
 
                 'a' => {
-                    state.main_display.set(MainDisplay::ActionsView);
+                    state.main_display.set(MainDisplay::Actions);
                     context.set_focus("id", "actions_view");
                 }
 
                 'r' => {
-                    state.main_display.set(MainDisplay::RewardsView);
+                    state.main_display.set(MainDisplay::Rewards);
                     context.set_focus("id", "rewards_view");
                 }
 
@@ -185,12 +185,12 @@ impl Component for App {
                 'l' => {}
 
                 'n' => {
-                    state.main_display.set(MainDisplay::AnnouncementsView);
+                    state.main_display.set(MainDisplay::Announcements);
                     context.set_focus("id", "announcements_view");
                 }
 
                 'g' => {
-                    state.main_display.set(MainDisplay::LogsView);
+                    state.main_display.set(MainDisplay::Logs);
                     let mut error_log = get_data_directory(Some("error_log")).unwrap();
                     error_log.push("log.txt");
                     match fs::read_to_string(error_log) {
@@ -200,13 +200,13 @@ impl Component for App {
                 }
 
                 'b' => {
-                    state.main_display.set(MainDisplay::InfoView);
+                    state.main_display.set(MainDisplay::Info);
                     context.set_focus("id", "app");
                 }
 
                 'd' => {
                     if key.ctrl {
-                        if let MainDisplay::LogsView = *state.main_display.to_ref() {
+                        if let MainDisplay::Logs = *state.main_display.to_ref() {
                             elements
                                 .by_attribute("id", "logs_container")
                                 .first(|element, _attributes| {
@@ -223,7 +223,7 @@ impl Component for App {
 
                 'u' => {
                     if key.ctrl {
-                        if let MainDisplay::LogsView = *state.main_display.to_ref() {
+                        if let MainDisplay::Logs = *state.main_display.to_ref() {
                             elements
                                 .by_attribute("id", "logs_container")
                                 .first(|element, _attributes| {

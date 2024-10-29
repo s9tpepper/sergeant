@@ -14,7 +14,7 @@ use crate::{
         templates::LIST_VIEW_TEMPLATE,
         AppComponent,
     },
-    commands::{get_list_with_contents, remove_chat_command, remove_reward, SgtFile},
+    commands::{get_list_with_contents, remove_reward, SgtFile},
 };
 
 use super::{
@@ -76,7 +76,7 @@ impl AppMessageHandler for RewardsView {
         let event: String = ident.into();
         match event.as_str() {
             "rewards__close" => {
-                state.main_display.set(MainDisplay::InfoView);
+                state.main_display.set(MainDisplay::Info);
                 context.set_focus("id", "app");
             }
 

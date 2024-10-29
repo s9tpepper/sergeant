@@ -14,11 +14,10 @@ use sergeant::commands::{
     list_actions, list_rewards, remove_action, remove_chat_command, remove_reward, TokenStatus,
 };
 
-use sergeant::utils::{get_data_directory, read_auth_token};
+use sergeant::utils::read_auth_token;
 use sergeant::websocket::start_websocket;
 use std::{
     error::Error,
-    fs,
     process::exit,
     sync::{mpsc::channel, Arc},
     thread,

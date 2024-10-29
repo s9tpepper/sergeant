@@ -1,4 +1,4 @@
-use std::{collections::HashMap, thread::sleep, time::Duration};
+use std::collections::HashMap;
 
 use anathema::{
     component::{Component, ComponentId, KeyCode::Char},
@@ -14,7 +14,7 @@ use crate::{
         templates::LIST_VIEW_TEMPLATE,
         AppComponent,
     },
-    commands::{get_list_with_contents, remove_action, remove_reward, SgtFile},
+    commands::{get_list_with_contents, remove_action, SgtFile},
 };
 
 use super::{
@@ -76,7 +76,7 @@ impl AppMessageHandler for ActionsView {
         let event: String = ident.into();
         match event.as_str() {
             "actions__close" => {
-                state.main_display.set(MainDisplay::InfoView);
+                state.main_display.set(MainDisplay::Info);
                 context.set_focus("id", "app");
             }
 
@@ -169,7 +169,7 @@ impl Component for ActionsView {
                     match remove_action(&delete_confirmed.payload.item.name) {
                         Ok(_) => {
                             self.load(state);
-                            self.refresh(state);
+                            self.refresh(state)
                         }
                         Err(_) => context.publish("show_delete_command_error", |state| &state.cursor),
                     }

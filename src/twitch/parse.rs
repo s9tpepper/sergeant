@@ -387,51 +387,41 @@ pub fn write_to_buffer(lines: &mut [Vec<MessageParts>], buf: &mut Buffer, cursor
             }
         });
 
-        line.iter_mut().for_each(|s| match s {
-            MessageParts::Text(word) => {
-                word.iter().for_each(|symbol| match symbol {
-                    Symbol::Text(character) => {
-                        let index = buf.index_of(cursor.x, cursor.y);
-                        if index < buf.content.len() {
-                            let (r, g, b) = character.color.unwrap_or((255, 255, 255));
-                            let rgb = Color::Rgb(r, g, b);
-                            buf.get_mut(cursor.x, cursor.y).reset();
-                            buf.get_mut(cursor.x, cursor.y).set_symbol(&character.char).set_fg(rgb);
-                            cursor.x += 1;
+        line.iter_mut().for_each(|s| {
+            match s {
+                MessageParts::Text(word) => {
+                    word.iter().for_each(|symbol| match symbol {
+                        Symbol::Text(character) => {
+                            let index = buf.index_of(cursor.x, cursor.y);
+                            if index >= buf.content().len() {
+                                return;
+                            }
+
+                            buf.cell_mut((cursor.x, cursor.y)).map(|cell| {
+                                let (r, g, b) = character.color.unwrap_or((255, 255, 255));
+                                let rgb = Color::Rgb(r, g, b);
+
+                                cursor.x += 1;
+                                cell.reset();
+
+                                cell.set_symbol(&character.char).set_fg(rgb)
+                            });
                         }
+                        Symbol::Emote(_) => {}
+                    });
+                }
+
+                MessageParts::Emote(emote) => {
+                    let index = buf.index_of(cursor.x, cursor.y);
+                    if index < buf.content.len() {
+                        // let _ = terminal.backend_mut().clear_region(backend::ClearType::CurrentLine);
+                        let encoded = emote.encoded.clone().unwrap_or_default();
+
+                        buf.cell_mut((cursor.x, cursor.y)).map(|cell| cell.set_symbol(&encoded));
+                        buf.cell_mut((cursor.x + 1, cursor.y)).map(|cell| cell.set_skip(true));
+
+                        cursor.x += EMOTE_SPACE as u16;
                     }
-                    Symbol::Emote(_) => {}
-                });
-            }
-
-            MessageParts::Emote(emote) => {
-                let index = buf.index_of(cursor.x, cursor.y);
-                if index < buf.content.len() {
-                    // let _ = terminal.backend_mut().clear_region(backend::ClearType::UntilNewLine);
-                    let encoded = emote.encoded.clone().unwrap_or_default();
-
-                    // if emote.clear {
-                    //     // if has_emotes {
-                    //     //     let _ = terminal.backend_mut().clear_region(backend::ClearType::CurrentLine);
-                    //     // }
-                    //
-                    //     let _ = terminal.backend_mut().clear_region(backend::ClearType::UntilNewLine);
-                    //     buf.get_mut(cursor.x, cursor.y).reset();
-                    //     buf.get_mut(cursor.x + 1, cursor.y).reset();
-                    //     buf.get_mut(cursor.x, cursor.y).set_symbol(" ");
-                    //     buf.get_mut(cursor.x + 1, cursor.y).set_symbol(" ");
-                    //     println!("did a clearing");
-                    // } else {
-                    // buf.get_mut(cursor.x, cursor.y).set_bg(Color::Rgb(0, 0, 0));
-                    // buf.get_mut(cursor.x, cursor.y).set_fg(Color::Rgb(0, 0, 0));
-                    // buf.get_mut(cursor.x + 1, cursor.y).set_bg(Color::Rgb(0, 0, 0));
-                    // buf.get_mut(cursor.x + 1, cursor.y).set_fg(Color::Rgb(0, 0, 0));
-                    // let _ = buf.get_mut(cursor.x, cursor.y).on_bright_black();
-
-                    buf.get_mut(cursor.x, cursor.y).set_symbol(&encoded);
-                    // }
-
-                    cursor.x += EMOTE_SPACE as u16;
                 }
             }
         });

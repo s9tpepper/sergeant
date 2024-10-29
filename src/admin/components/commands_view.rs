@@ -79,7 +79,7 @@ impl AppMessageHandler for CommandsView {
         let event: String = ident.into();
         match event.as_str() {
             "commands__close_view" => {
-                state.main_display.set(MainDisplay::InfoView);
+                state.main_display.set(MainDisplay::Info);
                 context.set_focus("id", "app");
             }
 

@@ -262,7 +262,7 @@ impl App {
 
     fn render(&mut self, frame: &mut Frame) {
         let mut state = self.scroll_view_state;
-        frame.render_stateful_widget(self, frame.size(), &mut state);
+        frame.render_stateful_widget(self, frame.area(), &mut state);
     }
 
     fn exit(&mut self) {

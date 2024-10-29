@@ -20,7 +20,6 @@ use crate::{
 
 use super::{
     app::{AppMessageHandler, FloatingWindow},
-    floating::add_announcement::Announcement,
     list_view::{Item, ListComponent, ListViewState},
     MessageSender,
 };
@@ -52,7 +51,7 @@ impl AppMessageHandler for AnnouncementsView {
             }
 
             "announcements__close" => {
-                state.main_display.set(super::app::MainDisplay::InfoView);
+                state.main_display.set(super::app::MainDisplay::Info);
                 context.set_focus("id", "app");
             }
 

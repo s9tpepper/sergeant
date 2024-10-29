@@ -197,7 +197,11 @@ impl ScrollView {
         // TODO: there's probably a more efficient way to do this
         for (src_row, dst_row) in visible_area.rows().zip(area.rows()) {
             for (src_col, dst_col) in src_row.columns().zip(dst_row.columns()) {
-                *buf.get_mut(dst_col.x, dst_col.y) = self.buf.get(src_col.x, src_col.y).clone();
+                buf.cell_mut((dst_col.x, dst_col.y)).map(|cell| {
+                    self.buf.cell((src_col.x, src_col.y)).map(|source_cell| {
+                        *cell = source_cell.clone();
+                    })
+                });
             }
         }
     }

@@ -3,16 +3,13 @@ use std::collections::HashMap;
 use anathema::{
     component::{Component, ComponentId, KeyCode},
     prelude::TuiBackend,
-    runtime::{Error, RuntimeBuilder},
+    runtime::RuntimeBuilder,
     state::{CommonVal, State, Value},
 };
 
 use crate::{
     admin::{
-        components::{
-            app::{AppMessageHandler, FloatingWindow},
-            MessageSender,
-        },
+        components::{app::AppMessageHandler, MessageSender},
         messages::{CommandsViewReload, ComponentMessages},
         templates::ADD_COMMAND_TEMPLATE,
         AppComponent,

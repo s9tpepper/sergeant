@@ -7,10 +7,10 @@ zstack
 
     expand
       zstack
-        if main_display == "InfoView"
+        if main_display == "Info"
           @info_view [id: "info_view"]
 
-        if main_display == "CommandsView"
+        if main_display == "Commands"
           @commands_view (
             cancel_item_window -> commands__close_view,
             item_selection -> commands__edit_selection,
@@ -19,7 +19,7 @@ zstack
             show_delete_command_error -> commands__show_delete_error
           ) [id: "commands_view"]
 
-        if main_display == "AnnouncementsView"
+        if main_display == "Announcements"
           @announcements_view (
             cancel_item_window -> announcements__close,
             item_selection -> announcements__edit_selection,
@@ -28,7 +28,7 @@ zstack
             show_delete_announcement_error -> announcements__show_delete_error
           ) [id: "announcements_view"]
 
-        if main_display == "RewardsView"
+        if main_display == "Rewards"
           @rewards_view (
             cancel_item_window -> rewards__close,
             item_selection -> rewards__edit_selection,
@@ -37,7 +37,7 @@ zstack
             show_delete_announcement_error -> rewards__show_delete_error
           ) [id: "rewards_view"]
 
-        if main_display == "ActionsView"
+        if main_display == "Actions"
           @actions_view (
             cancel_item_window -> actions__close,
             item_selection -> actions__edit_selection,
@@ -46,7 +46,7 @@ zstack
             show_delete_announcement_error -> actions__show_delete_error
           ) [id: "actions_view"]
 
-        if main_display == "LogsView"
+        if main_display == "Logs"
           zstack
             border [border_style: "╭─╮│╯─╰│"]
               vstack
@@ -58,32 +58,32 @@ zstack
 
     container [height: 1, background: "#6441a5", foreground: "#000000"]
       expand
-        if main_display == "InfoView"
+        if main_display == "Info"
           hstack
             spacer
             text "(C)ommands A(n)nouncements (R)ewards (A)ctions (L)ogin Lo(g)s "
 
-        if main_display == "CommandsView"
+        if main_display == "Commands"
           hstack
             spacer
             text "(A)dd (E)dit (D)elete (B)ack "
 
-        if main_display == "AnnouncementsView"
+        if main_display == "Announcements"
           hstack
             spacer
             text "(A)dd (E)dit (D)elete (B)ack "
 
-        if main_display == "RewardsView"
+        if main_display == "Rewards"
           hstack
             spacer
             text "(A)dd (E)dit (D)elete (B)ack "
 
-        if main_display == "ActionsView"
+        if main_display == "Actions"
           hstack
             spacer
             text "(A)dd (E)dit (D)elete (B)ack "
 
-        if main_display == "LogsView"
+        if main_display == "Logs"
           hstack
             spacer
             text "(B)ack "

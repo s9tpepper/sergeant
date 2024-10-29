@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr};
+use std::collections::HashMap;
 
 use anathema::{
     component::{Component, ComponentId, Emitter, KeyCode},
