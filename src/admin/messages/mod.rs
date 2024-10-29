@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use super::components::{announcements::Announce, commands_view::Cmd, rewards_view::Reward, ComponentMessage};
+use super::components::{
+    actions_view::Action, announcements::Announce, commands_view::Cmd, rewards_view::Reward, ComponentMessage,
+};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct DeleteCommandConfirmationDetails<'msg> {
@@ -26,6 +28,14 @@ pub struct DeleteAnnouncementConfirmationDetails<'msg> {
     pub item: Announce,
 }
 
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct DeleteActionConfirmationDetails<'msg> {
+    pub title: &'msg str,
+    pub message: &'msg str,
+    pub waiting: &'msg str,
+    pub item: Action,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ComponentMessages<'msg> {
     #[serde(borrow)]
@@ -36,8 +46,15 @@ pub enum ComponentMessages<'msg> {
     ActionsViewReload(ActionsViewReload),
     DeleteRewardConfirmMessage(DeleteRewardConfirmMessage<'msg>),
     DeleteAnnoucementConfirmMessage(DeleteAnnouncementConfirmMessage<'msg>),
+    DeleteActionConfirmMessage(DeleteActionConfirmMessage<'msg>),
     InfoViewLoad(InfoViewLoad),
     AddActionClear,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DeleteActionConfirmMessage<'msg> {
+    #[serde(borrow)]
+    pub payload: DeleteActionConfirmationDetails<'msg>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

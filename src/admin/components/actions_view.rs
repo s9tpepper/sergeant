@@ -10,11 +10,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     admin::{
-        messages::{ComponentMessages, DeleteRewardConfirmMessage, DeleteRewardConfirmationDetails, RewardsViewReload},
+        messages::{ComponentMessages, DeleteActionConfirmMessage, DeleteActionConfirmationDetails},
         templates::LIST_VIEW_TEMPLATE,
         AppComponent,
     },
-    commands::{get_list_with_contents, remove_reward, SgtFile},
+    commands::{get_list_with_contents, remove_action, remove_reward, SgtFile},
 };
 
 use super::{
@@ -64,11 +64,11 @@ impl ActionsView {
 
 impl AppMessageHandler for ActionsView {
     fn handle_message<F>(
-        _value: anathema::state::CommonVal<'_>,
+        value: anathema::state::CommonVal<'_>,
         ident: impl Into<String>,
         state: &mut super::app::AppState,
         mut context: Context<'_, super::app::AppState>,
-        _component_ids: &HashMap<String, ComponentId<String>>,
+        component_ids: &HashMap<String, ComponentId<String>>,
         _fun: F,
     ) where
         F: Fn(&mut super::app::AppState, Context<'_, super::app::AppState>),
@@ -100,30 +100,30 @@ impl AppMessageHandler for ActionsView {
             //     }
             // }
             //
-            // "actions__delete_selection" => {
-            //     if let Ok(item) = serde_json::from_str::<Action>(&value.to_string()) {
-            //         if let Some(id) = component_ids.get("confirm_window") {
-            //             state.floating_window.set(FloatingWindow::Confirm);
-            //             context.set_focus("id", "confirm_window");
-            //
-            //             let message = format!("Are you sure you want to delete: {}", item.name);
-            //             let confirmation_details = DeleteactionConfirmationDetails {
-            //                 title: "Delete action",
-            //                 waiting: "actions_view",
-            //                 message: &message,
-            //                 item,
-            //             };
-            //
-            //             let _ = MessageSender::send_message(
-            //                 *id,
-            //                 ComponentMessages::DeleteactionConfirmMessage(DeleteactionConfirmMessage {
-            //                     payload: confirmation_details,
-            //                 }),
-            //                 context.emitter.clone(),
-            //             );
-            //         }
-            //     }
-            // }
+            "actions__delete_selection" => {
+                if let Ok(item) = serde_json::from_str::<Action>(&value.to_string()) {
+                    if let Some(id) = component_ids.get("confirm_window") {
+                        state.floating_window.set(FloatingWindow::Confirm);
+                        context.set_focus("id", "confirm_window");
+
+                        let message = format!("Are you sure you want to delete: {}", item.name);
+                        let confirmation_details = DeleteActionConfirmationDetails {
+                            title: "Delete action",
+                            waiting: "actions_view",
+                            message: &message,
+                            item,
+                        };
+
+                        let _ = MessageSender::send_message(
+                            *id,
+                            ComponentMessages::DeleteActionConfirmMessage(DeleteActionConfirmMessage {
+                                payload: confirmation_details,
+                            }),
+                            context.emitter.clone(),
+                        );
+                    }
+                }
+            }
             //
             // "actions__show_delete_error" => {
             //     state.floating_window.set(FloatingWindow::Error);
@@ -165,8 +165,8 @@ impl Component for ActionsView {
             match msg {
                 ComponentMessages::RewardsViewReload(_) => self.load(state),
 
-                ComponentMessages::DeleteRewardConfirmMessage(delete_confirmed) => {
-                    match remove_reward(&delete_confirmed.payload.item.name) {
+                ComponentMessages::DeleteActionConfirmMessage(delete_confirmed) => {
+                    match remove_action(&delete_confirmed.payload.item.name) {
                         Ok(_) => {
                             self.load(state);
                             self.refresh(state);

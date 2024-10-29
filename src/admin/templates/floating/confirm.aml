@@ -5,8 +5,10 @@ align [alignment: "center"]
         expand
           hstack
             text title
-      padding [padding: 1]
-        text message
+
+      container [height: 3]
+        padding [padding: 1]
+          text message
 
       hstack [width: 60]
         spacer
