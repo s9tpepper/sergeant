@@ -43,9 +43,11 @@ impl Component for EditInput {
     type Message = String;
 
     fn on_blur(&mut self, state: &mut Self::State, elements: Elements<'_, '_>, mut context: Context<'_, Self::State>) {
-        // NOTE: How terrible is this?
-        let id = Box::new(self.return_focus_id.clone());
-        context.set_focus("id", CommonVal::Str(id.leak()));
+        if !*state.focused.to_ref() {
+            // NOTE: How terrible is this?
+            let id = Box::new(self.return_focus_id.clone());
+            context.set_focus("id", CommonVal::Str(id.leak()));
+        }
 
         self._on_blur(state, elements, context);
     }
