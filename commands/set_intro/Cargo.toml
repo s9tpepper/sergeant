@@ -1,0 +1,17 @@
+[package]
+name = "set_intro"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lib = { path = "../lib" }
+anyhow = "1.0.91"
+clap = { version = "4.5.20", features = ["cargo", "derive", "env"] }
+directories = "5.0.1"
+dotenv = "0.15.0"
+essi-ffmpeg = { git = "https://github.com/MrAdhit/essi-ffmpeg", branch = "master" }
+rodio = "0.19.0"
+serde = { version = "1.0.214", features = ["derive", "serde_derive"] }
+serde_json = "1.0.132"
+sqlx = { version = "0.8.2", features = ["runtime-tokio", "sqlite"] }
+tokio = { version = "1.41.0", features = ["full"] }

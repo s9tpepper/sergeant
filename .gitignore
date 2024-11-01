@@ -2,6 +2,9 @@
 .env
 .DS_Store
 
+**/target
+**/.DS_Store
+
 # test files
 test.sh
 newtest.sh

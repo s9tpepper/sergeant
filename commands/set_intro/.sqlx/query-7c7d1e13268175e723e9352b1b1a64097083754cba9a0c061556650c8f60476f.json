@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT approved FROM intros WHERE name = ?1",
+  "describe": {
+    "columns": [
+      {
+        "name": "approved",
+        "ordinal": 0,
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "7c7d1e13268175e723e9352b1b1a64097083754cba9a0c061556650c8f60476f"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO intros (name, file_path, message, approved) VALUES (?1, ?2, ?3, 0)\n                        ON CONFLICT(name) DO UPDATE SET file_path = excluded.file_path, message = excluded.message, approved = 0\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "dab7fcc87ff8e250343c9ce33bcdf46e507ed36b920cc7a693d7dda3ef4df323"
+}
