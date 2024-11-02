@@ -1,9 +1,11 @@
 use clap::{Parser, Subcommand};
 use login::login;
 use queue::queue;
+use song::song;
 
 mod login;
 mod queue;
+mod song;
 
 #[derive(Subcommand)]
 enum Cmds {
@@ -17,6 +19,11 @@ enum Cmds {
 
         /// Spotify URI to queue in the current queue
         uri: String,
+    },
+
+    Song {
+        /// Twitch name of user that claimed a redeem
+        display_name: String,
     },
 }
 
@@ -33,6 +40,8 @@ async fn main() -> anyhow::Result<()> {
         Cmds::Login => login().await,
 
         Cmds::Queue { uri, .. } => queue(&uri).await,
+
+        Cmds::Song { .. } => song().await,
     };
 
     Ok(())

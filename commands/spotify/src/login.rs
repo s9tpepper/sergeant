@@ -70,7 +70,7 @@ fn save_tokens(
 }
 
 fn get_auth_code(callback_url: &str) -> anyhow::Result<AuthCode> {
-    let parsed_url = url::Url::parse(&callback_url)?;
+    let parsed_url = url::Url::parse(callback_url)?;
     let query = parsed_url.query_pairs();
 
     let mut code = String::new();
@@ -102,6 +102,7 @@ pub fn get_auth_code_flow(spotify_details: &SpotifyDetails) -> anyhow::Result<Au
         "user-library-read",
         "playlist-read-private",
         "user-modify-playback-state",
+        "user-read-currently-playing",
     ];
 
     Ok(AuthCodeFlow::new(
@@ -114,7 +115,7 @@ pub fn get_auth_code_flow(spotify_details: &SpotifyDetails) -> anyhow::Result<Au
 fn get_auth_code_client(
     spotify_details: &SpotifyDetails,
 ) -> anyhow::Result<(Client<UnAuthenticated, AuthCodeFlow, CsrfVerifier>, Url)> {
-    let auth_code_flow = get_auth_code_flow(&spotify_details)?;
+    let auth_code_flow = get_auth_code_flow(spotify_details)?;
 
     let redirect_url = RedirectUrl::new(spotify_details.callback.to_owned())?;
     let auto_refresh = true;
@@ -156,4 +157,16 @@ fn prompt_auth_url(url: &str) -> String {
         .prompt("Callback URL: ");
 
     prompt.run().expect("error running input")
+}
+
+pub async fn get_spotify() -> anyhow::Result<Client<Token, AuthCodeFlow, NoVerifier>> {
+    let file_dir = get_project_directory("SgtSpotify", "tokens")?;
+    let file_path = file_dir.join("tokens.json");
+
+    let serialized = std::fs::read_to_string(file_path)?;
+    let tokens = serde_json::from_str::<Tokens>(&serialized)?;
+
+    let auth_flow = get_auth_code_flow(&tokens.spotify_details)?;
+
+    Ok(Client::from_refresh_token(auth_flow, true, tokens.refresh_token).await?)
 }

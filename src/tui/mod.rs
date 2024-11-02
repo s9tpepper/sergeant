@@ -482,13 +482,28 @@ pub fn execute_command(
 
     let (command_name, sub_command) = cmd_mapping.split_once(':').unwrap_or((cmd_mapping, ""));
 
+    send_to_error_log(
+        "irc_action".to_string(),
+        format!("command name: {command_name}, sub_command: {sub_command}"),
+    );
+
     let mut command = Command::new(command_name);
+
+    let mut args = vec![];
     if !sub_command.is_empty() {
-        command.arg(sub_command);
+        args.push(sub_command);
+        send_to_error_log("irc_action".to_string(), format!("Added sub_command: {sub_command}"));
     }
 
+    if !display_name.is_empty() {
+        args.push(display_name);
+        send_to_error_log("irc_action".to_string(), format!("Added display_name: {display_name}"));
+    }
+
+    command.args(args.clone());
+    send_to_error_log("irc_action".to_string(), format!("Added args: {}", args.join(",")));
+
     let command_result = command
-        .arg(display_name)
         .stdout(process::Stdio::piped())
         .stderr(process::Stdio::piped())
         .output()
