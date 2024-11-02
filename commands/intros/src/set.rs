@@ -27,9 +27,30 @@ fn get_file_path(file_name: &str) -> anyhow::Result<String> {
     Ok(format!("{}/{}.mp3", path.to_str().ok_or(path_err)?, file_name))
 }
 
+const HOUR: i32 = 60 * 60;
+const MIN: i32 = 60;
+
+fn get_seconds_from_time(time: &str) -> anyhow::Result<i32> {
+    let mut split_parts = time.split(':');
+    let split_options = (split_parts.next(), split_parts.next(), split_parts.next());
+
+    #[allow(clippy::single_match)]
+    match split_options {
+        (Some(hours), Some(mins), Some(seconds)) => {
+            let hours_seconds = hours.parse::<i32>()? * HOUR;
+            let minute_seconds = mins.parse::<i32>()? * MIN;
+            let seconds = seconds.parse::<i32>()?;
+
+            Ok(hours_seconds + minute_seconds + seconds)
+        }
+
+        _ => Err(anyhow::Error::msg("Invalid time input")),
+    }
+}
+
 fn get_start_end(start: &str, end: &str) -> anyhow::Result<(String, String)> {
-    let start_seconds = start.split(':').last().unwrap().parse::<u32>().unwrap();
-    let end_seconds = end.split(':').last().unwrap().parse::<u32>().unwrap();
+    let start_seconds = get_seconds_from_time(start)?;
+    let end_seconds = get_seconds_from_time(end)?;
 
     let mut end_time = end.to_string();
     if (end_seconds - start_seconds) > 8 {
@@ -78,7 +99,7 @@ async fn download_ffmpeg() {
     }
 }
 
-pub async fn set(url: &str, start: &str, end: &str, message: &str, file_name: &str, name: &str) -> anyhow::Result<()> {
+pub async fn set(url: &str, start: &str, end: &str, file_name: &str, name: &str) -> anyhow::Result<()> {
     download_ffmpeg().await;
 
     let file_path = get_file_path(file_name)?;
@@ -88,7 +109,7 @@ pub async fn set(url: &str, start: &str, end: &str, message: &str, file_name: &s
 
     match exit_status {
         Ok(status) => match status.success() {
-            true => Ok(insert_intro(name, &file_path, message).await?),
+            true => Ok(insert_intro(name, &file_path, "").await?),
             false => Err(anyhow::Error::msg("Could not insert")),
         },
 

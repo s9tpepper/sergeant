@@ -967,6 +967,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "intros"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "directories",
+ "dotenv",
+ "essi-ffmpeg",
+ "lib",
+ "rodio",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+]
+
+[[package]]
 name = "ipnet"
 version = "2.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1845,23 +1862,6 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
-]
-
-[[package]]
-name = "set_intro"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "directories",
- "dotenv",
- "essi-ffmpeg",
- "lib",
- "rodio",
- "serde",
- "serde_json",
- "sqlx",
- "tokio",
 ]
 
 [[package]]

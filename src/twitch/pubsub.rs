@@ -357,13 +357,14 @@ fn handle_message(
                             send_to_error_log("command".to_string(), "added subcommand".to_string());
                         }
 
+                        command.arg(&sub_message.redemption.user.display_name);
+
                         if !user_input.is_empty() {
                             command.arg(user_input);
                             send_to_error_log("command".to_string(), "added user_input".to_string());
                         }
 
                         let command_result = command
-                            .arg(&sub_message.redemption.user.display_name)
                             .stdout(process::Stdio::piped())
                             .stderr(process::Stdio::piped())
                             .output()?;
