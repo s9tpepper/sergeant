@@ -147,6 +147,8 @@ impl App {
             let _ = self.handle_events(&mut terminal);
 
             if let Ok(message) = rx.try_recv() {
+                let _ = terminal.backend_mut().clear_region(backend::ClearType::All);
+
                 match &message {
                     ChannelMessages::TwitchMessage(message) => {
                         match message {
@@ -470,15 +472,22 @@ pub fn execute_command(
         return Ok(());
     };
 
-    let Ok(command_name) = found_command else {
+    let Ok(cmd_mapping) = found_command else {
         return Ok(());
     };
 
-    let Some((command_name, command_option)) = command_name.split_once(' ') else {
+    let Some((cmd_mapping, command_option)) = cmd_mapping.split_once(' ') else {
         return Ok(());
     };
 
-    let command_result = Command::new(command_name)
+    let (command_name, sub_command) = cmd_mapping.split_once(':').unwrap_or((cmd_mapping, ""));
+
+    let mut command = Command::new(command_name);
+    if !sub_command.is_empty() {
+        command.arg(sub_command);
+    }
+
+    let command_result = command
         .arg(display_name)
         .stdout(process::Stdio::piped())
         .stderr(process::Stdio::piped())

@@ -5,7 +5,7 @@ use std::{error::Error, fs, thread::sleep};
 
 use base64::prelude::*;
 
-use crate::utils::get_data_directory;
+use crate::{twitch::pubsub::send_to_error_log, utils::get_data_directory};
 
 const TWITCH_SCOPES: [&str; 17] = [
     "channel:read:subscriptions",
@@ -249,7 +249,12 @@ fn get_item(item_name: &str, item_type: &str) -> Result<String, Box<dyn Error>> 
     item_path.push(item_name);
 
     if item_path.exists() {
-        let item = fs::read_to_string(item_path)?;
+        let item = fs::read_to_string(item_path.clone())?;
+        send_to_error_log(
+            format!("Read item from {item_path:?}, item: '{item}'"),
+            String::from(""),
+        );
+
         return Ok(item);
     }
 

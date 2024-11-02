@@ -331,24 +331,46 @@ fn handle_message(
                             break 'commands;
                         };
 
-                        let Ok(command_name) = found_command else {
+                        let Ok(cmd_mapping) = found_command else {
                             break 'commands;
                         };
 
                         let default_input = &String::new();
                         let user_input = &sub_message.redemption.user_input.as_ref().unwrap_or(default_input);
 
-                        let command_result = Command::new(&command_name)
-                            .arg(user_input)
+                        send_to_error_log(format!("cmd_mapping: {cmd_mapping}"), "".to_string());
+
+                        let (command_name, sub_command) = cmd_mapping.split_once(':').unwrap_or((&cmd_mapping, ""));
+
+                        send_to_error_log(
+                            format!("command_name: {command_name}, sub_command: {sub_command}"),
+                            "".to_string(),
+                        );
+
+                        let p = format!("{command_name} {sub_command}");
+                        let program = p.trim();
+                        send_to_error_log(format!("program: {program}"), "".to_string());
+
+                        let mut command = Command::new(command_name);
+                        if !sub_command.is_empty() {
+                            command.arg(sub_command);
+                            send_to_error_log("command".to_string(), "added subcommand".to_string());
+                        }
+
+                        if !user_input.is_empty() {
+                            command.arg(user_input);
+                            send_to_error_log("command".to_string(), "added user_input".to_string());
+                        }
+
+                        let command_result = command
                             .arg(&sub_message.redemption.user.display_name)
                             .stdout(process::Stdio::piped())
                             .stderr(process::Stdio::piped())
-                            .output()
-                            .expect("reward failed");
+                            .output()?;
 
-                        let command_success = command_result.status.success();
+                        send_to_error_log(format!("command result: {command_result:?}"), "".to_string());
 
-                        if !command_success {
+                        if !command_result.status.success() {
                             send_to_error_log(
                                 command_name.to_string(),
                                 format!("Error running reward command with input: {}", user_input),
