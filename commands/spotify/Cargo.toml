@@ -1,0 +1,16 @@
+[package]
+name = "spotify"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lib = { path = "../lib" }
+anyhow = "1.0.92"
+clap = { version = "4.5.20", features = ["derive", "env", "cargo"] }
+demand = "1.2.4"
+dotenvy = "0.15.7"
+serde = { version = "1.0.214", features = ["derive", "serde_derive"] }
+serde_json = "1.0.132"
+spotify-rs = "0.3.14"
+tokio = { version = "1.41.0", features = ["full"] }
+url = "2.5.2"
