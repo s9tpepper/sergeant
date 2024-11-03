@@ -10,8 +10,15 @@ categories = ["command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[workspace]
+members = [
+  "commands/intros",
+  "commands/spotify"
+]
+
+
 [dependencies]
-anathema = { git = "https://github.com/s9tpepper/anathema.git", branch = "dev" }
+anathema = { git = "https://github.com/s9tpepper/anathema.git", branch = "dev", version = "0.0.1" }
 base64 = "0.22.1"
 clap = { version = "4.5.20", features = ["derive", "env", "cargo"] }
 color-eyre = "0.6.3"
