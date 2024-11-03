@@ -69,6 +69,48 @@ impl Admin {
         Ok(())
     }
 
+    fn get_edit_inputs(&self) -> Vec<(String, String)> {
+        vec![
+            ("add_cmd_name_input".to_string(), "add_command_window".to_string()),
+            ("add_cmd_output_input".to_string(), "add_command_window".to_string()),
+            ("cmd_name_input".to_string(), "edit_command_window".to_string()),
+            ("cmd_output_input".to_string(), "edit_command_window".to_string()),
+            (
+                "announce_name_input".to_string(),
+                "edit_announcement_window".to_string(),
+            ),
+            (
+                "announce_message_input".to_string(),
+                "edit_announcement_window".to_string(),
+            ),
+            (
+                "announce_timing_input".to_string(),
+                "edit_announcement_window".to_string(),
+            ),
+            ("reward_name_input".to_string(), "edit_reward_window".to_string()),
+            (
+                "reward_shell_command_input".to_string(),
+                "edit_reward_window".to_string(),
+            ),
+            ("add_action_name_input".to_string(), "add_action_window".to_string()),
+            ("add_action_command_input".to_string(), "add_action_window".to_string()),
+            ("add_action_option_input".to_string(), "add_action_window".to_string()),
+            ("edit_action_name_input".to_string(), "edit_action_window".to_string()),
+            (
+                "edit_action_shell_command_input".to_string(),
+                "edit_action_window".to_string(),
+            ),
+            ("edit_action_option_input".to_string(), "edit_action_window".to_string()),
+        ]
+    }
+
+    fn register_editable_inputs(&mut self, builder: &mut RuntimeBuilder<TuiBackend, ()>) {
+        self.get_edit_inputs().iter().for_each(|(ident, return_focus_id)| {
+            let component_ids = self.component_ids.as_mut().unwrap();
+            EditInput::register(ident, return_focus_id.to_string(), builder, component_ids);
+        })
+    }
+
     fn register_components(&mut self, builder: &mut RuntimeBuilder<TuiBackend, ()>) {
         if self.component_ids.is_none() {
             panic!("Component IDs map is broken");
@@ -77,96 +119,6 @@ impl Admin {
         let _ = builder.register_prototype("text_input", TEXT_INPUT_TEMPLATE, || TextInput, InputState::new);
 
         let component_ids = self.component_ids.as_mut().unwrap();
-        EditInput::register(
-            "add_cmd_name_input",
-            "add_command_window".to_string(),
-            builder,
-            component_ids,
-        );
-        EditInput::register(
-            "add_cmd_output_input",
-            "add_command_window".to_string(),
-            builder,
-            component_ids,
-        );
-        EditInput::register(
-            "cmd_name_input",
-            "edit_command_window".to_string(),
-            builder,
-            component_ids,
-        );
-        EditInput::register(
-            "cmd_output_input",
-            "edit_command_window".to_string(),
-            builder,
-            component_ids,
-        );
-        EditInput::register(
-            "announce_name_input",
-            "edit_announcement_window".to_string(),
-            builder,
-            component_ids,
-        );
-        EditInput::register(
-            "announce_message_input",
-            "edit_announcement_window".to_string(),
-            builder,
-            component_ids,
-        );
-        EditInput::register(
-            "announce_timing_input",
-            "edit_announcement_window".to_string(),
-            builder,
-            component_ids,
-        );
-        EditInput::register(
-            "reward_name_input",
-            "edit_reward_window".to_string(),
-            builder,
-            component_ids,
-        );
-        EditInput::register(
-            "reward_shell_command_input",
-            "edit_reward_window".to_string(),
-            builder,
-            component_ids,
-        );
-        EditInput::register(
-            "add_action_name_input",
-            "add_action_window".to_string(),
-            builder,
-            component_ids,
-        );
-        EditInput::register(
-            "add_action_command_input",
-            "add_action_window".to_string(),
-            builder,
-            component_ids,
-        );
-        EditInput::register(
-            "add_action_option_input",
-            "add_action_window".to_string(),
-            builder,
-            component_ids,
-        );
-        EditInput::register(
-            "edit_action_name_input",
-            "edit_action_window".to_string(),
-            builder,
-            component_ids,
-        );
-        EditInput::register(
-            "edit_action_shell_command_input",
-            "edit_action_window".to_string(),
-            builder,
-            component_ids,
-        );
-        EditInput::register(
-            "edit_action_option_input",
-            "edit_action_window".to_string(),
-            builder,
-            component_ids,
-        );
 
         AddCommand::register(builder, component_ids);
         InfoView::register(builder, component_ids);
@@ -183,6 +135,8 @@ impl Admin {
         ActionsView::register(builder, component_ids);
         AddAction::register(builder, component_ids);
         EditAction::register(builder, component_ids);
+
+        self.register_editable_inputs(builder);
 
         let component_ids = self.component_ids.take().unwrap();
         let app = App { component_ids };
