@@ -101,17 +101,22 @@ impl Admin {
                 "edit_action_window".to_string(),
             ),
             ("edit_action_option_input".to_string(), "edit_action_window".to_string()),
+            ("add_reward_name_input".to_string(), "add_reward_window".to_string()),
+            ("add_reward_command_input".to_string(), "add_reward_window".to_string()),
         ]
     }
 
-    fn register_editable_inputs(&mut self, builder: &mut RuntimeBuilder<TuiBackend, ()>) {
-        self.get_edit_inputs().iter().for_each(|(ident, return_focus_id)| {
-            let component_ids = self.component_ids.as_mut().unwrap();
-            EditInput::register(ident, return_focus_id.to_string(), builder, component_ids);
-        })
-    }
+    // fn register_editable_inputs(&mut self, builder: &mut RuntimeBuilder<TuiBackend, ()>) {
+    //     let inputs = self.get_edit_inputs();
+    //     let component_ids = self.component_ids.as_mut().unwrap();
+    //
+    //     for (ident, return_focus_id) in inputs {
+    //         EditInput::register(ident, return_focus_id.to_string(), builder, component_ids);
+    //     }
+    // }
 
     fn register_components(&mut self, builder: &mut RuntimeBuilder<TuiBackend, ()>) {
+        let inputs = self.get_edit_inputs();
         if self.component_ids.is_none() {
             panic!("Component IDs map is broken");
         }
@@ -119,6 +124,10 @@ impl Admin {
         let _ = builder.register_prototype("text_input", TEXT_INPUT_TEMPLATE, || TextInput, InputState::new);
 
         let component_ids = self.component_ids.as_mut().unwrap();
+
+        for (ident, return_focus_id) in inputs {
+            EditInput::register(ident, return_focus_id.to_string(), builder, component_ids);
+        }
 
         AddCommand::register(builder, component_ids);
         InfoView::register(builder, component_ids);
@@ -135,8 +144,6 @@ impl Admin {
         ActionsView::register(builder, component_ids);
         AddAction::register(builder, component_ids);
         EditAction::register(builder, component_ids);
-
-        self.register_editable_inputs(builder);
 
         let component_ids = self.component_ids.take().unwrap();
         let app = App { component_ids };

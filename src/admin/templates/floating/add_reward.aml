@@ -9,7 +9,7 @@ align [alignment: "center"]
         vstack
           zstack
             border [width: 58, border_style: "╭─╮│╯─╰│"]
-              @text_input (
+              @add_reward_name_input (
                 text_change -> add_reward__name_update,
                 escape -> add_reward__name_focus_change
               ) [id: "add_reward_name_input"]
@@ -17,7 +17,7 @@ align [alignment: "center"]
 
           zstack
             border [width: 58, border_style: "╭─╮│╯─╰│"]
-              @text_input (
+              @add_reward_command_input (
                 text_change -> add_reward__shell_command_update,
                 escape -> add_reward__shell_command_focus_change
               ) [id: "add_reward_shell_command_input"]
