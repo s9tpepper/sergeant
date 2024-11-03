@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use anathema::{
-    component::{Component, ComponentId, KeyCode},
+    component::{Component, ComponentId, Emitter, KeyCode},
     prelude::TuiBackend,
     runtime::RuntimeBuilder,
     state::{CommonVal, State, Value},
@@ -18,7 +18,9 @@ use crate::{
 };
 
 #[derive(Default)]
-pub struct AddCommand;
+pub struct AddCommand {
+    component_ids: HashMap<String, ComponentId<String>>,
+}
 
 impl AddCommand {
     pub fn register(
@@ -29,10 +31,31 @@ impl AddCommand {
             builder,
             "add_command_window",
             ADD_COMMAND_TEMPLATE,
-            AddCommand,
+            AddCommand {
+                component_ids: component_ids.to_owned(),
+            },
             AddCommandState::new(),
             component_ids,
         )
+    }
+
+    fn clear_inputs(&self, emitter: Emitter) {
+        let inputs = ["add_cmd_name_input", "add_cmd_output_input"];
+
+        inputs.iter().for_each(|ident| {
+            if let Some(id) = self.component_ids.get(*ident) {
+                let _ = emitter.emit(*id, String::from(""));
+            }
+        })
+    }
+
+    fn send_clear(
+        context: &anathema::prelude::Context<'_, crate::admin::components::app::AppState>,
+        component_ids: &HashMap<String, ComponentId<String>>,
+    ) {
+        if let Some(id) = component_ids.get("add_command_window") {
+            let _ = MessageSender::send_message(*id, ComponentMessages::AddCommandClear, context.emitter.clone());
+        }
     }
 }
 
@@ -55,6 +78,7 @@ impl AppMessageHandler for AddCommand {
         let event: String = ident.into();
         match event.as_str() {
             "add_command__cancel" => {
+                AddCommand::send_clear(&context, component_ids);
                 fun(state, context);
             }
 
@@ -77,6 +101,7 @@ impl AppMessageHandler for AddCommand {
                     }
                 };
 
+                AddCommand::send_clear(&context, component_ids);
                 fun(state, context);
             }
 
@@ -142,6 +167,25 @@ impl Component for AddCommand {
 
     fn accept_focus(&self) -> bool {
         true
+    }
+
+    fn message(
+        &mut self,
+        message: Self::Message,
+        state: &mut Self::State,
+        _: anathema::widgets::Elements<'_, '_>,
+        context: anathema::prelude::Context<'_, Self::State>,
+    ) {
+        let Ok(component_message) = serde_json::from_str::<ComponentMessages>(&message) else {
+            return;
+        };
+
+        if let ComponentMessages::AddCommandClear = component_message {
+            state.command.to_mut().name.set(String::from(""));
+            state.command.to_mut().output.set(String::from(""));
+
+            self.clear_inputs(context.emitter.clone());
+        }
     }
 
     fn receive(

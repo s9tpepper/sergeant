@@ -9,7 +9,7 @@ align [alignment: "center"]
         vstack
           zstack
             border [width: 58, border_style: "╭─╮│╯─╰│"]
-              @text_input (
+              @add_cmd_name_input (
                 text_change -> name_update,
                 escape -> name_focus_change
               ) [id: "command_name_input"]
@@ -17,7 +17,7 @@ align [alignment: "center"]
 
           zstack
             border [width: 58, border_style: "╭─╮│╯─╰│"]
-              @text_input (
+              @add_cmd_output_input (
                 text_change -> output_update,
                 escape -> output_focus_change
               ) [id: "command_output_input"]

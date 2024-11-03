@@ -48,6 +48,7 @@ pub enum ComponentMessages<'msg> {
     DeleteAnnoucementConfirmMessage(DeleteAnnouncementConfirmMessage<'msg>),
     DeleteActionConfirmMessage(DeleteActionConfirmMessage<'msg>),
     InfoViewLoad(InfoViewLoad),
+    AddCommandClear,
     AddActionClear,
     EditActionClear,
 }

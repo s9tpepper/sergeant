@@ -78,6 +78,18 @@ impl Admin {
 
         let component_ids = self.component_ids.as_mut().unwrap();
         EditInput::register(
+            "add_cmd_name_input",
+            "add_command_window".to_string(),
+            builder,
+            component_ids,
+        );
+        EditInput::register(
+            "add_cmd_output_input",
+            "add_command_window".to_string(),
+            builder,
+            component_ids,
+        );
+        EditInput::register(
             "cmd_name_input",
             "edit_command_window".to_string(),
             builder,
