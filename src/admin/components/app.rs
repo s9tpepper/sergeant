@@ -18,7 +18,8 @@ use super::{
     commands_view::CommandsView,
     floating::{
         add_action::AddAction, add_announcement::AddAnnouncement, add_command::AddCommand, add_reward::AddReward,
-        confirm::Confirm, edit_announcement::EditAnnouncement, edit_command::EditCommand, edit_reward::EditReward,
+        confirm::Confirm, edit_action::EditAction, edit_announcement::EditAnnouncement, edit_command::EditCommand,
+        edit_reward::EditReward,
     },
     rewards_view::RewardsView,
     Messenger,
@@ -66,6 +67,7 @@ pub enum FloatingWindow {
     AddReward,
     EditReward,
     AddAction,
+    EditAction,
     Confirm,
     Error,
 }
@@ -81,6 +83,7 @@ impl State for FloatingWindow {
             FloatingWindow::AddReward => Some(CommonVal::Str("AddReward")),
             FloatingWindow::EditReward => Some(CommonVal::Str("EditReward")),
             FloatingWindow::AddAction => Some(CommonVal::Str("AddAction")),
+            FloatingWindow::EditAction => Some(CommonVal::Str("EditAction")),
             FloatingWindow::Confirm => Some(CommonVal::Str("Confirm")),
             FloatingWindow::Error => Some(CommonVal::Str("Error")),
         }
@@ -265,6 +268,12 @@ impl Component for App {
 
                 "add_action" => {
                     AddAction::handle_message(value, ident, state, context, &self.component_ids, |state, context| {
+                        self.reset_floating_window(state, context)
+                    })
+                }
+
+                "edit_action" => {
+                    EditAction::handle_message(value, ident, state, context, &self.component_ids, |state, context| {
                         self.reset_floating_window(state, context)
                     })
                 }

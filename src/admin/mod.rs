@@ -13,8 +13,8 @@ use components::{
     edit_input::EditInput,
     floating::{
         add_action::AddAction, add_announcement::AddAnnouncement, add_command::AddCommand, add_reward::AddReward,
-        confirm::Confirm, edit_announcement::EditAnnouncement, edit_command::EditCommand, edit_reward::EditReward,
-        error::ErrorWindow,
+        confirm::Confirm, edit_action::EditAction, edit_announcement::EditAnnouncement, edit_command::EditCommand,
+        edit_reward::EditReward, error::ErrorWindow,
     },
     info_view::InfoView,
     inputs::{InputState, TextInput},
@@ -137,6 +137,24 @@ impl Admin {
             builder,
             component_ids,
         );
+        EditInput::register(
+            "edit_action_name_input",
+            "edit_action_window".to_string(),
+            builder,
+            component_ids,
+        );
+        EditInput::register(
+            "edit_action_shell_command_input",
+            "edit_action_window".to_string(),
+            builder,
+            component_ids,
+        );
+        EditInput::register(
+            "edit_action_option_input",
+            "edit_action_window".to_string(),
+            builder,
+            component_ids,
+        );
 
         AddCommand::register(builder, component_ids);
         InfoView::register(builder, component_ids);
@@ -152,6 +170,7 @@ impl Admin {
         EditReward::register(builder, component_ids);
         ActionsView::register(builder, component_ids);
         AddAction::register(builder, component_ids);
+        EditAction::register(builder, component_ids);
 
         let component_ids = self.component_ids.take().unwrap();
         let app = App { component_ids };

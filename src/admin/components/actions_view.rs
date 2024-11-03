@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, thread::sleep, time::Duration};
 
 use anathema::{
     component::{Component, ComponentId, KeyCode::Char},
@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     admin::{
-        messages::{ComponentMessages, DeleteActionConfirmMessage, DeleteActionConfirmationDetails},
+        messages::{ActionsViewReload, ComponentMessages, DeleteActionConfirmMessage, DeleteActionConfirmationDetails},
         templates::LIST_VIEW_TEMPLATE,
         AppComponent,
     },
@@ -69,7 +69,7 @@ impl AppMessageHandler for ActionsView {
         state: &mut super::app::AppState,
         mut context: Context<'_, super::app::AppState>,
         component_ids: &HashMap<String, ComponentId<String>>,
-        _fun: F,
+        fun: F,
     ) where
         F: Fn(&mut super::app::AppState, Context<'_, super::app::AppState>),
     {
@@ -85,21 +85,25 @@ impl AppMessageHandler for ActionsView {
                 context.set_focus("id", "add_action_window");
             }
 
-            // "actions__edit_selection" => {
-            //     if let Ok(item) = serde_json::from_str::<Action>(&value.to_string()) {
-            //         state.floating_window.set(FloatingWindow::Editaction);
-            //         context.set_focus("id", "edit_action_window");
-            //
-            //         if let Some(id) = component_ids.get("action_name_input") {
-            //             let _ = context.emitter.emit(*id, item.name);
-            //         }
-            //
-            //         if let Some(id) = component_ids.get("action_shell_command_input") {
-            //             let _ = context.emitter.emit(*id, item.command);
-            //         }
-            //     }
-            // }
-            //
+            "actions__edit_selection" => {
+                if let Ok(item) = serde_json::from_str::<Action>(&value.to_string()) {
+                    state.floating_window.set(FloatingWindow::EditAction);
+                    context.set_focus("id", "edit_action_window");
+
+                    if let Some(id) = component_ids.get("edit_action_name_input") {
+                        let _ = context.emitter.emit(*id, item.name);
+                    }
+
+                    if let Some(id) = component_ids.get("edit_action_shell_command_input") {
+                        let _ = context.emitter.emit(*id, item.command);
+                    }
+
+                    if let Some(id) = component_ids.get("edit_action_option_input") {
+                        let _ = context.emitter.emit(*id, item.option.unwrap_or("".to_string()));
+                    }
+                }
+            }
+
             "actions__delete_selection" => {
                 if let Ok(item) = serde_json::from_str::<Action>(&value.to_string()) {
                     if let Some(id) = component_ids.get("confirm_window") {
@@ -124,23 +128,23 @@ impl AppMessageHandler for ActionsView {
                     }
                 }
             }
-            //
-            // "actions__show_delete_error" => {
-            //     state.floating_window.set(FloatingWindow::Error);
-            //     state.error_message.set(String::from("Could not delete action"));
-            //     context.set_focus("id", "error_window");
-            //
-            //     if let Some(id) = component_ids.get("error_window") {
-            //         let _ = MessageSender::send_message(
-            //             *id,
-            //             ComponentMessages::actionsViewReload(actionsViewReload {}),
-            //             context.emitter.clone(),
-            //         );
-            //     }
-            //
-            //     sleep(Duration::from_secs(5));
-            //     fun(state, context);
-            // }
+
+            "actions__show_delete_error" => {
+                state.floating_window.set(FloatingWindow::Error);
+                state.error_message.set(String::from("Could not delete action"));
+                context.set_focus("id", "error_window");
+
+                if let Some(id) = component_ids.get("error_window") {
+                    let _ = MessageSender::send_message(
+                        *id,
+                        ComponentMessages::ActionsViewReload(ActionsViewReload {}),
+                        context.emitter.clone(),
+                    );
+                }
+
+                sleep(Duration::from_secs(5));
+                fun(state, context);
+            }
             _ => {}
         }
     }

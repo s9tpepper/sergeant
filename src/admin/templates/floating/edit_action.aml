@@ -1,0 +1,39 @@
+align [alignment: "center"]
+  border [foreground: "#ffffff", background: "#232323", border_style: "╭─╮│╯─╰│"]
+    vstack [fill: " ", background: "#232323"]
+      container [max_height: 1, max_width: 60, background: "#ffffff", foreground: "#000000"]
+        expand
+          hstack
+            text " Edit Action"
+      padding [padding: 1]
+        vstack
+          zstack
+            border [width: 58, border_style: "╭─╮│╯─╰│"]
+              @edit_action_name_input (
+                text_change -> edit_action__name_update,
+                escape -> edit_action__name_focus_change
+              ) [id: "edit_action_name_input"]
+            text "╭─(N)ame:"
+
+          zstack
+            border [width: 58, border_style: "╭─╮│╯─╰│"]
+              @edit_action_shell_command_input (
+                text_change -> edit_action__command_update,
+                escape -> edit_action__command_focus_change
+              ) [id: "edit_action_shell_command_input"]
+            text "╭─S(h)ell Command:"
+
+          zstack
+            border [width: 58, border_style: "╭─╮│╯─╰│"]
+              @edit_action_option_input (
+                text_change -> edit_action__option_update,
+                escape -> edit_action__option_focus_change
+              ) [id: "edit_action_option_input"]
+            text "╭─(O)ption (chat):"
+
+      hstack [width: 60]
+        spacer
+        text [background: "#ffffff", foreground: #000000] " (S)ubmit "
+        spacer
+        text [background: "#ffffff", foreground: #000000] " (C)ancel "
+        spacer
