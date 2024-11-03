@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use anathema::{
-    component::{Component, ComponentId, KeyCode},
+    component::{Component, ComponentId, Emitter, KeyCode},
     prelude::TuiBackend,
     runtime::RuntimeBuilder,
     state::{CommonVal, Number, State, Value},
@@ -18,7 +18,9 @@ use crate::{
 };
 
 #[derive(Default)]
-pub struct AddAnnouncement;
+pub struct AddAnnouncement {
+    component_ids: HashMap<String, ComponentId<String>>,
+}
 
 impl AddAnnouncement {
     pub fn register(
@@ -29,10 +31,35 @@ impl AddAnnouncement {
             builder,
             "add_announcement_window",
             ADD_ANNOUNCEMENT_TEMPLATE,
-            AddAnnouncement,
+            AddAnnouncement {
+                component_ids: component_ids.to_owned(),
+            },
             AddAnnouncementState::new(),
             component_ids,
         )
+    }
+
+    fn clear_inputs(&self, emitter: Emitter) {
+        let inputs = [
+            "add_announcement_name_input",
+            "add_announcement_message_input",
+            "add_announcement_timing_input",
+        ];
+
+        inputs.iter().for_each(|ident| {
+            if let Some(id) = self.component_ids.get(*ident) {
+                let _ = emitter.emit(*id, String::from(""));
+            }
+        })
+    }
+
+    fn send_clear(
+        context: &anathema::prelude::Context<'_, crate::admin::components::app::AppState>,
+        component_ids: &HashMap<String, ComponentId<String>>,
+    ) {
+        if let Some(id) = component_ids.get("add_announcement_window") {
+            let _ = MessageSender::send_message(*id, ComponentMessages::AddAnnouncementClear, context.emitter.clone());
+        }
     }
 }
 
@@ -55,6 +82,7 @@ impl AppMessageHandler for AddAnnouncement {
         let event: String = ident.into();
         match event.as_str() {
             "add_announcement__cancel" => {
+                AddAnnouncement::send_clear(&context, component_ids);
                 fun(state, context);
             }
 
@@ -84,6 +112,7 @@ impl AppMessageHandler for AddAnnouncement {
                     }
                 };
 
+                AddAnnouncement::send_clear(&context, component_ids);
                 fun(state, context);
             }
 
@@ -156,6 +185,26 @@ impl Component for AddAnnouncement {
 
     fn accept_focus(&self) -> bool {
         true
+    }
+
+    fn message(
+        &mut self,
+        message: Self::Message,
+        state: &mut Self::State,
+        _: anathema::widgets::Elements<'_, '_>,
+        context: anathema::prelude::Context<'_, Self::State>,
+    ) {
+        let Ok(component_message) = serde_json::from_str::<ComponentMessages>(&message) else {
+            return;
+        };
+
+        if let ComponentMessages::AddAnnouncementClear = component_message {
+            state.announcement.to_mut().name.set(String::from(""));
+            state.announcement.to_mut().message.set(String::from(""));
+            state.announcement.to_mut().timing.set(5usize);
+
+            self.clear_inputs(context.emitter.clone());
+        }
     }
 
     fn receive(

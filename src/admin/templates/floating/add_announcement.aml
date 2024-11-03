@@ -9,7 +9,7 @@ align [alignment: "center"]
         vstack
           zstack
             border [width: 58, border_style: "╭─╮│╯─╰│"]
-              @text_input (
+              @add_announcement_name_input (
                 text_change -> add_announcement__name_update,
                 escape -> add_announcement__name_focus_change
               ) [id: "add_announcement_name_input"]
@@ -17,7 +17,7 @@ align [alignment: "center"]
 
           zstack
             border [width: 58, border_style: "╭─╮│╯─╰│"]
-              @text_input (
+              @add_announcement_message_input (
                 text_change -> add_announcement__message_update,
                 escape -> add_announcement__message_focus_change
               ) [id: "add_announcement_message_input"]
@@ -25,7 +25,7 @@ align [alignment: "center"]
 
           zstack
             border [width: 58, border_style: "╭─╮│╯─╰│"]
-              @text_input (
+              @add_announcement_timing_input (
                 text_change -> add_announcement__timing_update,
                 escape -> add_announcement__timing_focus_change
               ) [id: "add_announcement_timing_input"]

@@ -103,6 +103,18 @@ impl Admin {
             ("edit_action_option_input".to_string(), "edit_action_window".to_string()),
             ("add_reward_name_input".to_string(), "add_reward_window".to_string()),
             ("add_reward_command_input".to_string(), "add_reward_window".to_string()),
+            (
+                "add_announcement_name_input".to_string(),
+                "add_announcement_window".to_string(),
+            ),
+            (
+                "add_announcement_message_input".to_string(),
+                "add_announcement_window".to_string(),
+            ),
+            (
+                "add_announcement_timing_input".to_string(),
+                "add_announcement_window".to_string(),
+            ),
         ]
     }
 

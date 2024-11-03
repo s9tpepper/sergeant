@@ -51,6 +51,8 @@ pub enum ComponentMessages<'msg> {
     AddCommandClear,
     AddActionClear,
     EditActionClear,
+    AddRewardClear,
+    AddAnnouncementClear,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

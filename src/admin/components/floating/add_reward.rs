@@ -54,7 +54,7 @@ impl AddReward {
         component_ids: &HashMap<String, ComponentId<String>>,
     ) {
         if let Some(id) = component_ids.get("add_reward_window") {
-            let _ = MessageSender::send_message(*id, ComponentMessages::AddCommandClear, context.emitter.clone());
+            let _ = MessageSender::send_message(*id, ComponentMessages::AddRewardClear, context.emitter.clone());
         }
     }
 }
@@ -180,7 +180,7 @@ impl Component for AddReward {
             return;
         };
 
-        if let ComponentMessages::AddCommandClear = component_message {
+        if let ComponentMessages::AddRewardClear = component_message {
             state.reward.to_mut().name.set(String::from(""));
             state.reward.to_mut().shell_command.set(String::from(""));
 
