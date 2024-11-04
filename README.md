@@ -33,6 +33,9 @@ sergeant commands list
 # add a recurring announcement every 5 mins:
 sergeant commands add spam "Spam your Twitch channel all you want" 5
 ```
+## About linking to shell commands
+Both rewards and irc-actions allow you to configure `!lurk` style commands to execute a shell command. If the shell command that you are trying to execute has a subcommand, such as commands like `git checkout`, those can be configured by separating the subcommand with a colon. In the odd case that you wanted to run `git checkout` when configuring a `!git` command, the command would be entered as `git:checkout` in either the Sergeant admin or via the CLI tool.
+
 ## sergeant rewards
 Use this to add, remove, and list rewards. Rewards are linked directly to Twitch reward redemptions. You can directly link a Twitch redeem to an arbitrary CLI command. If the redeem takes user input, the input is passed on to the CLI command as well as the display_name of the Twitch user that redeemed the reward.
 ```
@@ -60,4 +63,6 @@ sergeant irc-actions list
 ```
 
 ## Overlay Server
-The `sergeant chat` command also starts a WebSocket server that can be used to build OBS overlays. All supported Twitch IRC, PubSub, and EventSub messages are posted to the WebSocket server so that they can be used to build a web based interface. The WebSocket server runs on port 8765.
+The `sergeant chat` command also starts a WebSocket server that can be used to build OBS overlays. All supported Twitch IRC, PubSub, and EventSub messages are posted to the WebSocket server so that they can be used to build a web based interface. The WebSocket server runs on port 8765, http://localhost:8765.
+
+There is an example websocket html page and JavaScript connection in the repository's root.
