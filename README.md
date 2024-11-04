@@ -2,13 +2,18 @@
 Sergeant is a terminal based Twitch chat widget and bot in one. It will display the Twitch chat from your channel in terminal while also allowing you to add chat bot commands.
 
 # Installation
-```
-$ cargo install sergeant
-```
+Download the correct zip file from the [releases](https://github.com/s9tpepper/sergeant/releases) section.
+
+Once you've downloaded the zip, unzip the binary file and place it somewhere that it will be available for you to run. On macOS you can put it in a directory that is part of your $PATH. On Windows it also belongs in a directory that is in your PATH environment variable.
 
 # Usage
 ## sergeant chat
+![Sergeant Chat TUI](/assets/images/chat.png)
 Displays your Twitch channel chat in your terminal. Authentication is required, the easiest way is to use `sergeant login`. You can also use positional arguments to provide your twitch screen name, an oauth token, and a client id. You can also provide environment variables. `sergeant chat --help` for more details.
+
+## sergeant admin
+![Sergeant Admin TUI](/assets/images/admin.png)
+This command opens a TUI based admin panel that lets you edit all of the different customizations that can be added to your stream's chat. The admin's interface is navigated using keyboard bindings, indicated by the letters surrounded by parentheses. Lists can be navigated with up/down arrows or j/k keys.
 
 ## sergeant login
 Starts an OAuth login flow to get a token. Navigate to the URL it prints to the terminal, it will wait for you to authenticate. Once complete you're ready to use `sergeant`.
