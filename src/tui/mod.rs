@@ -41,6 +41,7 @@ pub type Tui = Terminal<CrosstermBackend<Stdout>>;
 
 #[derive(Debug, Default)]
 pub struct App {
+    twitch_name: String,
     scroll_view_state: ScrollViewState,
     chat_log: Vec<ChannelMessages>,
     exit: bool,
@@ -68,10 +69,11 @@ impl Clone for MessageParts {
 }
 
 impl App {
-    pub fn new() -> Self {
+    pub fn new(twitch_name: &str) -> Self {
         let scroll_view_state = ScrollViewState::new();
 
         App {
+            twitch_name: twitch_name.to_string(),
             scroll_view_state,
             chat_log: vec![],
             exit: false,
@@ -141,7 +143,10 @@ impl App {
         // let test_raid_message = get_raid_message();
         // self.chat_log.insert(0, test_raid_message);
 
-        terminal.draw(|frame| self.render(frame))?;
+        terminal.draw(|frame| {
+            self.render(frame);
+            self.scroll_view_state.scroll_to_bottom();
+        })?;
 
         while !self.exit {
             let _ = self.handle_events(&mut terminal);
@@ -176,8 +181,34 @@ impl App {
                                 // the chat to flicker when a new message is received
                                 let _ = terminal.backend_mut().clear_region(backend::ClearType::All);
 
-                                self.chat_log.insert(0, ChannelMessages::TwitchMessage(message.clone()));
-                                self.truncate();
+                                let mut display_new_msg = true;
+                                if let TwitchMessage::PrivMessage { message } = message {
+                                    let msg = message.message.clone();
+                                    let repeated = self.chat_log.iter().any(|item| match item {
+                                        ChannelMessages::TwitchMessage(tm) => {
+                                            if let TwitchMessage::PrivMessage { message: pm } = tm {
+                                                return pm.message == msg && pm.is_bot;
+                                            }
+
+                                            false
+                                        }
+                                        _ => false,
+                                    });
+
+                                    if message.nickname == self.twitch_name // is streamer
+                                        && !message.is_bot // message is not from bot
+                                        && repeated
+                                    {
+                                        display_new_msg = false;
+                                    }
+                                };
+
+                                if display_new_msg {
+                                    self.chat_log.insert(0, ChannelMessages::TwitchMessage(message.clone()));
+                                    self.truncate();
+
+                                    terminal.draw(|frame| self.render(frame))?;
+                                }
                             }
                         }
                     }
@@ -198,6 +229,8 @@ impl App {
                             };
                             let redeem_message = TwitchMessage::RedeemMessage { message: rm };
                             self.chat_log.insert(0, ChannelMessages::TwitchMessage(redeem_message));
+
+                            terminal.draw(|frame| self.render(frame))?;
                         }
 
                         // TODO: Implement Sub and Bits messages
@@ -210,6 +243,7 @@ impl App {
 
                     ChannelMessages::Notifications(subscription_event) => {
                         if let Some(notice_type) = &subscription_event.notice_type {
+                            #[allow(clippy::single_match)]
                             match notice_type.as_str() {
                                 "announcement" => {
                                     let mut color = String::from_str("grey").unwrap();
@@ -230,6 +264,8 @@ impl App {
                                             message: redeem_message,
                                         };
                                         self.chat_log.insert(0, ChannelMessages::TwitchMessage(redeem_message));
+
+                                        terminal.draw(|frame| self.render(frame))?;
                                     }
                                 }
 
@@ -255,7 +291,7 @@ impl App {
                     );
                 }
 
-                terminal.draw(|frame| self.render(frame))?;
+                // terminal.draw(|frame| self.render(frame))?;
             }
         }
 
@@ -513,6 +549,10 @@ pub fn execute_command(
     if command_success && command_option == "chat" {
         if let Ok(stdout) = String::from_utf8(command_result.stdout.clone()) {
             client.send_privmsg(&stdout);
+
+            // Send message to display since this IRC client is the one posting the message
+            // it won't display if its not sent directly to the TUI client for rendering
+            client.display_msg(&stdout);
         }
     }
 

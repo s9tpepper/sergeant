@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anathema::{
     component::{Component, ComponentId},
-    prelude::TuiBackend,
+    prelude::{ToSourceKind, TuiBackend},
     runtime::RuntimeBuilder,
     state::State,
 };
@@ -24,7 +24,7 @@ impl ErrorWindow {
         <crate::admin::components::floating::add_command::AddCommand as AppComponent>::register_component(
             builder,
             "error_window",
-            ERROR_TEMPLATE,
+            ERROR_TEMPLATE.to_template(),
             ErrorWindow,
             ErrorState::new(),
             component_ids,

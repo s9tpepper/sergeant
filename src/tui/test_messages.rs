@@ -9,6 +9,7 @@ use crate::{
 pub fn get_priv_message() -> TwitchMessage {
     TwitchMessage::PrivMessage {
         message: ChatMessage {
+            is_bot: false,
             id: "1234".to_string(),
             nickname: "some_person".to_string(),
             color: "#FF0000".to_string(),

@@ -2,7 +2,7 @@ use std::{collections::HashMap, error::Error};
 
 use anathema::{
     component::{Component, ComponentId},
-    prelude::TuiBackend,
+    prelude::{ToSourceKind, TuiBackend},
     runtime::RuntimeBuilder,
     state::{State, Value},
 };
@@ -25,7 +25,7 @@ impl InfoView {
         <crate::admin::components::floating::add_command::AddCommand as AppComponent>::register_component(
             builder,
             "info_view",
-            INFO_VIEW_TEMPLATE,
+            INFO_VIEW_TEMPLATE.to_template(),
             InfoView,
             InfoViewState::new(),
             component_ids,

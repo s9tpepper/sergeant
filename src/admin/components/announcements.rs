@@ -2,7 +2,7 @@ use std::{collections::HashMap, ops::Div};
 
 use anathema::{
     component::{Component, ComponentId, KeyCode::Char},
-    prelude::{Context, TuiBackend},
+    prelude::{Context, ToSourceKind, TuiBackend},
     runtime::RuntimeBuilder,
     state::{List, State, Value},
 };
@@ -113,7 +113,7 @@ impl AnnouncementsView {
         <crate::admin::components::announcements::AnnouncementsView as AppComponent>::register_component(
             builder,
             "announcements_view",
-            ANNOUNCEMENTS_LIST_VIEW_TEMPLATE,
+            ANNOUNCEMENTS_LIST_VIEW_TEMPLATE.to_template(),
             AnnouncementsView::new(),
             ListViewState {
                 item_row_fill: "‧".to_string().into(),

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anathema::{
     component::{Component, ComponentId},
-    prelude::{Context, TuiBackend},
+    prelude::{Context, ToSourceKind, TuiBackend},
     runtime::RuntimeBuilder,
     state::CommonVal,
     widgets::Elements,
@@ -28,7 +28,7 @@ impl EditInput {
         <crate::admin::components::floating::add_command::AddCommand as AppComponent>::register_component(
             builder,
             ident,
-            TEXT_INPUT_TEMPLATE,
+            TEXT_INPUT_TEMPLATE.to_template(),
             EditInput { return_focus_id },
             InputState::new(),
             component_ids,

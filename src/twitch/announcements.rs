@@ -159,6 +159,7 @@ fn test_check_announcement_true() {
     let twenty_five_mins_ago = now.checked_sub(Duration::from_secs(60 * 26));
 
     let announcement = Announcement {
+        name: "announcement name".to_string(),
         timing: Duration::from_secs(60 * 25),
         message: "hello".to_string(),
         start: twenty_five_mins_ago.unwrap(),
@@ -176,6 +177,7 @@ fn test_check_announcement_false() {
     let five_mins_ago = now.checked_sub(Duration::from_secs(60 * 5));
 
     let announcement = Announcement {
+        name: "name".to_string(),
         timing: Duration::from_secs(60 * 25),
         message: "hello".to_string(),
         start: five_mins_ago.unwrap(),

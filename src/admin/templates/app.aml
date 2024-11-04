@@ -61,30 +61,35 @@ zstack
         if main_display == "Info"
           hstack
             spacer
-            text "(C)ommands A(n)nouncements (R)ewards (A)ctions (L)ogin Lo(g)s "
+            text "(C)ommands A(n)nouncements (R)ewards (A)ctions Lo(g)s "
 
         if main_display == "Commands"
           hstack
+            text " j/k or ↑/↓ "
             spacer
             text "(A)dd (E)dit (D)elete (B)ack "
 
         if main_display == "Announcements"
           hstack
+            text " j/k or ↑/↓ "
             spacer
             text "(A)dd (E)dit (D)elete (B)ack "
 
         if main_display == "Rewards"
           hstack
+            text " j/k or ↑/↓ "
             spacer
             text "(A)dd (E)dit (D)elete (B)ack "
 
         if main_display == "Actions"
           hstack
+            text " j/k or ↑/↓ "
             spacer
             text "(A)dd (E)dit (D)elete (B)ack "
 
         if main_display == "Logs"
           hstack
+            text " Ctrl D/U"
             spacer
             text "(B)ack "
 

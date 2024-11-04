@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anathema::{
     component::{Component, ComponentId, KeyCode},
-    prelude::TuiBackend,
+    prelude::{ToSourceKind, TuiBackend},
     runtime::RuntimeBuilder,
     state::{State, Value},
 };
@@ -31,7 +31,7 @@ impl EditCommand {
         <crate::admin::components::floating::add_command::AddCommand as AppComponent>::register_component(
             builder,
             "edit_command_window",
-            EDIT_COMMAND_TEMPLATE,
+            EDIT_COMMAND_TEMPLATE.to_template(),
             EditCommand,
             EditCommandState::new(),
             component_ids,

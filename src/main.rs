@@ -309,8 +309,9 @@ fn start_chat(
 
     let id = client_id.clone();
     let token = oauth_token.clone();
+    let name = twitch_name.clone();
     thread::spawn(move || {
-        let mut twitch_irc = TwitchIRC::new(&twitch_name, &token, &id, chat_tx);
+        let mut twitch_irc = TwitchIRC::new(&name, &token, &id, chat_tx);
         twitch_irc.listen();
     });
 
@@ -327,7 +328,7 @@ fn start_chat(
     });
 
     install_hooks()?;
-    App::new().run(rx, socket_tx.clone())?;
+    App::new(&twitch_name).run(rx, socket_tx.clone())?;
     restore()?;
 
     Ok(())

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anathema::{
     component::{Component, ComponentId, KeyCode},
-    prelude::TuiBackend,
+    prelude::{ToSourceKind, TuiBackend},
     runtime::RuntimeBuilder,
     state::{State, Value},
 };
@@ -31,7 +31,7 @@ impl EditReward {
         <crate::admin::components::floating::edit_reward::EditReward as AppComponent>::register_component(
             builder,
             "edit_reward_window",
-            EDIT_REWARD_TEMPLATE,
+            EDIT_REWARD_TEMPLATE.to_template(),
             EditReward,
             EditRewardState::new(),
             component_ids,

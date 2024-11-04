@@ -2,7 +2,7 @@ use std::{collections::HashMap, thread::sleep, time::Duration};
 
 use anathema::{
     component::{Component, ComponentId, KeyCode::Char},
-    prelude::{Context, TuiBackend},
+    prelude::{Context, ToSourceKind, TuiBackend},
     runtime::RuntimeBuilder,
     state::List,
 };
@@ -37,7 +37,7 @@ impl RewardsView {
         <crate::admin::components::rewards_view::RewardsView as AppComponent>::register_component(
             builder,
             "rewards_view",
-            LIST_VIEW_TEMPLATE,
+            LIST_VIEW_TEMPLATE.to_template(),
             RewardsView::new(),
             ListViewState {
                 item_row_fill: "‧".to_string().into(),

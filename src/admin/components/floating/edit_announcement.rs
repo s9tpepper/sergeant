@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anathema::{
     component::{Component, ComponentId, KeyCode},
-    prelude::TuiBackend,
+    prelude::{ToSourceKind, TuiBackend},
     runtime::RuntimeBuilder,
     state::{Number, State, Value},
 };
@@ -31,7 +31,7 @@ impl EditAnnouncement {
         <crate::admin::components::floating::add_command::AddCommand as AppComponent>::register_component(
             builder,
             "edit_announcement_window",
-            EDIT_ANNOUNCEMENT_TEMPLATE,
+            EDIT_ANNOUNCEMENT_TEMPLATE.to_template(),
             EditAnnouncement,
             EditAnnouncementState::new(),
             component_ids,

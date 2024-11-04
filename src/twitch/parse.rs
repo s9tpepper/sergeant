@@ -126,6 +126,8 @@ pub struct ChatMessage {
     pub color: String,
     pub channel: String,
     pub raw: String,
+    #[serde(default = "default_is_bot")]
+    pub is_bot: bool,
 
     // NOTE: Can be removed later if/when its implemented for display
     // Set to option so it won't break the chat log deserialization
@@ -133,6 +135,10 @@ pub struct ChatMessage {
 
     #[serde(skip)]
     pub area: Option<Rect>,
+}
+
+fn default_is_bot() -> bool {
+    false
 }
 
 // Place all characters and emote base64s in a vector
@@ -1144,6 +1150,7 @@ fn parse_privmsg(irc_message: IrcMessage, client: &mut impl TwitchIrcClient) -> 
             g: 1,
             b: 249,
             direction: 1,
+            is_bot: false,
         },
     }
 }

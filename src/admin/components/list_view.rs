@@ -39,6 +39,7 @@ pub struct ListViewState {
 }
 
 impl ListViewState {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         ListViewState {
             cursor: 0.into(),

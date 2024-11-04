@@ -37,6 +37,7 @@ pub fn channel_chat_notification(
 ) {
     if let Some(event) = event {
         if let Some(ref notice_type) = event.notice_type {
+            #[allow(clippy::single_match)]
             match notice_type.as_str() {
                 "announcement" => {
                     let _ = tui_tx.send(ChannelMessages::Notifications(Box::new(event.clone())));

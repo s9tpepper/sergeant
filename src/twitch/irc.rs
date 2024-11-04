@@ -146,9 +146,18 @@ impl TwitchIrcClient for TwitchIRC {
         self.badges.clone()
     }
 
+    // Displays messages sent by the bot
     fn display_msg(&self, message: &str) {
+        let msg = if message.ends_with("\n") {
+            let stripped = message.strip_suffix("\n");
+            stripped.unwrap_or(message)
+        } else {
+            message
+        };
+
         let _ = self.tx.send(ChannelMessages::TwitchMessage(TwitchMessage::PrivMessage {
             message: ChatMessage {
+                is_bot: true,
                 animation_id: String::from(""),
                 can_animate: false,
                 r: 0,
@@ -163,7 +172,7 @@ impl TwitchIrcClient for TwitchIRC {
                 returning_chatter: false,
                 subscriber: false,
                 moderator: false,
-                message: message.to_string(),
+                message: msg.to_string(),
                 color: "#808080".to_string(),
                 channel: format!("{}{}", "#", self.nickname),
                 raw: "".to_string(),

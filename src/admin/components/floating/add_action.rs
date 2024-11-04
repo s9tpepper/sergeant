@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anathema::{
     component::{Component, ComponentId, Emitter, KeyCode},
-    prelude::TuiBackend,
+    prelude::{ToSourceKind, TuiBackend},
     runtime::RuntimeBuilder,
     state::{CommonVal, State, Value},
 };
@@ -30,7 +30,7 @@ impl AddAction {
         <crate::admin::components::floating::add_action::AddAction as AppComponent>::register_component(
             builder,
             "add_action_window",
-            ADD_ACTION_TEMPLATE,
+            ADD_ACTION_TEMPLATE.to_template(),
             AddAction {
                 component_ids: component_ids.to_owned(),
             },

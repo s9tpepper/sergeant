@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anathema::{
     component::{Component, ComponentId},
-    prelude::{Context, TuiBackend},
+    prelude::{Context, ToSourceKind, TuiBackend},
     runtime::RuntimeBuilder,
     state::{CommonVal, State, Value},
 };
@@ -32,7 +32,7 @@ impl Confirm {
         <crate::admin::components::floating::add_command::AddCommand as AppComponent>::register_component(
             builder,
             "confirm_window",
-            CONFIRM_TEMPLATE,
+            CONFIRM_TEMPLATE.to_template(),
             Confirm::new(),
             ConfirmState::new(),
             component_ids,

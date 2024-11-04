@@ -45,7 +45,7 @@ impl Admin {
         let doc = Document::new("@app [id: \"app\"]");
 
         let tui = TuiBackend::builder()
-            // .enable_alt_screen()
+            .enable_alt_screen()
             .enable_raw_mode()
             .hide_cursor()
             .finish();
@@ -133,7 +133,12 @@ impl Admin {
             panic!("Component IDs map is broken");
         }
 
-        let _ = builder.register_prototype("text_input", TEXT_INPUT_TEMPLATE, || TextInput, InputState::new);
+        let _ = builder.register_prototype(
+            "text_input",
+            TEXT_INPUT_TEMPLATE.to_template(),
+            || TextInput,
+            InputState::new,
+        );
 
         let component_ids = self.component_ids.as_mut().unwrap();
 
@@ -159,7 +164,7 @@ impl Admin {
 
         let component_ids = self.component_ids.take().unwrap();
         let app = App { component_ids };
-        let _ = builder.register_component("app", APP_TEMPLATE, app, AppState::new());
+        let _ = builder.register_component("app", APP_TEMPLATE.to_template(), app, AppState::new());
     }
 }
 

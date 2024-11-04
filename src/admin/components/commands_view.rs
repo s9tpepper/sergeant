@@ -2,7 +2,7 @@ use std::{collections::HashMap, thread::sleep, time::Duration};
 
 use anathema::{
     component::{Component, ComponentId, KeyCode::Char},
-    prelude::{Context, TuiBackend},
+    prelude::{Context, ToSourceKind, TuiBackend},
     runtime::RuntimeBuilder,
     state::List,
 };
@@ -39,7 +39,7 @@ impl CommandsView {
         <crate::admin::components::floating::add_command::AddCommand as AppComponent>::register_component(
             builder,
             "commands_view",
-            LIST_VIEW_TEMPLATE,
+            LIST_VIEW_TEMPLATE.to_template(),
             CommandsView::new(),
             ListViewState {
                 item_row_fill: "‧".to_string().into(),
