@@ -35,7 +35,6 @@ pub fn command() -> anyhow::Result<()> {
     match cli.commands {
         // TODO: This needs to be moved in from v1
         // Cmds::Admin => start_admin(),
-        //
         Cmds::Chat {
             twitch_name,
             oauth_token,

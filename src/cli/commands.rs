@@ -26,7 +26,7 @@ pub fn start_chat(
 ) -> anyhow::Result<()> {
     info!("start_chat()");
 
-    let (_twitch_name, token, id, refresh) = get_credentials(twitch_name, oauth_token, client_id)?;
+    let (twitch_name, token, id, refresh) = get_credentials(twitch_name, oauth_token, client_id)?;
 
     let token_status = match validate(&token) {
         Ok(_) => None,
@@ -85,7 +85,7 @@ pub fn start_chat(
     // App::new(&twitch_name).run(rx, socket_tx.clone())?;
     // restore()?;
 
-    start_chat_frontend(receiver)?;
+    start_chat_frontend(twitch_name, receiver)?;
 
     Ok(())
 }

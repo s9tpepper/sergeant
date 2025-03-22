@@ -66,8 +66,7 @@ pub fn handle_notification(
         // SubscriptionType::ChannelGuestStarGuestUpdate => todo!(),
         // SubscriptionType::ChannelGuestStarSettingsUpdate => todo!(),
         SubscriptionType::ChannelPointsAutomaticRewardRedemption => {
-            info!("ChannelPointsAutomaticRewardRedemption()");
-            info!("{payload:?}");
+            channel_points_automatic_reward_redemption(payload, tui_tx, websocket_tx)
         }
         // SubscriptionType::ChannelPointsCustomRewardAdd => todo!(),
         // SubscriptionType::ChannelPointsCustomRewardUpdate => todo!(),

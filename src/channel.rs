@@ -11,6 +11,7 @@ pub enum ChannelMessages {
     RedeemRefund { message: String, command_output: String },
     ChatMessage { message: Box<NotificationEvent> },
     BotAnnouncement { message: String },
+    AutomaticRewardRedeem { message: Box<NotificationEvent> },
 }
 
 // NOTE: I think that all this garbage can go away now, but not 100% sure yet...

@@ -12,12 +12,13 @@ use crate::{
     twitch::eventsub::deserialization::{Fragment, FragmentType, NotificationEvent},
 };
 
-pub struct App {
+pub struct AnathemaApp {
+    twitch_name: String,
     receiver: Receiver<ChannelMessages>,
 }
 
-impl Component for App {
-    type State = AppState;
+impl Component for AnathemaApp {
+    type State = AnathemaAppState;
 
     type Message = ();
 
@@ -35,6 +36,7 @@ impl Component for App {
                 message @ ChannelMessages::BotAnnouncement { .. } => self.bot_announcement(message),
                 message @ ChannelMessages::ClearMessagesByUser { .. } => self.clear_messages_by_user(message),
                 message @ ChannelMessages::RedeemRefund { .. } => self.redeem_refund(message),
+                message @ ChannelMessages::AutomaticRewardRedeem { .. } => self.automatic_reward_redeem(message),
             },
 
             Err(recv_error) => match recv_error {
@@ -48,14 +50,14 @@ impl Component for App {
     }
 }
 
-impl App {
-    pub fn new(receiver: Receiver<ChannelMessages>) -> Self {
-        App { receiver }
+impl AnathemaApp {
+    pub fn new(twitch_name: String, receiver: Receiver<ChannelMessages>) -> Self {
+        AnathemaApp { twitch_name, receiver }
     }
 
     pub fn ad_break(&self, _message: ChannelMessages) {}
 
-    pub fn chat_message(&self, message: ChannelMessages, state: &mut AppState) {
+    pub fn chat_message(&self, message: ChannelMessages, state: &mut AnathemaAppState) {
         info!("Processing chat_message()");
 
         let ChannelMessages::ChatMessage { message } = message else {
@@ -116,10 +118,11 @@ impl App {
     pub fn bot_announcement(&self, _message: ChannelMessages) {}
     pub fn clear_messages_by_user(&self, _message: ChannelMessages) {}
     pub fn redeem_refund(&self, _message: ChannelMessages) {}
+    pub fn automatic_reward_redeem(&self, _message: ChannelMessages) {}
 }
 
 #[derive(State)]
-pub struct AppState {
+pub struct AnathemaAppState {
     pub log: Value<List<LogEntry>>,
     pub test_field: Value<String>,
 }

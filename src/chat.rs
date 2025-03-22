@@ -1,15 +1,25 @@
+use crate::chat::ratatui_app::ratatui;
+
 use anathema::{prelude::*, state::List};
 
-use app::{App, AppState};
+use anathema_app::{AnathemaApp, AnathemaAppState};
 use log::{error, info};
 
 use std::sync::mpsc::Receiver;
 
 use crate::channel::ChannelMessages;
 
-mod app;
+mod anathema_app;
+mod ratatui_app;
 
-pub fn start_chat_frontend(tui_receiver: Receiver<ChannelMessages>) -> anyhow::Result<()> {
+pub fn start_chat_frontend(twitch_name: String, tui_receiver: Receiver<ChannelMessages>) -> anyhow::Result<()> {
+    // anathema(twitch_name, tui_receiver)
+
+    // TODO: Get the twitch user name from somewhere (login)
+    ratatui(twitch_name, tui_receiver)
+}
+
+fn anathema(twitch_name: String, tui_receiver: Receiver<ChannelMessages>) -> anyhow::Result<()> {
     info!("App::run()");
 
     let tui = TuiBackend::builder()
@@ -26,8 +36,8 @@ pub fn start_chat_frontend(tui_receiver: Receiver<ChannelMessages>) -> anyhow::R
             runtime_builder.register_component(
                 "app",
                 "src/chat/templates/app.aml",
-                App::new(tui_receiver),
-                AppState {
+                AnathemaApp::new(twitch_name, tui_receiver),
+                AnathemaAppState {
                     log: List::from_iter([]),
                     test_field: "This is a string".to_string().into(),
                 },
