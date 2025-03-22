@@ -10,13 +10,18 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{layout::Size, prelude::CrosstermBackend, widgets::StatefulWidget, Terminal};
+use ratatui::{
+    layout::{Rect, Size},
+    prelude::CrosstermBackend,
+    widgets::StatefulWidget,
+    Terminal,
+};
 use serde::{Deserialize, Serialize};
 use widgets::scroll_view::{ScrollView, ScrollViewState};
 
 use crate::{
     channel::ChannelMessages,
-    twitch::eventsub::deserialization::{ChatMessageTypes, Message, NotificationEvent},
+    twitch::eventsub::deserialization::{Badge, ChatMessageTypes, Message, NotificationEvent},
 };
 
 mod widgets;
@@ -38,10 +43,15 @@ enum ChatLogItem {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ChatItem {
+    #[serde(skip)]
+    area: Rect,
+
     message: Message,
     color: String,
     message_type: ChatMessageTypes,
     message_id: String,
+    chatter_user_name: String,
+    badges: Vec<Badge>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -57,15 +67,15 @@ impl From<NotificationEvent> for ChatItem {
             message_type,
             message_id,
             color,
+            chatter_user_name,
+            badges,
             ..
 
             // broadcaster_user_id,
             // broadcaster_user_name,
             // broadcaster_user_login,
             // chatter_user_id,
-            // chatter_user_name,
             // chatter_user_login,
-            // badges,
             // cheer,
             // reply,
             // channel_points_animation_id,
@@ -82,6 +92,9 @@ impl From<NotificationEvent> for ChatItem {
                 color,
                 message_type,
                 message_id,
+                chatter_user_name,
+                badges,
+                area: Rect::new(0, 0, 0, 0)
             }
         } else {
             unreachable!("This should never happen");
@@ -119,7 +132,7 @@ impl RatatuiApp {
             // TODO: persist chat log
 
             // TODO: trigger rendering here after handling message data
-            self.render(&mut terminal);
+            self.render(&mut terminal)?;
         }
 
         Ok(())
@@ -128,6 +141,7 @@ impl RatatuiApp {
     fn render(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> anyhow::Result<()> {
         let self_ref = Arc::new(Mutex::new(self));
         let app = self_ref.clone();
+        // let appp = self_ref.clone();
 
         terminal.draw(|frame| {
             let mut app_lock = app.lock().unwrap();
@@ -135,9 +149,15 @@ impl RatatuiApp {
             let stateful_widget: &mut RatatuiApp = app_lock.deref_mut();
             let mut state = stateful_widget.scrollstate;
             frame.render_stateful_widget(stateful_widget, frame.area(), &mut state);
-            state.scroll_to_bottom();
-
             drop(app_lock);
+
+            // TODO: Need to fix the scrollview, it is not scrolling/rendering
+            // let mut app_lock = app.lock().unwrap();
+            // state.scroll_to_bottom();
+            // let stateful_widget: &mut RatatuiApp = app_lock.deref_mut();
+            // stateful_widget
+            //     .scrollview
+            //     .render(frame.area(), frame.buffer_mut(), &mut state);
         })?;
 
         Ok(())
@@ -197,7 +217,7 @@ impl RatatuiApp {
         let chat_message: ChatItem = notification.into();
 
         // add this to the chat log vec
-        self.chat_log.push(ChatLogItem::Message(chat_message));
+        self.chat_log.insert(0, ChatLogItem::Message(chat_message));
 
         // NOTE: This is the old render logic
         // =================================================================================

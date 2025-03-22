@@ -474,10 +474,10 @@ pub struct Mention {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Emote {
-    id: String,
-    emote_set_id: String,
-    owner_id: String,
-    format: Vec<String>, // animated | static
+    pub id: String,
+    pub emote_set_id: String,
+    pub owner_id: String,
+    pub format: Vec<String>, // animated | static
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
