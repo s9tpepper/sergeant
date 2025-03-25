@@ -529,9 +529,9 @@ impl<'de> Deserialize<'de> for FragmentType {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Badge {
-    set_id: String,
-    id: String,
-    info: String,
+    pub set_id: String,
+    pub id: String,
+    pub info: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

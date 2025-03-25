@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     io::{self, stdout, Stdout},
     ops::DerefMut,
     panic,
@@ -23,7 +24,10 @@ use widgets::scroll_view::{ScrollView, ScrollViewState};
 
 use crate::{
     channel::ChannelMessages,
-    twitch::eventsub::deserialization::{Badge, ChatMessageTypes, Message, NotificationEvent},
+    twitch::{
+        assets::BadgeItem,
+        eventsub::deserialization::{Badge, ChatMessageTypes, Message, NotificationEvent},
+    },
 };
 
 mod widgets;
@@ -31,7 +35,8 @@ mod widgets;
 struct RatatuiApp {
     twitch_name: String,
     receiver: Receiver<ChannelMessages>,
-    // scroll_view_state: ScrollViewState,
+    global_badges: HashMap<String, BadgeItem>,
+    channel_badges: HashMap<String, BadgeItem>,
     chat_log: Vec<ChatLogItem>,
     exit: bool,
     scrollview: ScrollView,
@@ -47,13 +52,13 @@ enum ChatLogItem {
 struct ChatItem {
     #[serde(skip)]
     area: Rect,
-
     message: Message,
     color: String,
     message_type: ChatMessageTypes,
     message_id: String,
     chatter_user_name: String,
     badges: Vec<Badge>,
+    badge_items: Vec<BadgeItem>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -96,6 +101,7 @@ impl From<NotificationEvent> for ChatItem {
                 message_id,
                 chatter_user_name,
                 badges,
+                badge_items: vec![],
                 area: Rect::new(0, 0, 0, 0)
             }
         } else {
@@ -105,10 +111,17 @@ impl From<NotificationEvent> for ChatItem {
 }
 
 impl RatatuiApp {
-    pub fn new(twitch_name: String, receiver: Receiver<ChannelMessages>) -> Self {
+    pub fn new(
+        twitch_name: String,
+        receiver: Receiver<ChannelMessages>,
+        global_badges: HashMap<String, BadgeItem>,
+        channel_badges: HashMap<String, BadgeItem>,
+    ) -> Self {
         Self {
             twitch_name,
             receiver,
+            global_badges,
+            channel_badges,
             exit: false,
             chat_log: vec![],
             scrollview: ScrollView::new(Size { width: 0, height: 0 }),
@@ -266,7 +279,21 @@ impl RatatuiApp {
 
     fn chat_message(&mut self, message: Box<NotificationEvent>) {
         let notification = *message;
-        let chat_message: ChatItem = notification.into();
+        let mut chat_message: ChatItem = notification.into();
+
+        chat_message.badges.iter().for_each(|badge: &Badge| {
+            let badge_item = self.global_badges.get(&badge.set_id);
+            match badge_item {
+                Some(item) => {
+                    chat_message.badge_items.push(item.clone());
+                }
+                None => {
+                    if let Some(item) = self.channel_badges.get(&badge.set_id) {
+                        chat_message.badge_items.push(item.clone());
+                    }
+                }
+            }
+        });
 
         // add this to the chat log vec
         self.chat_log.insert(0, ChatLogItem::Message(chat_message));
@@ -338,10 +365,15 @@ impl RatatuiApp {
     }
 }
 
-pub fn ratatui(twitch_name: String, tui_receiver: Receiver<ChannelMessages>) -> anyhow::Result<()> {
+pub fn ratatui(
+    twitch_name: String,
+    tui_receiver: Receiver<ChannelMessages>,
+    global_badges: HashMap<String, BadgeItem>,
+    channel_badges: HashMap<String, BadgeItem>,
+) -> anyhow::Result<()> {
     install_hooks()?;
 
-    let mut ratatui_app = RatatuiApp::new(twitch_name, tui_receiver);
+    let mut ratatui_app = RatatuiApp::new(twitch_name, tui_receiver, global_badges, channel_badges);
     ratatui_app.run()?;
 
     Ok(())

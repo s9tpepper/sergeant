@@ -10,7 +10,7 @@ use crate::{
     channel::ChannelMessages,
     chat::start_chat_frontend,
     twitch::{
-        assets::get_badges,
+        assets::{get_channel_badges, get_global_badges},
         auth::{get_credentials, refresh_token, validate},
         eventsub::start_eventsub,
     },
@@ -46,7 +46,8 @@ pub fn start_chat(
     };
     info!("token status retrieved.");
 
-    get_badges(&oauth_token, &client_id)?;
+    let global_badges = get_global_badges(&oauth_token, &client_id)?;
+    let channel_badges = get_channel_badges(&client_id, &oauth_token)?;
     info!("badges created");
 
     // NOTE: Take a look at what is happening in ChannelMessages and remove unused/uneeded things
@@ -85,7 +86,7 @@ pub fn start_chat(
     // App::new(&twitch_name).run(rx, socket_tx.clone())?;
     // restore()?;
 
-    start_chat_frontend(twitch_name, receiver)?;
+    start_chat_frontend(twitch_name, receiver, global_badges, channel_badges)?;
 
     Ok(())
 }

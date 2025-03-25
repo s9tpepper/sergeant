@@ -10,7 +10,10 @@ use ratatui::{
 
 use crate::{
     chat::ratatui_app::ChatItem,
-    twitch::eventsub::deserialization::{Emote, Fragment, FragmentType},
+    twitch::{
+        assets::get_badge_from_disk,
+        eventsub::deserialization::{Emote, Fragment, FragmentType},
+    },
 };
 
 const ESCAPE: &str = "\x1b";
@@ -20,37 +23,24 @@ fn get_color(color: &str) -> anyhow::Result<Color> {
     Ok(Color::from_str(color)?)
 }
 
-/*
-Badge { set_id: "broadcaster", id: "1", info: "" }
-Badge { set_id: "subscriber", id: "0", info: "14" }
-Badge { set_id: "share-the-love", id: "1", info: "" }
-*/
-// TODO: Finish badges, must integrate API calls for badge list
 fn write_user_badges(chat_item: &ChatItem, cursor: &mut Position, buffer: &mut Buffer) {
-    chat_item.badges.iter().for_each(|badge| {});
-}
+    chat_item.badge_items.iter().for_each(|badge_item| {
+        if let Ok(base64) = get_badge_from_disk(badge_item) {
+            let Some(cell) = buffer.cell_mut(*cursor) else {
+                return;
+            };
 
-// Loading badge info from API
-/*
-    let response = ureq::get("https://api.twitch.tv/helix/chat/badges/global")
-        .set("Authorization", &format!("Bearer {}", token.replace("oauth:", "")))
-        .set("Client-Id", client_id)
-        .call()?;
+            cell.reset();
+            cell.set_symbol(&get_iterm_encoding(&base64));
 
-    let mut response: TwitchApiResponse<Vec<BadgeItem>> = serde_json::from_reader(response.into_reader())?;
+            buffer
+                .cell_mut((cursor.x + 1, cursor.y))
+                .map(|cell| cell.set_skip(true));
 
-    let data_dir = get_data_directory(Some("badges"))?;
-
-    for badge_item in response.data.iter_mut() {
-        for version in badge_item.versions.iter_mut() {
-            let file_name = format!("{}_{}.txt", badge_item.set_id, version.id);
-            let badge_path = data_dir.join(file_name);
-            if !badge_path.exists() {
-                generate_badge_file(badge_path, version)?;
-            }
+            cursor.x += 2;
         }
-    }
-*/
+    });
+}
 
 // Emote caching from V1
 /*
@@ -77,8 +67,16 @@ fn write_user_name(chat_item: &ChatItem, style: &mut Style, cursor: &mut Positio
     write_symbol(":", style, cursor, buf);
     write_symbol(" ", style, cursor, buf);
 }
+
+fn get_iterm_encoding(base64: &str) -> String {
+    format!(
+        // "{}1337;File=inline=1;height=22px;width=22px;preserveAspectRatio=1;doNotMoveCursor=1:{}{}",
+        "{}]1337;File=inline=1;height=22px;width=22px;doNotMoveCursor=1:{}{}",
+        ESCAPE, base64, BELL
+    )
+}
+
 // TODO: Add an emote cache for encoded emotes so that we dont keep downloading them from the web
-// TODO: Investigate whether we can query the terminal for iTerm/Kitty/Sixel Image Protocol support
 fn write_emote(emote: &Emote, cursor: &mut Position, buf: &mut Buffer) -> anyhow::Result<()> {
     let url = format!(
         "https://static-cdn.jtvnw.net/emoticons/v2/{}/default/dark/1.0",
@@ -91,13 +89,7 @@ fn write_emote(emote: &Emote, cursor: &mut Position, buf: &mut Buffer) -> anyhow
     response.into_reader().read_exact(&mut file_bytes)?;
 
     let base64_emote = BASE64_STANDARD.encode(&file_bytes);
-    let encoded_image = format!(
-        // "{}1337;File=inline=1;height=22px;width=22px;preserveAspectRatio=1;doNotMoveCursor=1:{}{}",
-        "{}]1337;File=inline=1;height=22px;width=22px;doNotMoveCursor=1:{}{}",
-        ESCAPE,
-        base64_emote.as_str(),
-        BELL
-    );
+    let encoded_image = get_iterm_encoding(&base64_emote);
 
     let Some(cell) = buf.cell_mut(*cursor) else {
         return Ok(());

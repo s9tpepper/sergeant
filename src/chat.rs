@@ -1,22 +1,27 @@
-use crate::chat::ratatui_app::ratatui;
+use crate::{chat::ratatui_app::ratatui, twitch::assets::BadgeItem};
 
 use anathema::{prelude::*, state::List};
 
 use anathema_app::{AnathemaApp, AnathemaAppState};
 use log::{error, info};
 
-use std::sync::mpsc::Receiver;
+use std::{collections::HashMap, sync::mpsc::Receiver};
 
 use crate::channel::ChannelMessages;
 
 mod anathema_app;
 mod ratatui_app;
 
-pub fn start_chat_frontend(twitch_name: String, tui_receiver: Receiver<ChannelMessages>) -> anyhow::Result<()> {
+pub fn start_chat_frontend(
+    twitch_name: String,
+    tui_receiver: Receiver<ChannelMessages>,
+    global_badges: HashMap<String, BadgeItem>,
+    channel_badges: HashMap<String, BadgeItem>,
+) -> anyhow::Result<()> {
     // anathema(twitch_name, tui_receiver)
 
     // TODO: Get the twitch user name from somewhere (login)
-    ratatui(twitch_name, tui_receiver)
+    ratatui(twitch_name, tui_receiver, global_badges, channel_badges)
 }
 
 fn anathema(twitch_name: String, tui_receiver: Receiver<ChannelMessages>) -> anyhow::Result<()> {
