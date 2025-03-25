@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{env, str::FromStr};
 
 use base64::{prelude::BASE64_STANDARD, Engine};
 use ratatui::{
@@ -168,7 +168,44 @@ fn handle_text(line_width: u16, fragment: &Fragment, style: &Style, cursor: &mut
     });
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum ImageProtocol {
+    Iterm,
+    Sixel,
+    Kitty,
+    None,
+}
+
+fn supports_images() -> ImageProtocol {
+    match env::var("TERM_PROGRAM") {
+        Ok(term_program) => match term_program.as_str() {
+            "WezTerm" => ImageProtocol::Iterm,
+            "ghostty" => ImageProtocol::Kitty,
+            _ => ImageProtocol::None,
+        },
+        Err(_) => match env::var("TERM") {
+            Ok(term) => match term.as_str() {
+                "xterm-kitty" => ImageProtocol::Kitty,
+                "alacritty" => ImageProtocol::Kitty,
+                "xterm" => ImageProtocol::Sixel,
+                _ => ImageProtocol::None,
+            },
+            Err(_) => ImageProtocol::None,
+        },
+    }
+}
+
 fn handle_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffer) {
+    match supports_images() {
+        ImageProtocol::Iterm => write_iterm_emote(fragment, cursor, buf),
+
+        _ => {} // ImageProtocol::Sixel => todo!(),
+                // ImageProtocol::Kitty => todo!(),
+                // ImageProtocol::None => todo!(),
+    }
+}
+
+fn write_iterm_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffer) {
     let Some(emote) = &fragment.emote else {
         return;
     };
@@ -255,6 +292,125 @@ fn test_get_line_count5() {
     let line_count = get_line_count(text, &area);
 
     assert_eq!(line_count, 1);
+}
+
+#[test]
+fn test_supports_images_wezterm() {
+    let original_term_program_var = env::var("TERM_PROGRAM");
+    let original_term_var = env::var("TERM");
+
+    env::set_var("TERM_PROGRAM", "WezTerm");
+
+    let images_support = supports_images();
+
+    if let Ok(og_var) = original_term_program_var {
+        env::set_var("TERM_PROGRAM", og_var);
+    }
+    if let Ok(og_var) = original_term_var {
+        env::set_var("TERM", og_var);
+    }
+
+    assert_eq!(images_support, ImageProtocol::Iterm);
+}
+
+#[test]
+fn test_supports_images_xterm() {
+    let original_term_program_var = env::var("TERM_PROGRAM");
+    let original_term_var = env::var("TERM");
+
+    env::remove_var("TERM_PROGRAM");
+    env::set_var("TERM", "xterm");
+
+    let images_support = supports_images();
+
+    if let Ok(og_var) = original_term_program_var {
+        env::set_var("TERM_PROGRAM", og_var);
+    }
+    if let Ok(og_var) = original_term_var {
+        env::set_var("TERM", og_var);
+    }
+
+    assert_eq!(images_support, ImageProtocol::Sixel);
+}
+
+#[test]
+fn test_supports_images_alacritty() {
+    let original_term_program_var = env::var("TERM_PROGRAM");
+    let original_term_var = env::var("TERM");
+
+    env::remove_var("TERM_PROGRAM");
+    env::set_var("TERM", "alacritty");
+
+    let images_support = supports_images();
+
+    if let Ok(og_var) = original_term_program_var {
+        env::set_var("TERM_PROGRAM", og_var);
+    }
+    if let Ok(og_var) = original_term_var {
+        env::set_var("TERM", og_var);
+    }
+
+    assert_eq!(images_support, ImageProtocol::Kitty);
+}
+
+#[test]
+fn test_supports_images_ghostty() {
+    let original_term_program_var = env::var("TERM_PROGRAM");
+    let original_term_var = env::var("TERM");
+
+    env::set_var("TERM_PROGRAM", "ghostty");
+
+    let images_support = supports_images();
+
+    if let Ok(og_var) = original_term_program_var {
+        env::set_var("TERM_PROGRAM", og_var);
+    }
+    if let Ok(og_var) = original_term_var {
+        env::set_var("TERM", og_var);
+    }
+
+    assert_eq!(images_support, ImageProtocol::Kitty);
+}
+
+#[test]
+fn test_supports_images_kitty() {
+    let original_term_program_var = env::var("TERM_PROGRAM");
+    let original_term_var = env::var("TERM");
+    env::remove_var("TERM");
+    env::remove_var("TERM_PROGRAM");
+
+    env::set_var("TERM", "xterm-kitty");
+
+    let images_support = supports_images();
+
+    if let Ok(og_var) = original_term_program_var {
+        env::set_var("TERM_PROGRAM", og_var);
+    }
+    if let Ok(og_var) = original_term_var {
+        env::set_var("TERM", og_var);
+    }
+
+    assert_eq!(images_support, ImageProtocol::Kitty);
+}
+
+#[test]
+fn test_supports_images_no_term_program() {
+    let original_term_program_var = env::var("TERM_PROGRAM");
+    let original_term_var = env::var("TERM");
+    env::remove_var("TERM");
+    env::remove_var("TERM_PROGRAM");
+
+    let images_support = supports_images();
+
+    if let Ok(og_var) = original_term_program_var {
+        env::set_var("TERM_PROGRAM", og_var);
+    }
+
+    if let Ok(og_var) = original_term_var {
+        env::set_var("TERM", og_var);
+    }
+
+    assert_eq!(images_support, ImageProtocol::None);
 }
 
 // TODO: Migrate the old render code below to new ratatui
