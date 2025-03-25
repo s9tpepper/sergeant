@@ -3,17 +3,19 @@ use std::{
     ops::DerefMut,
     panic,
     sync::{mpsc::Receiver, Arc, Mutex},
+    time::Duration,
 };
 
 use color_eyre::config::HookBuilder;
 use crossterm::{
+    event::{self, poll, Event, KeyCode, KeyEventKind},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use log::info;
 use ratatui::{
     layout::{Rect, Size},
     prelude::CrosstermBackend,
-    widgets::StatefulWidget,
     Terminal,
 };
 use serde::{Deserialize, Serialize};
@@ -115,35 +117,85 @@ impl RatatuiApp {
     }
 
     pub fn run(&mut self) -> anyhow::Result<()> {
+        info!("ratatui_app::run()");
+
         // start TUI frontend
         let mut terminal = self.start_tui()?;
 
-        // TODO: retrieve persisted chat log
-
         // Handle messages from Twitch
-        while let Ok(message) = self.receiver.recv() {
-            // Check if we need to break the loop
-            if self.exit {
-                break;
+        while !self.exit {
+            self.handle_keyboard_events(&mut terminal)?;
+
+            if let Ok(message) = self.receiver.try_recv() {
+                // Check if we need to break the loop
+                if self.exit {
+                    break;
+                }
+
+                self.handle_new_message(message);
+
+                // TODO: persist chat log
+
+                // TODO: trigger rendering here after handling message data
+                self.render(&mut terminal)?;
             }
-
-            self.handle_new_message(message);
-
-            // TODO: persist chat log
-
-            // TODO: trigger rendering here after handling message data
-            self.render(&mut terminal)?;
         }
 
         Ok(())
+    }
+
+    fn handle_keyboard_events(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> anyhow::Result<()> {
+        // info!("ratatui_app::handle_keyboard_events()");
+
+        let available = poll(Duration::from_millis(16))?;
+        // info!("ratatui_app::handle_keyboard_events(): available: {available}");
+
+        if available {
+            match event::read()? {
+                // NOTE: it's important to check that the event is a key press event as
+                // crossterm also emits key release and repeat events on Windows.
+                Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
+                    // info!(
+                    //     "ratatui_app::handle_keyboard_events(): key_event.code: {}",
+                    //     key_event.code
+                    // );
+
+                    match key_event.code {
+                        KeyCode::Char('q') => self.exit(),
+                        KeyCode::Char('j') => self.scrollstate.scroll_down(),
+                        KeyCode::Char('k') => self.scrollstate.scroll_up(),
+                        KeyCode::Char('f') => self.scrollstate.scroll_page_down(),
+                        KeyCode::Char('b') => self.scrollstate.scroll_page_up(),
+                        KeyCode::Char('g') => self.scrollstate.scroll_to_top(),
+                        KeyCode::Char('G') => self.scrollstate.scroll_to_bottom(),
+                        _ => {}
+                    }
+
+                    self.render(terminal)
+                }
+
+                _ => Ok(()),
+            }
+        } else {
+            Ok(())
+        }
+    }
+
+    fn exit(&mut self) {
+        self.exit = true;
     }
 
     fn render(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> anyhow::Result<()> {
         let self_ref = Arc::new(Mutex::new(self));
         let app = self_ref.clone();
         // let appp = self_ref.clone();
+        //
 
         terminal.draw(|frame| {
+            let buffer = frame.buffer_mut();
+            buffer.reset();
+            info!("cleared the buffer");
+
             let mut app_lock = app.lock().unwrap();
 
             let stateful_widget: &mut RatatuiApp = app_lock.deref_mut();
@@ -280,7 +332,7 @@ impl RatatuiApp {
         // let test_raid_message = get_raid_message();
         // self.chat_log.insert(0, test_raid_message);
 
-        self.render(&mut terminal);
+        self.render(&mut terminal)?;
 
         Ok(terminal)
     }
@@ -290,7 +342,7 @@ pub fn ratatui(twitch_name: String, tui_receiver: Receiver<ChannelMessages>) -> 
     install_hooks()?;
 
     let mut ratatui_app = RatatuiApp::new(twitch_name, tui_receiver);
-    ratatui_app.run();
+    ratatui_app.run()?;
 
     Ok(())
 }

@@ -1,5 +1,9 @@
+use std::fs::File;
+
 use anyhow::bail;
 use cli::command;
+use log::{info, LevelFilter};
+use simplelog::{Config, WriteLogger};
 
 mod announcements;
 mod channel;
@@ -12,13 +16,27 @@ mod twitch;
 mod websocket;
 
 fn main() -> anyhow::Result<()> {
+    logger();
+
     match command() {
-        Ok(response) => {
-            println!("command() returned?... {response:?}");
+        Ok(_response) => {
+            // println!("command() returned?... {response:?}");
             Ok(())
         }
         Err(error) => {
             bail!("Mistakes were made... {error}")
         }
     }
+}
+
+fn logger() {
+    // TODO: Move this log file into the application directory
+    // TODO: Enable this block with an env var
+    let _ = WriteLogger::init(
+        LevelFilter::Info,
+        Config::default(),
+        File::create("sergeant.log").unwrap(),
+    );
+
+    info!("Logging has been enabled");
 }

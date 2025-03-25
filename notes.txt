@@ -1,37 +1,4 @@
-Feature List:
-Start Chat Client - done
-- ferris_twitch chat name? token? client_id?
-
-List Chat Commands  - done
-- ferris_twitch cmds list
-
-Add Chat Command - done
-- ferris_twitch cmds add font "Berkeley Mono"
-    !font => "Berkeley Mono" 
-
-Remove Chat Command - done
-- ferris_twitch cmds remove font
-
-Send Message - do not want anymore
-- ferris_twitch send "A chat message"
-
-Send Announcements - done
-- ferris_twitch announce -t 10m -n main "This is a scheduled announcement"
-
-List Announcement - done
-- ferris_twitch announce list
-    main: "This is a scheduled announcement" (10m)
-    event: "This is another announcement" (15m)
-
-Remove Announcement - done
-- ferris_twitch announce remove event
-
-
-TO-DONE:
-Handle all of these message tags:
-  client-nonce - not in privmsg list
-  emote-only - not in privmsg list
-  flags - not in privmsg list
-  room-id - don't need
-  turbo - is commercial-free sitewide enabled, don't need
-  user-id - do I need the user's id?
+TODO:
+=======================================
+[ ] fix word wrap on messages
+[ ] fix terminal not clearing on start on subsequent chat starts
