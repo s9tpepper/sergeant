@@ -77,7 +77,6 @@ fn write_user_name(chat_item: &ChatItem, style: &mut Style, cursor: &mut Positio
     write_symbol(":", style, cursor, buf);
     write_symbol(" ", style, cursor, buf);
 }
-
 // TODO: Add an emote cache for encoded emotes so that we dont keep downloading them from the web
 // TODO: Investigate whether we can query the terminal for iTerm/Kitty/Sixel Image Protocol support
 fn write_emote(emote: &Emote, cursor: &mut Position, buf: &mut Buffer) -> anyhow::Result<()> {
@@ -198,12 +197,16 @@ fn supports_images() -> ImageProtocol {
 fn handle_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffer) {
     match supports_images() {
         ImageProtocol::Iterm => write_iterm_emote(fragment, cursor, buf),
+        ImageProtocol::Kitty => write_kitty_emote(fragment, cursor, buf),
 
         _ => {} // ImageProtocol::Sixel => todo!(),
                 // ImageProtocol::Kitty => todo!(),
                 // ImageProtocol::None => todo!(),
     }
 }
+
+// TODO: Maybe render these images with ratatui-image
+fn write_kitty_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffer) {}
 
 fn write_iterm_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffer) {
     let Some(emote) = &fragment.emote else {
