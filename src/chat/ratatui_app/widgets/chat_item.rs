@@ -1,6 +1,7 @@
 use std::{env, str::FromStr};
 
 use base64::{prelude::BASE64_STANDARD, Engine};
+use log::{error, info};
 use ratatui::{
     layout::Position,
     prelude::{Buffer, Rect},
@@ -110,6 +111,8 @@ impl Widget for &mut ChatItem {
     where
         Self: Sized,
     {
+        info!("chat_item:render()");
+
         // NOTE: first_msg is not available in EventSub yet - 03/2025
         // let needs_borders = self.first_msg || is_animated;
 
@@ -149,7 +152,12 @@ impl Widget for &mut ChatItem {
 }
 
 fn handle_text(line_width: u16, fragment: &Fragment, style: &Style, cursor: &mut Position, buf: &mut Buffer) {
+    info!("chat_item::handle_text()");
+    info!("fragment.text: {}", fragment.text);
+
     fragment.text.chars().for_each(|char| {
+        info!("Rendering fragment char: {char}");
+
         if cursor.x == line_width {
             cursor.x = 0;
             cursor.y += 1;
@@ -214,11 +222,13 @@ struct Style {
 }
 
 fn write_symbol(symbol: &str, style: &Style, cursor: &mut Position, buffer: &mut Buffer) {
+    info!("chat_item::write_symbol()");
+
     let Some(cell) = buffer.cell_mut(*cursor) else {
+        error!("Could not get mutable cell to write symbol: {symbol}");
         return;
     };
 
-    cursor.x += 1;
     cell.reset();
 
     cell.set_symbol(symbol).set_fg(style.fg);
@@ -226,6 +236,10 @@ fn write_symbol(symbol: &str, style: &Style, cursor: &mut Position, buffer: &mut
     if let Some(color) = style.bg {
         cell.set_bg(color);
     }
+
+    info!("Wrote symbol '{symbol} to x: {}, y: {}", cursor.x, cursor.y);
+
+    cursor.x += 1;
 }
 
 fn get_line_count(text: &str, area: &Rect) -> usize {

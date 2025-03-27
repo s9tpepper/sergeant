@@ -143,7 +143,9 @@ impl StatefulWidget for &mut ScrollView {
         // ensure that we don't scroll past the end of the buffer in either direction
         // also, ensure that the scrolling stops with the end of the content at the
         // bottom of the visible area
+
         let max_y_offset = self.buf.area.height - area.height;
+        // let max_y_offset = self.buf.area.height.saturating_sub(area.height);
         let next_y_offset = y.min(self.buf.area.height.saturating_sub(1));
 
         x = x.min(self.buf.area.width.saturating_sub(1));

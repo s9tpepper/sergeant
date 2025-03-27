@@ -17,6 +17,7 @@ use log::info;
 use ratatui::{
     layout::{Rect, Size},
     prelude::CrosstermBackend,
+    widgets::StatefulWidget,
     Terminal,
 };
 use serde::{Deserialize, Serialize};
@@ -209,20 +210,21 @@ impl RatatuiApp {
             buffer.reset();
             info!("cleared the buffer");
 
-            let mut app_lock = app.lock().unwrap();
+            // TODO: Need to fix the scrollview, it is not scrolling/rendering
+            // let mut app_lock = app.lock().unwrap();
+            // let stateful_widget: &mut RatatuiApp = app_lock.deref_mut();
+            // let mut state = stateful_widget.scrollstate;
+            // state.scroll_to_bottom();
+            // stateful_widget
+            //     .scrollview
+            //     .render(frame.area(), frame.buffer_mut(), &mut state);
+            // drop(app_lock);
 
+            let mut app_lock = app.lock().unwrap();
             let stateful_widget: &mut RatatuiApp = app_lock.deref_mut();
             let mut state = stateful_widget.scrollstate;
             frame.render_stateful_widget(stateful_widget, frame.area(), &mut state);
             drop(app_lock);
-
-            // TODO: Need to fix the scrollview, it is not scrolling/rendering
-            // let mut app_lock = app.lock().unwrap();
-            // state.scroll_to_bottom();
-            // let stateful_widget: &mut RatatuiApp = app_lock.deref_mut();
-            // stateful_widget
-            //     .scrollview
-            //     .render(frame.area(), frame.buffer_mut(), &mut state);
         })?;
 
         Ok(())
