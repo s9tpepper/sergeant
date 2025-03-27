@@ -13,6 +13,7 @@ use crate::{
 };
 
 pub struct AnathemaApp {
+    #[allow(unused)]
     twitch_name: String,
     receiver: Receiver<ChannelMessages>,
 }
@@ -51,6 +52,7 @@ impl Component for AnathemaApp {
 }
 
 impl AnathemaApp {
+    #[allow(unused)]
     pub fn new(twitch_name: String, receiver: Receiver<ChannelMessages>) -> Self {
         AnathemaApp { twitch_name, receiver }
     }

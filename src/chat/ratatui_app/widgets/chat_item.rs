@@ -206,6 +206,7 @@ fn handle_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffer) {
 }
 
 // TODO: Maybe render these images with ratatui-image
+#[allow(unused)]
 fn write_kitty_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffer) {}
 
 fn write_iterm_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffer) {

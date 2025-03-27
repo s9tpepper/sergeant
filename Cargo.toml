@@ -31,7 +31,7 @@ directories = "5.0.1"
 dotenv = { version = "0.15.0", features = ["cli", "clap"] }
 features = "0.10.0"
 full = "0.3.0"
-hex-rgb = "0.1.1"
+# hex-rgb = "0.1.1"
 image = "0.25.1"
 log = "0.4.25"
 ratatui = "0.29.0"

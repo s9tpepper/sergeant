@@ -24,6 +24,7 @@ pub fn start_chat_frontend(
     ratatui(twitch_name, tui_receiver, global_badges, channel_badges)
 }
 
+#[allow(unused)]
 fn anathema(twitch_name: String, tui_receiver: Receiver<ChannelMessages>) -> anyhow::Result<()> {
     info!("App::run()");
 

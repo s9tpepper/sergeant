@@ -17,7 +17,6 @@ use log::info;
 use ratatui::{
     layout::{Rect, Size},
     prelude::CrosstermBackend,
-    widgets::StatefulWidget,
     Terminal,
 };
 use serde::{Deserialize, Serialize};
@@ -34,6 +33,7 @@ use crate::{
 mod widgets;
 
 struct RatatuiApp {
+    #[allow(unused)]
     twitch_name: String,
     receiver: Receiver<ChannelMessages>,
     global_badges: HashMap<String, BadgeItem>,
@@ -249,14 +249,17 @@ impl RatatuiApp {
         }
     }
 
+    #[allow(unused)]
     fn ad_break(&self, message: &str) {
         todo!("ad break not implemented")
     }
 
+    #[allow(unused)]
     fn clear_messages(&self, user: &str) {
         todo!("clear messages not implemented")
     }
 
+    #[allow(unused)]
     fn redeem_refund(&self, message: &str, cmd_output: &str) {
         todo!("redeem refund not implemented")
     }
@@ -342,6 +345,7 @@ impl RatatuiApp {
         // }
     }
 
+    #[allow(unused)]
     fn bot_announcement(&self, message: &str) {
         todo!("bot announcement not implemented")
     }
