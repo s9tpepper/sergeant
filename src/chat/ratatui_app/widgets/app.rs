@@ -66,6 +66,6 @@ impl StatefulWidget for &mut RatatuiApp {
             state.scroll_to_bottom();
         }
 
-        self.scrollview.render(buf.area, buf, state);
+        // self.scrollview.render(buf.area, buf, state);
     }
 }
