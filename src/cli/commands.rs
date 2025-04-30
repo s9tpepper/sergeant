@@ -23,6 +23,7 @@ pub fn start_chat(
     oauth_token: Option<&str>,
     client_id: Option<&str>,
     skip_announcements: bool,
+    test_mode: bool,
 ) -> anyhow::Result<()> {
     info!("start_chat()");
 
@@ -86,7 +87,7 @@ pub fn start_chat(
     // App::new(&twitch_name).run(rx, socket_tx.clone())?;
     // restore()?;
 
-    start_chat_frontend(twitch_name, receiver, global_badges, channel_badges)?;
+    start_chat_frontend(twitch_name, receiver, global_badges, channel_badges, test_mode)?;
 
     Ok(())
 }

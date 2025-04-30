@@ -17,11 +17,12 @@ pub fn start_chat_frontend(
     tui_receiver: Receiver<ChannelMessages>,
     global_badges: HashMap<String, BadgeItem>,
     channel_badges: HashMap<String, BadgeItem>,
+    test_mode: bool,
 ) -> anyhow::Result<()> {
     // anathema(twitch_name, tui_receiver)
 
-    // TODO: Get the twitch user name from somewhere (login)
-    ratatui(twitch_name, tui_receiver, global_badges, channel_badges)
+    info!("start_chat_frontend(): twitch_name: {twitch_name}");
+    ratatui(twitch_name, tui_receiver, global_badges, channel_badges, test_mode)
 }
 
 #[allow(unused)]

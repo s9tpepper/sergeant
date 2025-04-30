@@ -43,6 +43,7 @@ struct RatatuiApp {
     exit: bool,
     scrollview: ScrollView,
     scrollstate: ScrollViewState,
+    test_mode: bool,
 }
 
 enum ChatLogItem {
@@ -128,12 +129,14 @@ impl RatatuiApp {
         receiver: Receiver<ChannelMessages>,
         global_badges: HashMap<String, BadgeItem>,
         channel_badges: HashMap<String, BadgeItem>,
+        test_mode: bool,
     ) -> Self {
         Self {
             twitch_name,
             receiver,
             global_badges,
             channel_badges,
+            test_mode,
             exit: false,
             chat_log: vec![],
             scrollview: ScrollView::new(Size { width: 0, height: 0 }),
@@ -147,26 +150,57 @@ impl RatatuiApp {
         // start TUI frontend
         let mut terminal = self.start_tui()?;
 
+        if self.test_mode {
+            self.load_test_messages(&mut terminal)?;
+        }
+
         // Handle messages from Twitch
         while !self.exit {
             self.handle_keyboard_events(&mut terminal)?;
 
-            if let Ok(message) = self.receiver.try_recv() {
-                // Check if we need to break the loop
-                if self.exit {
-                    break;
+            if !self.test_mode {
+                if let Ok(message) = self.receiver.try_recv() {
+                    // Check if we need to break the loop
+                    if self.exit {
+                        break;
+                    }
+
+                    // handles messages from TUI channel and adds to chat state
+                    self.handle_new_message(message);
+
+                    // TODO: persist chat log
+
+                    // trigger rendering here after handling message data
+                    self.render(&mut terminal)?;
                 }
-
-                self.handle_new_message(message);
-
-                // TODO: persist chat log
-
-                // TODO: trigger rendering here after handling message data
-                self.render(&mut terminal)?;
             }
         }
 
         Ok(())
+    }
+
+    // TODO: Implement loading test messages
+    fn load_test_messages(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> anyhow::Result<()> {
+        let message = Message {
+            text: "Hello world".to_string(),
+            fragments: vec![Fragment {
+                r#type: FragmentType::Text,
+                text: "Hello world".to_string(),
+                cheermote: None,
+                emote: None,
+                mention: None,
+            }],
+        };
+
+        let chat_event: ChatEvent = ChatEvent {
+            area: Rect::default(),
+            message,
+            color: Color::Green.to_string(),
+        };
+
+        self.chat_log.insert(0, ChatLogItem::Event(chat_event));
+
+        self.render(terminal)
     }
 
     fn handle_keyboard_events(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> anyhow::Result<()> {
@@ -219,7 +253,6 @@ impl RatatuiApp {
         terminal.draw(|frame| {
             let buffer = frame.buffer_mut();
             buffer.reset();
-            info!("cleared the buffer");
 
             // TODO: Need to fix the scrollview, it is not scrolling/rendering
             // let mut app_lock = app.lock().unwrap();
@@ -277,22 +310,23 @@ impl RatatuiApp {
         todo!("redeem refund not implemented")
     }
 
+    // TODO: Figure out what automatic reward redeems actually are, because the docs aren't clear
     fn automatic_reward_redeem(&mut self, message: Box<NotificationEvent>) {
         let notification = *message;
 
-        if let NotificationEvent::ChannelPointsCustomRewardRedemptionAdd { .. } = notification {
-            let chat_item: ChatItem = notification.into();
-
-            // NOTE: https://dev.twitch.tv/docs/eventsub/eventsub-reference/#channel-bits-use-event
-            // This might actually come from Channel Bits Use Event, need to test how to get the
-            // message effect id, either through ChannelBitsUseEvent or through ChannelPointsCustomRewardRedemptionAdd
-            //
-            // TODO: Figure out what effect type this is and add it to ChatItemWithEffect struct
-            let chat_item_with_effect: ChatItemWithEffect = ChatItemWithEffect { chat_item };
-
-            self.chat_log
-                .push(ChatLogItem::MessageWithEffect(chat_item_with_effect));
-        }
+        // NOTE: The below is in the wrong place, AutomaticRewardRedeem is not bits use or messages with
+        // effects, Docs: https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/#channelchannel_points_automatic_reward_redemptionadd
+        //
+        // if let NotificationEvent::ChannelPointsCustomRewardRedemptionAdd { .. } = notification {
+        //     let chat_item: ChatItem = notification.into();
+        //
+        //     // NOTE: https://dev.twitch.tv/docs/eventsub/eventsub-reference/#channel-bits-use-event
+        //     // This might actually come from Channel Bits Use Event, need to test how to get the
+        //     // message effect id, either through ChannelBitsUseEvent or through ChannelPointsCustomRewardRedemptionAdd
+        //     //
+        //     self.chat_log
+        //         .push(ChatLogItem::MessageWithEffect(chat_item_with_effect));
+        // }
     }
 
     fn chat_message(&mut self, message: Box<NotificationEvent>) {
@@ -392,8 +426,8 @@ impl RatatuiApp {
 
         enable_raw_mode()?;
 
-        // TODO: Add the chat log persistence
-        // let _ = self.restore_chat_log();
+        // TODO: Add restoring the persisted chat log
+        // self.restore_chat_log()?;
 
         // TODO: Make a better way to handle test messages for testing the UI
         // NOTE: Test messages can go here for now
@@ -411,10 +445,11 @@ pub fn ratatui(
     tui_receiver: Receiver<ChannelMessages>,
     global_badges: HashMap<String, BadgeItem>,
     channel_badges: HashMap<String, BadgeItem>,
+    test_mode: bool,
 ) -> anyhow::Result<()> {
     install_hooks()?;
 
-    let mut ratatui_app = RatatuiApp::new(twitch_name, tui_receiver, global_badges, channel_badges);
+    let mut ratatui_app = RatatuiApp::new(twitch_name, tui_receiver, global_badges, channel_badges, test_mode);
     ratatui_app.run()?;
 
     Ok(())

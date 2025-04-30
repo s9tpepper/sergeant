@@ -40,11 +40,13 @@ pub fn command() -> anyhow::Result<()> {
             oauth_token,
             client_id,
             skip_announcements,
+            test_mode,
         } => start_chat(
             twitch_name.as_deref(),
             oauth_token.as_deref(),
             client_id.as_deref(),
             skip_announcements,
+            test_mode,
         ),
 
         Cmds::Commands { cmd } => match cmd {
@@ -100,6 +102,10 @@ enum Cmds {
         /// Set to turn off announcements
         #[arg(long, short = 's', env = "SKIP_ANNOUNCEMENTS", default_value_t = false)]
         skip_announcements: bool,
+
+        /// Run the chat TUI in testing mode with testing data
+        #[arg(long, short = 'm', env = "TEST_MODE", default_value_t = false)]
+        test_mode: bool,
     },
 
     /// Manage chat commands

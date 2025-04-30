@@ -52,6 +52,6 @@ impl Widget for &mut ChatEvent {
             });
 
         self.area = area;
-        self.area.height -= number_of_lines as u16;
+        self.area.height = self.area.height.saturating_sub(number_of_lines as u16);
     }
 }
