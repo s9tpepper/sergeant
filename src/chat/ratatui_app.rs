@@ -1,8 +1,10 @@
 use std::{
     collections::HashMap,
+    fs::{create_dir_all, read_to_string, write},
     io::{self, stdout, Stdout},
     ops::DerefMut,
     panic,
+    path::Path,
     sync::{mpsc::Receiver, Arc, Mutex},
     time::Duration,
 };
@@ -25,6 +27,7 @@ use widgets::scroll_view::{ScrollView, ScrollViewState};
 
 use crate::{
     channel::ChannelMessages,
+    fs::{self, get_data_directory},
     twitch::{
         assets::BadgeItem,
         eventsub::deserialization::{Badge, ChatMessageTypes, Fragment, FragmentType, Message, NotificationEvent},
@@ -46,6 +49,7 @@ struct RatatuiApp {
     test_mode: bool,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 enum ChatLogItem {
     Message(ChatItem),
     MessageWithEffect(ChatItemWithEffect),
@@ -168,7 +172,8 @@ impl RatatuiApp {
                     // handles messages from TUI channel and adds to chat state
                     self.handle_new_message(message);
 
-                    // TODO: persist chat log
+                    // persist chat log
+                    self.persist_chat()?;
 
                     // trigger rendering here after handling message data
                     self.render(&mut terminal)?;
@@ -176,49 +181,52 @@ impl RatatuiApp {
             }
         }
 
+        self.restore()?;
+
         Ok(())
     }
 
-    // TODO: Implement loading test messages
+    /// Restore the terminal to its original state
+    pub fn restore(&self) -> io::Result<()> {
+        execute!(stdout(), LeaveAlternateScreen)?;
+
+        disable_raw_mode()
+    }
+
+    fn persist_chat(&mut self) -> anyhow::Result<()> {
+        let mut chat_log_dir = get_data_directory(Some("chat_log"))?;
+
+        if !chat_log_dir.exists() {
+            create_dir_all(&chat_log_dir)?;
+        }
+
+        let json = serde_json::to_string(&self.chat_log)?;
+
+        if !json.is_empty() {
+            chat_log_dir.push("log.txt");
+            write(chat_log_dir, json)?;
+        }
+
+        Ok(())
+    }
+
     fn load_test_messages(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> anyhow::Result<()> {
-        let message = Message {
-            text: "Hello world".to_string(),
-            fragments: vec![Fragment {
-                r#type: FragmentType::Text,
-                text: "Hello world".to_string(),
-                cheermote: None,
-                emote: None,
-                mention: None,
-            }],
-        };
+        let test_msgs_path = Path::new("./test_messages.txt");
 
-        let chat_event: ChatEvent = ChatEvent {
-            area: Rect::default(),
-            message,
-            color: Color::Green.to_string(),
-        };
-
-        self.chat_log.insert(0, ChatLogItem::Event(chat_event));
+        let test_messages = read_to_string(test_msgs_path)?;
+        self.chat_log = serde_json::from_str::<Vec<ChatLogItem>>(&test_messages)?;
 
         self.render(terminal)
     }
 
     fn handle_keyboard_events(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> anyhow::Result<()> {
-        // info!("ratatui_app::handle_keyboard_events()");
-
         let available = poll(Duration::from_millis(16))?;
-        // info!("ratatui_app::handle_keyboard_events(): available: {available}");
 
         if available {
             match event::read()? {
                 // NOTE: it's important to check that the event is a key press event as
                 // crossterm also emits key release and repeat events on Windows.
                 Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                    // info!(
-                    //     "ratatui_app::handle_keyboard_events(): key_event.code: {}",
-                    //     key_event.code
-                    // );
-
                     match key_event.code {
                         KeyCode::Char('q') => self.exit(),
                         KeyCode::Char('j') => self.scrollstate.scroll_down(),
@@ -247,8 +255,6 @@ impl RatatuiApp {
     fn render(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> anyhow::Result<()> {
         let self_ref = Arc::new(Mutex::new(self));
         let app = self_ref.clone();
-        // let appp = self_ref.clone();
-        //
 
         terminal.draw(|frame| {
             let buffer = frame.buffer_mut();
@@ -312,7 +318,7 @@ impl RatatuiApp {
 
     // TODO: Figure out what automatic reward redeems actually are, because the docs aren't clear
     fn automatic_reward_redeem(&mut self, message: Box<NotificationEvent>) {
-        let notification = *message;
+        let _notification = *message;
 
         // NOTE: The below is in the wrong place, AutomaticRewardRedeem is not bits use or messages with
         // effects, Docs: https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/#channelchannel_points_automatic_reward_redemptionadd
