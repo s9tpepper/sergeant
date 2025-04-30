@@ -65,6 +65,8 @@ pub fn handle_notification(
         // SubscriptionType::ChannelGuestStarSessionEnd => todo!(),
         // SubscriptionType::ChannelGuestStarGuestUpdate => todo!(),
         // SubscriptionType::ChannelGuestStarSettingsUpdate => todo!(),
+
+        // A viewer has redeemed an automatic channel points reward on the specified channel.
         SubscriptionType::ChannelPointsAutomaticRewardRedemption => {
             channel_points_automatic_reward_redemption(payload, tui_tx, websocket_tx)
         }
@@ -74,9 +76,12 @@ pub fn handle_notification(
         SubscriptionType::ChannelPointsCustomRewardRedemptionAdd => {
             channel_points_custom_reward_redemption_add(payload, tui_tx, websocket_tx, oauth_token, client_id)
         }
+
+        // Event for channel redeems
         SubscriptionType::ChannelPointsCustomRewardRedemptionUpdate => {
-            info!("ChannelPointsCustomRewardRedemptionUpdate()");
-            info!("{payload:?}");
+            info!(">>>>ChannelPointsCustomRewardRedemptionUpdate()");
+            info!(">>>>{payload:?}");
+            channel_points_custom_reward_redemption_update(payload, tui_tx, websocket_tx, oauth_token, client_id)
         }
         // SubscriptionType::ChannelPollBegin => todo!(),
         // SubscriptionType::ChannelPollProgress => todo!(),

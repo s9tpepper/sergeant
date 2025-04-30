@@ -12,6 +12,7 @@ pub enum ChannelMessages {
     ChatMessage { message: Box<NotificationEvent> },
     BotAnnouncement { message: String },
     AutomaticRewardRedeem { message: Box<NotificationEvent> },
+    RedeemMessage { message: String },
 }
 
 // NOTE: I think that all this garbage can go away now, but not 100% sure yet...

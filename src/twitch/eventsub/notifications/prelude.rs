@@ -4,6 +4,7 @@ mod channel_chat_message;
 mod channel_chat_notification;
 mod channel_points_automatic_reward_redemption;
 mod channel_points_custom_reward_redemption_add;
+mod channel_points_custom_reward_redemption_update;
 
 use std::sync::mpsc::Sender;
 
@@ -17,6 +18,7 @@ pub use super::prelude::channel_chat_message::channel_chat_message;
 pub use super::prelude::channel_chat_notification::channel_chat_notification;
 pub use super::prelude::channel_points_automatic_reward_redemption::channel_points_automatic_reward_redemption;
 pub use super::prelude::channel_points_custom_reward_redemption_add::channel_points_custom_reward_redemption_add;
+pub use super::prelude::channel_points_custom_reward_redemption_update::channel_points_custom_reward_redemption_update;
 
 pub fn send_to_channels(
     channel_message: ChannelMessages,

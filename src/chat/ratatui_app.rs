@@ -17,6 +17,7 @@ use log::info;
 use ratatui::{
     layout::{Rect, Size},
     prelude::CrosstermBackend,
+    style::Color,
     Terminal,
 };
 use serde::{Deserialize, Serialize};
@@ -26,7 +27,7 @@ use crate::{
     channel::ChannelMessages,
     twitch::{
         assets::BadgeItem,
-        eventsub::deserialization::{Badge, ChatMessageTypes, Message, NotificationEvent},
+        eventsub::deserialization::{Badge, ChatMessageTypes, Fragment, FragmentType, Message, NotificationEvent},
     },
 };
 
@@ -47,6 +48,15 @@ struct RatatuiApp {
 enum ChatLogItem {
     Message(ChatItem),
     MessageWithEffect(ChatItemWithEffect),
+    Event(ChatEvent),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ChatEvent {
+    #[serde(skip)]
+    area: Rect,
+    message: Message,
+    color: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -62,6 +72,7 @@ struct ChatItem {
     badge_items: Vec<BadgeItem>,
 }
 
+// TODO: Finish this struct so it can render with effects
 #[derive(Debug, Serialize, Deserialize)]
 struct ChatItemWithEffect {
     chat_item: ChatItem,
@@ -103,7 +114,7 @@ impl From<NotificationEvent> for ChatItem {
                 chatter_user_name,
                 badges,
                 badge_items: vec![],
-                area: Rect::new(0, 0, 0, 0)
+                area: Rect::default()
             }
         } else {
             unreachable!("This should never happen");
@@ -246,6 +257,8 @@ impl RatatuiApp {
             ChannelMessages::BotAnnouncement { message } => self.bot_announcement(&message),
 
             ChannelMessages::AutomaticRewardRedeem { message } => self.automatic_reward_redeem(message),
+
+            ChannelMessages::RedeemMessage { message } => self.redeem_message(&message),
         }
     }
 
@@ -345,8 +358,30 @@ impl RatatuiApp {
         // }
     }
 
+    fn redeem_message(&mut self, msg: &str) {
+        let message = Message {
+            text: msg.to_string(),
+            fragments: vec![Fragment {
+                r#type: FragmentType::Text,
+                text: msg.to_string(),
+                cheermote: None,
+                emote: None,
+                mention: None,
+            }],
+        };
+
+        let chat_event: ChatEvent = ChatEvent {
+            area: Rect::default(),
+            message,
+            color: Color::Green.to_string(),
+        };
+
+        self.chat_log.insert(0, ChatLogItem::Event(chat_event));
+    }
+
     #[allow(unused)]
     fn bot_announcement(&self, message: &str) {
+        // TODO: Implement bot announcements
         todo!("bot announcement not implemented")
     }
 

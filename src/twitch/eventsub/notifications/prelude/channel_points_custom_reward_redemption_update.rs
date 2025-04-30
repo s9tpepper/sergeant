@@ -14,14 +14,14 @@ use crate::{
     },
 };
 
-pub fn channel_points_custom_reward_redemption_add(
+pub fn channel_points_custom_reward_redemption_update(
     payload: &NotificationPayload,
     tui_tx: &Sender<ChannelMessages>,
     websocket_tx: &Sender<ChannelMessages>,
     oauth_token: &Arc<String>,
     client_id: &Arc<String>,
 ) {
-    info!("----- channel_points_custom_reward_redemption_add()");
+    info!("channel_points_custom_reward_redemption_add()");
 
     let NotificationEvent::ChannelPointsCustomRewardRedemptionAdd {
         id,
@@ -63,9 +63,13 @@ pub fn channel_points_custom_reward_redemption_add(
         .stderr(process::Stdio::piped())
         .output();
 
+    info!("[REWARD] - Command result: {command_result:?}");
+
     match command_result {
         Ok(command_result) => match command_result.status.success() {
             true => {
+                info!("[REWARD] - Command status: {}", command_result.status);
+
                 // NOTE: values: unknown, unfulfilled, fulfilled, and canceled.
                 let reward_status = status.to_lowercase();
                 if reward_status == "unfulfilled" {

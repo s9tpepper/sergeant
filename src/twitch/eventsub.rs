@@ -48,7 +48,10 @@ fn listen(
                 tungstenite::Message::Text(text_message) => {
                     info!("EventSub Message: {text_message} end of EventSub");
 
-                    match serde_json::from_str::<Messages>(&text_message) {
+                    let deserialized_msg = serde_json::from_str::<Messages>(&text_message);
+                    info!("deserialized_msg: {:?}", deserialized_msg);
+
+                    match deserialized_msg {
                         Ok(message) => match &message {
                             Messages::Welcome { payload, .. } => {
                                 info!("listen::Messages::Welcome()");
@@ -191,8 +194,7 @@ fn get_subscription<'a>(
     Subscription {
         r#type,
         condition,
-        // TODO: Update version to come from a mapping for each SubscriptionType
-        version: "1".to_string(),
+        version: get_subscription_version(r#type),
         transport: Transport {
             method,
             session_id: session_id.to_string(),
@@ -200,4 +202,13 @@ fn get_subscription<'a>(
         status: None,
         created_at: None,
     }
+}
+
+// TODO: Update this to something better than this match statement, maybe a part of the enum
+fn get_subscription_version(r#type: &SubscriptionType) -> String {
+    match r#type {
+        SubscriptionType::ChannelPointsAutomaticRewardRedemption => "2",
+        _ => "1",
+    }
+    .to_string()
 }

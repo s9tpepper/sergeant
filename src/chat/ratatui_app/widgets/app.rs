@@ -49,6 +49,12 @@ impl StatefulWidget for &mut RatatuiApp {
         // }
 
         self.chat_log.iter_mut().for_each(|chat_log_item| match chat_log_item {
+            ChatLogItem::Event(chat_event) => {
+                chat_event.render(available_area, buf);
+
+                available_area = chat_event.area;
+            }
+
             ChatLogItem::Message(chat_item) => {
                 chat_item.render(available_area, buf);
 

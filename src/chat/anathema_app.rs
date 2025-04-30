@@ -38,6 +38,9 @@ impl Component for AnathemaApp {
                 message @ ChannelMessages::ClearMessagesByUser { .. } => self.clear_messages_by_user(message),
                 message @ ChannelMessages::RedeemRefund { .. } => self.redeem_refund(message),
                 message @ ChannelMessages::AutomaticRewardRedeem { .. } => self.automatic_reward_redeem(message),
+
+                // TODO: Implement display for redeem messages
+                _message @ ChannelMessages::RedeemMessage { .. } => todo!("Implement redeem messagers"),
             },
 
             Err(recv_error) => match recv_error {

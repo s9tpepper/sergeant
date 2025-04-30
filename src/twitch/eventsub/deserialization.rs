@@ -7,14 +7,14 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
 pub enum Messages {
-    Welcome {
-        metadata: WelcomeMetadata,
-        payload: WelcomePayload,
-    },
-
     Notification {
         metadata: NotificationMetadata,
         payload: NotificationPayload,
+    },
+
+    Welcome {
+        metadata: WelcomeMetadata,
+        payload: WelcomePayload,
     },
 
     Reconnect {
@@ -196,6 +196,19 @@ pub enum NotificationEvent {
 
     AutomodMessageHold {
         temp: String,
+    },
+
+    ChannelPointAutomaticRewardRedemption {
+        broadcaster_user_id: String,
+        broadcaster_user_login: String,
+        broadcaster_user_name: String,
+        user_id: String,
+        user_login: String,
+        user_name: String,
+        id: String,
+        reward: Reward,
+        message: Message,
+        redeemed_at: String,
     },
 }
 
@@ -475,6 +488,7 @@ pub struct Mention {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Emote {
     pub id: String,
+    pub name: String,
     pub emote_set_id: String,
     pub owner_id: String,
     pub format: Vec<String>, // animated | static
@@ -540,6 +554,17 @@ pub struct Reward {
     pub title: String,
     pub cost: usize,
     pub prompt: String,
+
+    // NOTE: Type is one of:
+    // single_message_bypass_sub_mode
+    // send_highlighted_message
+    // random_sub_emote_unlock
+    // chosen_sub_emote_unlock
+    // chosen_modified_sub_emote_unlock
+    pub r#type: Option<String>,
+
+    pub channel_points: Option<i32>,
+    pub emote: Option<Emote>,
 }
 
 #[derive(Serialize, Debug)]
