@@ -26,7 +26,7 @@ pub fn get_color(color: &str) -> anyhow::Result<Color> {
     Ok(Color::from_str(color)?)
 }
 
-pub fn get_line_count(text: &str, area: &Rect) -> usize {
+pub fn get_line_count(text: &str, area: &Rect, name_display_space: Option<i32>) -> usize {
     if text.is_empty() {
         return 1;
     }
@@ -34,7 +34,9 @@ pub fn get_line_count(text: &str, area: &Rect) -> usize {
     // Subtract one to account for the scrollbar rendering
     let width = area.width.saturating_sub(1) as usize;
 
-    text.len().div_ceil(width)
+    let name_display_space = name_display_space.unwrap_or(0) as usize;
+
+    (text.len() + name_display_space).div_ceil(width)
 }
 
 pub fn handle_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffer) {
@@ -49,11 +51,18 @@ pub fn handle_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffer
 }
 
 pub fn handle_text(line_width: u16, fragment: &Fragment, style: &Style, cursor: &mut Position, buf: &mut Buffer) {
-    info!("chat_item::handle_text()");
-    info!("fragment.text: {}", fragment.text);
+    info!("[chat_item::handle_text()]");
+    info!(
+        "[chat_item::handle_text()] fragment.text: {}, cursor: {cursor}",
+        fragment.text
+    );
 
     fragment.text.chars().for_each(|char| {
-        info!("Rendering fragment char: {char}");
+        info!("[chat_item::handle_text()] Rendering fragment char: {char}");
+        info!(
+            "[chat_item::handle_text()] x: {}, y: {}, line_width: {line_width}",
+            cursor.x, cursor.y
+        );
 
         if cursor.x == line_width {
             cursor.x = 0;
@@ -65,7 +74,9 @@ pub fn handle_text(line_width: u16, fragment: &Fragment, style: &Style, cursor: 
 }
 
 pub fn write_symbol(symbol: &str, style: &Style, cursor: &mut Position, buffer: &mut Buffer) {
-    // info!("chat_item::write_symbol()");
+    let buffer_area = buffer.area();
+
+    info!("[chat_item::write_symbol()] symbol: {symbol}, cursor: {cursor} buffer_area: {buffer_area}");
 
     let Some(cell) = buffer.cell_mut(*cursor) else {
         error!("Could not get mutable cell to write symbol: {symbol}");
@@ -166,7 +177,7 @@ fn test_get_line_count() {
     let area = Rect::new(0, 0, 10, 1);
     let text = "aaa aaaaa aaaa";
 
-    let line_count = get_line_count(text, &area);
+    let line_count = get_line_count(text, &area, None);
 
     assert_eq!(line_count, 2);
 }
@@ -176,7 +187,7 @@ fn test_get_line_count2() {
     let area = Rect::new(0, 0, 10, 1);
     let text = "aaa ";
 
-    let line_count = get_line_count(text, &area);
+    let line_count = get_line_count(text, &area, None);
 
     assert_eq!(line_count, 1);
 }
@@ -186,7 +197,7 @@ fn test_get_line_count3() {
     let area = Rect::new(0, 0, 10, 1);
     let text = "";
 
-    let line_count = get_line_count(text, &area);
+    let line_count = get_line_count(text, &area, None);
 
     assert_eq!(line_count, 1);
 }
@@ -196,7 +207,7 @@ fn test_get_line_count4() {
     let area = Rect::new(0, 0, 10, 1);
     let text = "1234567890";
 
-    let line_count = get_line_count(text, &area);
+    let line_count = get_line_count(text, &area, None);
 
     assert_eq!(line_count, 2);
 }
@@ -206,9 +217,19 @@ fn test_get_line_count5() {
     let area = Rect::new(0, 0, 10, 1);
     let text = "123456789";
 
-    let line_count = get_line_count(text, &area);
+    let line_count = get_line_count(text, &area, None);
 
     assert_eq!(line_count, 1);
+}
+
+#[test]
+fn test_get_line_count6() {
+    let area = Rect::new(0, 0, 12, 1);
+    let text = "123456789";
+
+    let line_count = get_line_count(text, &area, Some(3));
+
+    assert_eq!(line_count, 2);
 }
 
 #[test]

@@ -16,6 +16,15 @@ use crate::{
 
 use super::{get_iterm_encoding, write_symbol, Style};
 
+fn calculate_badges_space(chat_item: &ChatItem) -> i32 {
+    let mut space = 0;
+    chat_item.badge_items.iter().for_each(|_| {
+        space += 2;
+    });
+
+    space
+}
+
 fn write_user_badges(chat_item: &ChatItem, cursor: &mut Position, buffer: &mut Buffer) {
     chat_item.badge_items.iter().for_each(|badge_item| {
         if let Ok(base64) = get_badge_from_disk(badge_item) {
@@ -51,6 +60,14 @@ fn write_user_badges(chat_item: &ChatItem, cursor: &mut Position, buffer: &mut B
 
 */
 
+fn calculate_user_name_space(chat_item: &ChatItem) -> i32 {
+    // NOTE: adds two to account for ": " in username display, like:
+    // s9tpepper_: Message here
+    let username_separator = 2;
+
+    chat_item.chatter_user_name.len() as i32 + username_separator
+}
+
 fn write_user_name(chat_item: &ChatItem, style: &mut Style, cursor: &mut Position, buf: &mut Buffer) {
     chat_item.chatter_user_name.chars().for_each(|char| {
         write_symbol(&char.to_string(), style, cursor, buf);
@@ -70,18 +87,31 @@ impl Widget for &mut ChatItem {
 
         // NOTE: first_msg is not available in EventSub yet - 03/2025
         // let needs_borders = self.first_msg || is_animated;
-
-        let line_width = area.width.saturating_sub(1);
-        let number_of_lines = get_line_count(&self.message.text, &area);
-        let mut cursor = Position::new(0, area.height.saturating_sub(number_of_lines as u16));
-
         let mut style = Style {
             fg: get_color(&self.color).unwrap_or(Color::LightGreen),
             bg: None,
         };
 
+        // TODO: Refactor write_user_badges/write_user_name to get a count of how many columns
+        // these are going to take so that column count can be used to take into account when
+        // calling get_line_count() so that the line count is accurate and includes the user's
+        // badges and username
+
+        let badge_space = calculate_badges_space(self);
+        let username_space = calculate_user_name_space(self);
+        let name_display_space = badge_space + username_space;
+
+        let number_of_lines = get_line_count(&self.message.text, &area, Some(name_display_space));
+        info!("[chat_item::render()] number_of_lines: {number_of_lines}");
+
+        let mut cursor = Position::new(0, area.height.saturating_sub(number_of_lines as u16));
+        info!("[chat_item::render()] cursor: {cursor}");
+
         write_user_badges(self, &mut cursor, buf);
         write_user_name(self, &mut style, &mut cursor, buf);
+
+        let line_width = area.width.saturating_sub(1);
+        info!("[chat_item::render()] line_width: {line_width}");
 
         self.message
             .fragments
@@ -102,7 +132,8 @@ impl Widget for &mut ChatItem {
             });
 
         self.area = area;
-        self.area.height -= number_of_lines as u16;
+
+        self.area.height = self.area.height.saturating_sub(number_of_lines as u16);
     }
 }
 

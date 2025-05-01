@@ -25,10 +25,15 @@ impl Widget for &mut ChatEvent {
         // let needs_borders = self.first_msg || is_animated;
 
         let line_width = area.width.saturating_sub(1);
-        let number_of_lines = get_line_count(&self.message.text, &area);
-        let mut cursor = Position::new(0, area.height.saturating_sub(number_of_lines as u16));
+        let number_of_lines = get_line_count(&self.message.text, &area, None) + 1;
+        info!("******* [chat_event::render()] number_of_lines: {number_of_lines}");
+
+        let y = area.height.saturating_sub(number_of_lines as u16);
+        let mut cursor = Position::new(0, y);
 
         let style = Style {
+            // TODO: Use some math on user's screen name to calculate a color based on their name
+            // to default to if one is not set instead of defaulting all users to LightGreen
             fg: get_color(&self.color).unwrap_or(Color::LightGreen),
             bg: None,
         };
