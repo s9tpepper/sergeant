@@ -10,6 +10,7 @@ Bugs:
 [ ] fix messages so they don't get stuck at the top of the message area and never go away
 
 Features:
+---------------------------------------
 [ ] implement chat actions like !song
 [ ] implement chat announcements
 [ ] implement admin TUI
