@@ -1,4 +1,11 @@
+use std::{
+    cell::OnceCell,
+    iter::Once,
+    sync::{LazyLock, OnceLock},
+};
+
 use anyhow::bail;
+use image::imageops::FilterType::Lanczos3;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -17,6 +24,45 @@ pub struct User {
     pub profile_image_url: String,
     pub offline_image_url: String,
     pub created_at: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct SendMessage {
+    broadcaster_id: String,
+    sender_id: String,
+    message: String,
+}
+
+static USER: OnceLock<User> = OnceLock::new();
+
+pub fn send_message(oauth_token: &str, client_id: &str, message: &str) -> anyhow::Result<()> {
+    USER.get_or_init(|| get_user(oauth_token, client_id).unwrap());
+
+    let send_message_url = "https://api.twitch.tv/helix/chat/messages";
+    let Some(user) = USER.get() else {
+        bail!("Could not load user");
+    };
+
+    let body = SendMessage {
+        broadcaster_id: user.id.to_string(),
+        sender_id: user.id.to_string(),
+        message: message.to_string(),
+    };
+
+    let response = ureq::post(send_message_url)
+        .set(
+            "Authorization",
+            &format!("Bearer {}", oauth_token.replace("oauth:", "")),
+        )
+        .set("Client-Id", client_id)
+        .send_json(body)?;
+
+    if response.status() != 200 {
+        let error_message = response.status_text().to_string();
+        bail!(error_message);
+    }
+
+    Ok(())
 }
 
 pub fn get_user(oauth_token: &str, client_id: &str) -> anyhow::Result<User> {

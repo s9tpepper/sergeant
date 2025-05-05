@@ -69,11 +69,11 @@ pub fn handle_mention(fragment: &Fragment, cursor: &mut Position, buf: &mut Buff
 
 fn write_symbols(chars: Chars, style: &Style, cursor: &mut Position, buf: &mut Buffer, line_width: Option<u16>) {
     chars.for_each(|char| {
-        info!("[chat_item::handle_text()] Rendering fragment char: {char}");
-        info!(
-            "[chat_item::handle_text()] x: {}, y: {}, line_width: {line_width:?}",
-            cursor.x, cursor.y
-        );
+        // info!("[chat_item::handle_text()] Rendering fragment char: {char}");
+        // info!(
+        //     "[chat_item::handle_text()] x: {}, y: {}, line_width: {line_width:?}",
+        //     cursor.x, cursor.y
+        // );
 
         if let Some(width) = line_width {
             if cursor.x == width {
@@ -87,11 +87,11 @@ fn write_symbols(chars: Chars, style: &Style, cursor: &mut Position, buf: &mut B
 }
 
 pub fn handle_text(line_width: u16, fragment: &Fragment, style: &Style, cursor: &mut Position, buf: &mut Buffer) {
-    info!("[chat_item::handle_text()]");
-    info!(
-        "[chat_item::handle_text()] fragment.text: {}, cursor: {cursor}",
-        fragment.text
-    );
+    // info!("[chat_item::handle_text()]");
+    // info!(
+    //     "[chat_item::handle_text()] fragment.text: {}, cursor: {cursor}",
+    //     fragment.text
+    // );
 
     write_symbols(fragment.text.chars(), style, cursor, buf, Some(line_width));
 }
@@ -99,10 +99,10 @@ pub fn handle_text(line_width: u16, fragment: &Fragment, style: &Style, cursor: 
 pub fn write_symbol(symbol: &str, style: &Style, cursor: &mut Position, buffer: &mut Buffer) {
     let buffer_area = buffer.area();
 
-    info!("[chat_item::write_symbol()] symbol: {symbol}, cursor: {cursor} buffer_area: {buffer_area}");
+    // info!("[chat_item::write_symbol()] symbol: {symbol}, cursor: {cursor} buffer_area: {buffer_area}");
 
     let Some(cell) = buffer.cell_mut(*cursor) else {
-        error!("Could not get mutable cell to write symbol: {symbol}");
+        //error!("Could not get mutable cell to write symbol: {symbol}");
         return;
     };
 

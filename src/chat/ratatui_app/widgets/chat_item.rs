@@ -83,7 +83,7 @@ impl Widget for &mut ChatItem {
     where
         Self: Sized,
     {
-        info!("chat_item:render()");
+        // info!("chat_item:render()");
 
         // NOTE: first_msg is not available in EventSub yet - 03/2025
         // let needs_borders = self.first_msg || is_animated;
@@ -102,16 +102,16 @@ impl Widget for &mut ChatItem {
         let name_display_space = badge_space + username_space;
 
         let number_of_lines = get_line_count(&self.message.text, &area, Some(name_display_space));
-        info!("[chat_item::render()] number_of_lines: {number_of_lines}");
+        // info!("[chat_item::render()] number_of_lines: {number_of_lines}");
 
         let mut cursor = Position::new(0, area.height.saturating_sub(number_of_lines as u16));
-        info!("[chat_item::render()] cursor: {cursor}");
+        // info!("[chat_item::render()] cursor: {cursor}");
 
         write_user_badges(self, &mut cursor, buf);
         write_user_name(self, &mut style, &mut cursor, buf);
 
         let line_width = area.width.saturating_sub(1);
-        info!("[chat_item::render()] line_width: {line_width}");
+        // info!("[chat_item::render()] line_width: {line_width}");
 
         self.message
             .fragments

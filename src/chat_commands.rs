@@ -3,7 +3,14 @@ use std::fs;
 use anyhow::bail;
 use log::info;
 
-use crate::fs::get_data_directory;
+use crate::{
+    fs::get_data_directory,
+    twitch::{
+        api::send_message,
+        auth::{read_auth_token, TokenStatus},
+        eventsub::deserialization::NotificationEvent,
+    },
+};
 
 pub fn list_commands() -> anyhow::Result<()> {
     let list = get_list_commands()?;
@@ -201,4 +208,63 @@ fn get_item(item_name: &str, item_type: &str) -> anyhow::Result<String> {
     info!("Read item from {item_path:?}, item: '{item}'");
 
     Ok(item)
+}
+
+pub fn check_for_commands(payload: &NotificationEvent) {
+    let NotificationEvent::ChannelChatMessage { message, .. } = payload else {
+        info!("[check_for_commands()] - not a channel chat message");
+        return;
+    };
+
+    let Ok(auth) = read_auth_token() else {
+        info!("[check_for_commands()] - could not read auth token");
+        return;
+    };
+
+    let TokenStatus {
+        token: Some(ref token),
+        client_id: Some(ref client_id),
+        ..
+    } = auth
+    else {
+        info!("[check_for_commands()] - could not get token details");
+        return;
+    };
+
+    if !message.text.starts_with("!") {
+        return;
+    }
+
+    let Ok(commands) = get_list_commands() else {
+        info!("[check_for_commands()] - could not get list of commands");
+        return;
+    };
+
+    let command_name = &message.text.as_str()[1..];
+
+    if command_name == "commands" {
+        let message = format!("!{}", commands.join(" !"));
+
+        let Ok(_) = send_message(token, client_id, &message) else {
+            info!("[check_for_commands()] - could not send message");
+            return;
+        };
+
+        return;
+    }
+
+    let Some(cmd) = commands.iter().find(|command| **command == command_name) else {
+        info!("[check_for_commands()] - could not find a command");
+        return;
+    };
+
+    let Ok(cmd_contents) = get_item(cmd, "chat_commands") else {
+        info!("[check_for_commands()] - could not get command contents");
+        return;
+    };
+
+    let Ok(_) = send_message(token, client_id, &cmd_contents) else {
+        info!("[check_for_commands()] - could not send message");
+        return;
+    };
 }
