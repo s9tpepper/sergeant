@@ -210,61 +210,45 @@ fn get_item(item_name: &str, item_type: &str) -> anyhow::Result<String> {
     Ok(item)
 }
 
-pub fn check_for_commands(payload: &NotificationEvent) {
-    let NotificationEvent::ChannelChatMessage { message, .. } = payload else {
-        info!("[check_for_commands()] - not a channel chat message");
-        return;
-    };
-
-    let Ok(auth) = read_auth_token() else {
-        info!("[check_for_commands()] - could not read auth token");
-        return;
-    };
+fn get_token_info() -> anyhow::Result<(String, String)> {
+    let auth = read_auth_token()?;
 
     let TokenStatus {
-        token: Some(ref token),
-        client_id: Some(ref client_id),
+        token: Some(token),
+        client_id: Some(client_id),
         ..
     } = auth
     else {
-        info!("[check_for_commands()] - could not get token details");
-        return;
+        bail!("[check_for_commands()] - could not get token details");
     };
+
+    Ok((token, client_id))
+}
+
+pub fn check_for_commands(payload: &NotificationEvent) -> anyhow::Result<()> {
+    let NotificationEvent::ChannelChatMessage { message, .. } = payload else {
+        info!("[check_for_commands()] - not a channel chat message");
+        return Ok(());
+    };
+
+    let (token, client_id) = get_token_info()?;
 
     if !message.text.starts_with("!") {
-        return;
+        return Ok(());
     }
 
-    let Ok(commands) = get_list_commands() else {
-        info!("[check_for_commands()] - could not get list of commands");
-        return;
-    };
-
+    let commands = get_list_commands()?;
     let command_name = &message.text.as_str()[1..];
-
     if command_name == "commands" {
         let message = format!("!{}", commands.join(" !"));
 
-        let Ok(_) = send_message(token, client_id, &message) else {
-            info!("[check_for_commands()] - could not send message");
-            return;
-        };
-
-        return;
+        return send_message(&token, &client_id, &message);
     }
 
     let Some(cmd) = commands.iter().find(|command| **command == command_name) else {
-        info!("[check_for_commands()] - could not find a command");
-        return;
+        bail!("[check_for_commands()] - could not find a command");
     };
 
-    let Ok(cmd_contents) = get_item(cmd, "chat_commands") else {
-        info!("[check_for_commands()] - could not get command contents");
-        return;
-    };
-
-    let Ok(_) = send_message(token, client_id, &cmd_contents) else {
-        info!("[check_for_commands()] - could not send message");
-        return;
-    };
+    let cmd_contents = get_item(cmd, "chat_commands")?;
+    send_message(&token, &client_id, &cmd_contents)
 }

@@ -30,5 +30,5 @@ pub fn channel_chat_message(
 
     send_to_channels(channel_message, tui_tx, websocket_tx, "channel_chat_message");
 
-    check_for_commands(&payload.event);
+    let _ = check_for_commands(&payload.event);
 }
