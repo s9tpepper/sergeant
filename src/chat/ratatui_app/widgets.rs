@@ -144,7 +144,7 @@ fn write_emote(emote: &Emote, cursor: &mut Position, buf: &mut Buffer) -> anyhow
 pub fn get_iterm_encoding(base64: &str) -> String {
     format!(
         // "{}1337;File=inline=1;height=22px;width=22px;preserveAspectRatio=1;doNotMoveCursor=1:{}{}",
-        "{}]1337;File=inline=1;height=22px;width=22px;doNotMoveCursor=1:{}{}",
+        "{}]1337;File=inline=1;height=44px;width=44px;doNotMoveCursor=1:{}{}",
         ESCAPE, base64, BELL
     )
 }

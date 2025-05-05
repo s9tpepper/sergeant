@@ -15,8 +15,8 @@ pub struct BadgeVersion {
     // click_action: String,
     // click_url: String,
     pub image_url_1x: String,
-    // image_url_2x: String,
-    // image_url_4x: String,
+    pub image_url_2x: Option<String>,
+    //pub image_url_4x: String,
 }
 
 #[derive(Default, Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq)]
@@ -38,6 +38,8 @@ pub fn get_global_badges(token: &str, client_id: &str) -> anyhow::Result<HashMap
         .set("Authorization", &format!("Bearer {}", token.replace("oauth:", "")))
         .set("Client-Id", client_id)
         .call()?;
+
+    // println!("{}", response.into_string()?);
 
     let mut response: TwitchApiResponse<Vec<BadgeItem>> = serde_json::from_reader(response.into_reader())?;
 
@@ -121,7 +123,12 @@ pub fn get_badge_from_disk(badge_item: &BadgeItem) -> anyhow::Result<String> {
 
 // TODO: Update this to be able to support multiple image protocols
 fn generate_badge_file(badge_path: PathBuf, version: &BadgeVersion) -> anyhow::Result<()> {
-    let encoded_image = get_iterm_image_encoding(&version.image_url_1x)?;
+    let image_url = match &version.image_url_2x {
+        Some(url) => url,
+        None => &version.image_url_1x,
+    };
+
+    let encoded_image = get_iterm_image_encoding(image_url)?;
     fs::write(badge_path, encoded_image)?;
 
     Ok(())
