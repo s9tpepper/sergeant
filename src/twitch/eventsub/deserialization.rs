@@ -481,7 +481,7 @@ pub struct Fragment {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Mention {
     user_id: String,
-    user_name: String,
+    pub user_name: String,
     user_login: String,
 }
 

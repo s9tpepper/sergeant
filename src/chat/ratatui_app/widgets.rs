@@ -5,7 +5,10 @@ use ratatui::{
     layout::{Position, Rect},
     style::Color,
 };
-use std::{env, str::FromStr};
+use std::{
+    env,
+    str::{Chars, FromStr},
+};
 
 use crate::twitch::eventsub::deserialization::{Emote, Fragment};
 
@@ -50,6 +53,39 @@ pub fn handle_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffer
     }
 }
 
+pub fn handle_mention(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffer) {
+    let Some(mention) = &fragment.mention else {
+        return;
+    };
+
+    let style = Style {
+        fg: Color::White,
+        bg: Some(Color::Black),
+    };
+
+    write_symbol("@", &style, cursor, buf);
+    write_symbols(mention.user_name.chars(), &style, cursor, buf, None);
+}
+
+fn write_symbols(chars: Chars, style: &Style, cursor: &mut Position, buf: &mut Buffer, line_width: Option<u16>) {
+    chars.for_each(|char| {
+        info!("[chat_item::handle_text()] Rendering fragment char: {char}");
+        info!(
+            "[chat_item::handle_text()] x: {}, y: {}, line_width: {line_width:?}",
+            cursor.x, cursor.y
+        );
+
+        if let Some(width) = line_width {
+            if cursor.x == width {
+                cursor.x = 0;
+                cursor.y += 1;
+            }
+        }
+
+        write_symbol(&char.to_string(), style, cursor, buf);
+    });
+}
+
 pub fn handle_text(line_width: u16, fragment: &Fragment, style: &Style, cursor: &mut Position, buf: &mut Buffer) {
     info!("[chat_item::handle_text()]");
     info!(
@@ -57,20 +93,7 @@ pub fn handle_text(line_width: u16, fragment: &Fragment, style: &Style, cursor: 
         fragment.text
     );
 
-    fragment.text.chars().for_each(|char| {
-        info!("[chat_item::handle_text()] Rendering fragment char: {char}");
-        info!(
-            "[chat_item::handle_text()] x: {}, y: {}, line_width: {line_width}",
-            cursor.x, cursor.y
-        );
-
-        if cursor.x == line_width {
-            cursor.x = 0;
-            cursor.y += 1;
-        }
-
-        write_symbol(&char.to_string(), style, cursor, buf);
-    });
+    write_symbols(fragment.text.chars(), style, cursor, buf, Some(line_width));
 }
 
 pub fn write_symbol(symbol: &str, style: &Style, cursor: &mut Position, buffer: &mut Buffer) {

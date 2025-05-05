@@ -8,7 +8,7 @@ use ratatui::{
 
 use crate::{
     chat::ratatui_app::{
-        widgets::{get_color, get_line_count, handle_emote, handle_text},
+        widgets::{get_color, get_line_count, handle_emote, handle_mention, handle_text},
         ChatItem,
     },
     twitch::{assets::get_badge_from_disk, eventsub::deserialization::FragmentType},
@@ -124,7 +124,7 @@ impl Widget for &mut ChatItem {
 
                 FragmentType::Emote => handle_emote(fragment, &mut cursor, buf),
 
-                FragmentType::Mention => {}
+                FragmentType::Mention => handle_mention(fragment, &mut cursor, buf),
 
                 FragmentType::Unknown => {
                     unreachable!("We should never have an unknown fragment type");
