@@ -16,7 +16,7 @@ static SENDERS: OnceLock<RwLock<Vec<Sender<ChannelMessages>>>> = OnceLock::new()
 
 pub fn start_websocket(messages_rx: Receiver<ChannelMessages>) {
     spawn(move || loop {
-        if let Ok(new_message) = messages_rx.try_recv() {
+        if let Ok(new_message) = messages_rx.recv() {
             let senders = SENDERS.get_or_init(|| RwLock::new(Vec::new()));
             let senders_read = senders.read().unwrap();
 
@@ -41,7 +41,7 @@ pub fn start_websocket(messages_rx: Receiver<ChannelMessages>) {
             drop(senders_write);
 
             loop {
-                let new_message = receiver.try_recv();
+                let new_message = receiver.recv();
                 if let Ok(message) = new_message {
                     let json = serde_json::to_string(&message).unwrap();
                     let send_result = websocket.send(Message::Text(json.into()));
