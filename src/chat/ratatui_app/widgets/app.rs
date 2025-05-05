@@ -48,29 +48,35 @@ impl StatefulWidget for &mut RatatuiApp {
         //     self.scroll_view_state.scroll_to_bottom();
         // }
 
-        self.chat_log.iter_mut().for_each(|chat_log_item| match chat_log_item {
-            ChatLogItem::Event(chat_event) => {
-                chat_event.render(available_area, buf);
-
-                available_area = chat_event.area;
+        self.chat_log.iter_mut().for_each(|chat_log_item| {
+            if available_area.height == 0 {
+                return;
             }
 
-            ChatLogItem::Message(chat_item) => {
-                chat_item.render(available_area, buf);
+            match chat_log_item {
+                ChatLogItem::Event(chat_event) => {
+                    chat_event.render(available_area, buf);
 
-                available_area = chat_item.area;
-            }
+                    available_area = chat_event.area;
+                }
 
-            // TODO: Implement messages with effects
-            ChatLogItem::MessageWithEffect(_chat_item_with_effect) => {
-                info!("Rendering chat item with effect");
+                ChatLogItem::Message(chat_item) => {
+                    chat_item.render(available_area, buf);
+
+                    available_area = chat_item.area;
+                }
+
+                // TODO: Implement messages with effects
+                ChatLogItem::MessageWithEffect(_chat_item_with_effect) => {
+                    info!("Rendering chat item with effect");
+                }
             }
         });
 
         // TODO: Fix scrolling in scrollview
-        if self.chat_log.is_empty() {
-            state.scroll_to_bottom();
-        }
+        // if self.chat_log.is_empty() {
+        //     state.scroll_to_bottom();
+        // }
 
         // self.scrollview.render(buf.area, buf, state);
     }

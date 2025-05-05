@@ -7,7 +7,7 @@ Bugs:
 [ ] fix error message if login token file is not present during chat TUI startup
 [ ] fix the scrolling for messages
 [ ] fix @mentions so they don't break messages if they go out of bounds
-[ ] fix messages so they don't get stuck at the top of the message area and never go away
+[x] fix messages so they don't get stuck at the top of the message area and never go away
 
 Features:
 ---------------------------------------
