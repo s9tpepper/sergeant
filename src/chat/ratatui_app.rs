@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
-    fs::{create_dir_all, read_to_string, write},
-    io::{self, stdout, Stdout},
+    fs::{create_dir_all, read_to_string, write, File},
+    io::{self, stdout, BufReader, Stdout},
     ops::DerefMut,
     panic,
     path::Path,
@@ -15,7 +15,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use log::info;
+use log::{info, warn};
 use ratatui::{
     layout::{Rect, Size},
     prelude::CrosstermBackend,
@@ -156,6 +156,8 @@ impl RatatuiApp {
 
         if self.test_mode {
             self.load_test_messages(&mut terminal)?;
+        } else {
+            self.load_persisted_chat(&mut terminal)?;
         }
 
         // Handle messages from Twitch
@@ -193,6 +195,27 @@ impl RatatuiApp {
         disable_raw_mode()
     }
 
+    fn load_persisted_chat(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> anyhow::Result<()> {
+        let mut chat_log_dir = get_data_directory(Some("chat_log"))?;
+
+        if !chat_log_dir.exists() {
+            return Ok(());
+        }
+
+        chat_log_dir.push("log_v2.txt");
+
+        let file = File::open(chat_log_dir)?;
+        let reader = BufReader::new(file);
+
+        let chat_log: Vec<ChatLogItem> = serde_json::from_reader(reader)?;
+
+        self.chat_log = chat_log;
+
+        self.render(terminal)?;
+
+        Ok(())
+    }
+
     fn persist_chat(&mut self) -> anyhow::Result<()> {
         let mut chat_log_dir = get_data_directory(Some("chat_log"))?;
 
@@ -203,7 +226,7 @@ impl RatatuiApp {
         let json = serde_json::to_string(&self.chat_log)?;
 
         if !json.is_empty() {
-            chat_log_dir.push("log.txt");
+            chat_log_dir.push("log_v2.txt");
             write(chat_log_dir, json)?;
         }
 
@@ -302,18 +325,53 @@ impl RatatuiApp {
     }
 
     #[allow(unused)]
-    fn ad_break(&self, message: &str) {
-        todo!("ad break not implemented")
+    fn ad_break(&mut self, message: &str) {
+        let message = Message {
+            text: message.to_string(),
+            fragments: vec![Fragment {
+                r#type: FragmentType::Text,
+                text: message.to_string(),
+                cheermote: None,
+                emote: None,
+                mention: None,
+            }],
+        };
+
+        let chat_event: ChatEvent = ChatEvent {
+            area: Rect::default(),
+            message,
+            color: Color::Cyan.to_string(),
+        };
+
+        self.chat_log.insert(0, ChatLogItem::Event(chat_event));
     }
 
     #[allow(unused)]
     fn clear_messages(&self, user: &str) {
-        todo!("clear messages not implemented")
+        warn!("clear messages not implemented")
     }
 
     #[allow(unused)]
-    fn redeem_refund(&self, message: &str, cmd_output: &str) {
-        todo!("redeem refund not implemented")
+    fn redeem_refund(&mut self, msg: &str, cmd_output: &str) {
+        let message_text = format!("{msg}: {cmd_output}");
+        let message = Message {
+            text: message_text.to_string(),
+            fragments: vec![Fragment {
+                r#type: FragmentType::Text,
+                text: message_text.to_string(),
+                cheermote: None,
+                emote: None,
+                mention: None,
+            }],
+        };
+
+        let chat_event: ChatEvent = ChatEvent {
+            area: Rect::default(),
+            message,
+            color: Color::Magenta.to_string(),
+        };
+
+        self.chat_log.insert(0, ChatLogItem::Event(chat_event));
     }
 
     // TODO: Figure out what automatic reward redeems actually are, because the docs aren't clear
@@ -422,7 +480,7 @@ impl RatatuiApp {
     #[allow(unused)]
     fn bot_announcement(&self, message: &str) {
         // TODO: Implement bot announcements
-        todo!("bot announcement not implemented")
+        warn!("bot announcement not implemented")
     }
 
     fn start_tui(&mut self) -> anyhow::Result<Terminal<CrosstermBackend<Stdout>>> {

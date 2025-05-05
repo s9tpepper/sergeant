@@ -128,6 +128,10 @@ fn write_emote(emote: &Emote, cursor: &mut Position, buf: &mut Buffer) -> anyhow
     };
 
     cell.reset();
+
+    cell.set_bg(Color::Black);
+    cell.set_fg(Color::Black);
+
     cell.set_symbol(&encoded_image);
 
     buf.cell_mut((cursor.x + 1, cursor.y)).map(|cell| cell.set_skip(true));

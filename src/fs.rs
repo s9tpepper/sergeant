@@ -11,7 +11,7 @@ pub fn get_data_directory(path: Option<&str>) -> anyhow::Result<PathBuf> {
 
     let mut data_directory = project_directories.data_dir().to_path_buf();
 
-    data_directory.push("v2");
+    //data_directory.push("v2");
 
     if let Some(path) = path {
         data_directory.push(path);
