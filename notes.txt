@@ -1,6 +1,0 @@
-TODO:
-=======================================
-[ ] fix word wrap on messages
-[ ] fix terminal not clearing on start on subsequent chat starts
-[ ] test and fix? Play Intro command playing clip twice when redeemed
-[ ] fix error message if login token file is not present during chat TUI startup
