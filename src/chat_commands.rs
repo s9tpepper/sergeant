@@ -1,7 +1,10 @@
-use std::fs;
+use std::{
+    fs,
+    process::{self, Command},
+};
 
 use anyhow::bail;
-use log::info;
+use log::{error, info};
 
 use crate::{
     fs::get_data_directory,
@@ -60,6 +63,10 @@ pub fn get_list_announcements() -> anyhow::Result<Vec<String>> {
     }
 
     Ok(commands)
+}
+
+pub fn get_list_actions() -> anyhow::Result<Vec<String>> {
+    get_list("irc_actions")
 }
 
 pub fn get_list_commands() -> anyhow::Result<Vec<String>> {
@@ -225,17 +232,84 @@ fn get_token_info() -> anyhow::Result<(String, String)> {
     Ok((token, client_id))
 }
 
+pub fn check_for_message_actions(payload: &NotificationEvent) -> anyhow::Result<()> {
+    let NotificationEvent::ChannelChatMessage {
+        message,
+        chatter_user_name,
+        ..
+    } = payload
+    else {
+        info!("[check_for_commands()] - not a channel chat message");
+        return Ok(());
+    };
+
+    if !message.text.starts_with("!") {
+        return Ok(());
+    }
+
+    let (token, client_id) = get_token_info()?;
+
+    let action_name = &message.text.as_str()[1..];
+    let actions = get_list_actions()?;
+    let Some(action) = actions.iter().find(|action| **action == action_name) else {
+        bail!("[check_for_message_actions()] - could not find an action");
+    };
+
+    let action_details = get_item(action, "irc_actions")?;
+    let mut details: Vec<&str> = action_details.split(" ").collect();
+    if details.len() > 2 || details.is_empty() {
+        return Ok(());
+    }
+
+    let options = if details.len() == 2 { details.pop() } else { None };
+    let mut command_info: Vec<&str> = details.pop().expect("There should be one item").split(":").collect();
+    let sub_command_name = if command_info.len() == 2 {
+        command_info.pop()
+    } else {
+        None
+    };
+    let command_name = command_info.pop().expect("There should be a command name");
+
+    let mut command = Command::new(command_name);
+    if let Some(sub_command_name) = sub_command_name {
+        command.args(vec![sub_command_name, chatter_user_name]);
+    } else {
+        command.args(vec![chatter_user_name]);
+    }
+    let command_result = command
+        .stdout(process::Stdio::piped())
+        .stderr(process::Stdio::piped())
+        .output()
+        .expect("irc action failed");
+
+    if command_result.status.success() && options.is_some() {
+        let option = options.unwrap();
+        if option == "chat" {
+            if let Ok(stdout) = String::from_utf8(command_result.stdout.clone()) {
+                //client.send_privmsg(&stdout);
+                send_message(&token, &client_id, &stdout)?;
+            }
+        }
+    }
+
+    if !command_result.status.success() {
+        error!("[check_for_message_actions]: Could not execute action: {action_name}");
+    }
+
+    Ok(())
+}
+
 pub fn check_for_commands(payload: &NotificationEvent) -> anyhow::Result<()> {
     let NotificationEvent::ChannelChatMessage { message, .. } = payload else {
         info!("[check_for_commands()] - not a channel chat message");
         return Ok(());
     };
 
-    let (token, client_id) = get_token_info()?;
-
     if !message.text.starts_with("!") {
         return Ok(());
     }
+
+    let (token, client_id) = get_token_info()?;
 
     let commands = get_list_commands()?;
     let command_name = &message.text.as_str()[1..];
