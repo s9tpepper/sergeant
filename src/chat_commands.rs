@@ -311,7 +311,10 @@ pub fn check_for_commands(payload: &NotificationEvent) -> anyhow::Result<()> {
 
     let (token, client_id) = get_token_info()?;
 
-    let commands = get_list_commands()?;
+    let mut commands = get_list_commands()?;
+    let mut actions = get_list_actions()?;
+    commands.append(&mut actions);
+
     let command_name = &message.text.as_str()[1..];
     if command_name == "commands" {
         let message = format!("!{}", commands.join(" !"));
