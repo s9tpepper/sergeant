@@ -20,7 +20,7 @@ pub fn refund_points(
     oauth_token: &Arc<String>,
     client_id: &Arc<String>,
     command_result: process::Output,
-) {
+) -> anyhow::Result<()> {
     let api_url = "https://api.twitch.tv/helix/channel_points/custom_rewards/redemptions";
 
     let response = ureq::patch(api_url)
@@ -54,21 +54,17 @@ pub fn refund_points(
         command_output,
     };
 
-    send_to_channels(channel_message, tui_tx, websocket_tx, "refund_points");
+    send_to_channels(channel_message, tui_tx, websocket_tx, "refund_points")
 }
 
 #[allow(clippy::too_many_arguments)]
 pub fn reward_fulfilled(
     id: &str,
     reward: &Reward,
-    user_name: &str,
-    user_input: &str,
     broadcaster_user_id: &str,
     oauth_token: &Arc<String>,
     client_id: &Arc<String>,
-    tui_tx: &Sender<ChannelMessages>,
-    websocket_tx: &Sender<ChannelMessages>,
-) {
+) -> anyhow::Result<()> {
     info!("reward_fulfilled()");
 
     let api_url = "https://api.twitch.tv/helix/channel_points/custom_rewards/redemptions";
@@ -89,18 +85,14 @@ pub fn reward_fulfilled(
 
     if response.is_err() {
         error!("Fulfill Error {response:?}");
-        // TODO: Send message to tui/ws channels
-    } else {
-        info!("[Reward] {} fulfilled", reward.title);
 
-        let message = get_reward_fulfilled_message(reward, user_name, user_input);
-        let channel_message = ChannelMessages::RedeemMessage { message };
-
-        send_to_channels(channel_message, tui_tx, websocket_tx, "refund_points");
+        return Ok(());
     }
+
+    Ok(())
 }
 
-fn get_reward_fulfilled_message(reward: &Reward, user_name: &str, user_input: &str) -> String {
+pub fn get_reward_fulfilled_message(reward: &Reward, user_name: &str, user_input: &str) -> String {
     if reward.prompt.is_empty() {
         format!("{} redeemed by {}", reward.title, user_name)
     } else {

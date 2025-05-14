@@ -9,8 +9,11 @@ use crate::{
     channel::ChannelMessages,
     chat_commands::get_reward,
     twitch::{
-        eventsub::deserialization::{NotificationEvent, NotificationPayload},
-        redeems::{refund_points, reward_fulfilled},
+        eventsub::{
+            deserialization::{NotificationEvent, NotificationPayload},
+            notifications::prelude::send_to_channels,
+        },
+        redeems::{get_reward_fulfilled_message, refund_points, reward_fulfilled},
     },
 };
 
@@ -20,7 +23,7 @@ pub fn channel_points_custom_reward_redemption_add(
     websocket_tx: &Sender<ChannelMessages>,
     oauth_token: &Arc<String>,
     client_id: &Arc<String>,
-) {
+) -> anyhow::Result<()> {
     info!("----- channel_points_custom_reward_redemption_add()");
 
     let NotificationEvent::ChannelPointsCustomRewardRedemptionAdd {
@@ -34,13 +37,19 @@ pub fn channel_points_custom_reward_redemption_add(
     } = &*payload.event
     else {
         error!("Error trying to destructure NotificationEvent::ChannelPointsCustomRewardRedemptionAdd");
-        return;
+        return Ok(());
     };
 
     let Ok(cmd_mapping) = get_reward(&reward.title) else {
         error!("Error trying to get_reward()");
-        return;
+        return Ok(());
     };
+
+    // Notify websocket about reward redeem
+    info!("[Reward] {} fulfilled", reward.title);
+    let message = get_reward_fulfilled_message(reward, user_name, user_input);
+    let channel_message = ChannelMessages::RedeemMessage { message };
+    let _ = send_to_channels(channel_message, tui_tx, websocket_tx, "reward fulfilled");
 
     let (command_name, sub_command) = cmd_mapping.split_once(':').unwrap_or((&cmd_mapping, ""));
 
@@ -69,40 +78,30 @@ pub fn channel_points_custom_reward_redemption_add(
                 // NOTE: values: unknown, unfulfilled, fulfilled, and canceled.
                 let reward_status = status.to_lowercase();
                 if reward_status == "unfulfilled" {
-                    reward_fulfilled(
-                        id,
-                        reward,
-                        user_name,
-                        user_input,
-                        broadcaster_user_id,
-                        oauth_token,
-                        client_id,
-                        tui_tx,
-                        websocket_tx,
-                    );
+                    return reward_fulfilled(id, reward, broadcaster_user_id, oauth_token, client_id);
                 }
+
+                Ok(())
             }
 
-            false => {
-                refund_points(
-                    id,
-                    user_name,
-                    broadcaster_user_id,
-                    reward,
-                    tui_tx,
-                    websocket_tx,
-                    oauth_token,
-                    client_id,
-                    command_result,
-                );
-            }
+            false => refund_points(
+                id,
+                user_name,
+                broadcaster_user_id,
+                reward,
+                tui_tx,
+                websocket_tx,
+                oauth_token,
+                client_id,
+                command_result,
+            ),
         },
 
         Err(ref command_error) => {
             error!("Error running reward command: {command_error}, command: {command:?}");
 
             if status.to_lowercase() == "unfulfilled" {
-                refund_points(
+                return refund_points(
                     id,
                     user_name,
                     broadcaster_user_id,
@@ -114,6 +113,8 @@ pub fn channel_points_custom_reward_redemption_add(
                     command_result.expect("Command results should be available"),
                 );
             }
+
+            Ok(())
         }
     }
 }

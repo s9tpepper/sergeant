@@ -29,7 +29,7 @@ pub fn start_eventsub(
         Ok((ref mut socket, _)) => {
             info!("eventsub connected");
 
-            listen(socket, oauth_token, client_id, tx, socket_tx);
+            let _ = listen(socket, oauth_token, client_id, tx, socket_tx);
         }
         Err(_) => todo!(),
     }
@@ -41,7 +41,8 @@ fn listen(
     client_id: Arc<String>,
     tui_tx: Sender<ChannelMessages>,
     websocket_tx: Sender<ChannelMessages>,
-) {
+) -> anyhow::Result<()> {
+    let exit = false;
     loop {
         if let Ok(message) = socket.read() {
             match message {
@@ -55,7 +56,7 @@ fn listen(
                         Ok(message) => match &message {
                             Messages::Welcome { payload, .. } => {
                                 info!("listen::Messages::Welcome()");
-                                create_subscriptions(payload, &oauth_token, &client_id)
+                                create_subscriptions(payload, &oauth_token, &client_id)?;
                             }
 
                             Messages::KeepAlive { .. } => {
@@ -64,7 +65,14 @@ fn listen(
 
                             Messages::Notification { metadata, payload } => {
                                 info!("listen::Messages::Notification()");
-                                handle_notification(metadata, payload, &tui_tx, &websocket_tx, &oauth_token, &client_id)
+                                handle_notification(
+                                    metadata,
+                                    payload,
+                                    &tui_tx,
+                                    &websocket_tx,
+                                    &oauth_token,
+                                    &client_id,
+                                )?;
                             }
 
                             Messages::Reconnect { .. } => {
@@ -98,10 +106,20 @@ fn listen(
                 }
             }
         }
+
+        if exit {
+            break;
+        }
     }
+
+    Ok(())
 }
 
-fn create_subscriptions(payload: &WelcomePayload, oauth_token: &Arc<String>, client_id: &Arc<String>) {
+fn create_subscriptions(
+    payload: &WelcomePayload,
+    oauth_token: &Arc<String>,
+    client_id: &Arc<String>,
+) -> anyhow::Result<()> {
     let subscriptions = [
         SubscriptionType::ChannelAdBreakBegin,
         SubscriptionType::ChannelChatClearUserMessages,
@@ -134,6 +152,8 @@ fn create_subscriptions(payload: &WelcomePayload, oauth_token: &Arc<String>, cli
     });
 
     info!("Finished subscribing to all events");
+
+    Ok(())
 }
 
 fn get_eventsub_subscription(

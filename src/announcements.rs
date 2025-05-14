@@ -60,7 +60,7 @@ pub fn start_announcements(
                 message: announcement.message.clone(),
             };
 
-            send_to_channels(channel_message, &tui_tx, &websocket_tx, "Bot Announcements");
+            let _ = send_to_channels(channel_message, &tui_tx, &websocket_tx, "Bot Announcements");
         }
 
         sleep(Duration::from_secs(30));

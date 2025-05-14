@@ -11,9 +11,9 @@ pub fn channel_chat_clear_user_messages(
     payload: &NotificationPayload,
     tui_tx: &Sender<ChannelMessages>,
     websocket_tx: &Sender<ChannelMessages>,
-) {
+) -> anyhow::Result<()> {
     let NotificationEvent::ChannelChatClearUserMessages { target_user_name, .. } = &*payload.event else {
-        return;
+        return Ok(());
     };
 
     let channel_message = ChannelMessages::ClearMessagesByUser {
@@ -25,5 +25,5 @@ pub fn channel_chat_clear_user_messages(
         tui_tx,
         websocket_tx,
         "channel_chat_clear_user_messages",
-    );
+    )
 }

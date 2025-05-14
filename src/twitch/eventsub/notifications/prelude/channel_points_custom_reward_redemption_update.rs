@@ -8,6 +8,8 @@ pub fn channel_points_custom_reward_redemption_update(
     _websocket_tx: &Sender<ChannelMessages>,
     _oauth_token: &Arc<String>,
     _client_id: &Arc<String>,
-) {
+) -> anyhow::Result<()> {
     // TODO: figure out how to handle the update event
+
+    Ok(())
 }

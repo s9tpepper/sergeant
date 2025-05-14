@@ -285,10 +285,8 @@ pub fn check_for_message_actions(payload: &NotificationEvent) -> anyhow::Result<
     if command_result.status.success() && options.is_some() {
         let option = options.unwrap();
         if option == "chat" {
-            if let Ok(stdout) = String::from_utf8(command_result.stdout.clone()) {
-                //client.send_privmsg(&stdout);
-                send_message(&token, &client_id, &stdout)?;
-            }
+            let stdout = String::from_utf8(command_result.stdout.clone())?;
+            send_message(&token, &client_id, &stdout)?;
         }
     }
 

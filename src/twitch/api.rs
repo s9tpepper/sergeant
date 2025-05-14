@@ -1,11 +1,6 @@
-use std::{
-    cell::OnceCell,
-    iter::Once,
-    sync::{LazyLock, OnceLock},
-};
+use std::sync::OnceLock;
 
 use anyhow::bail;
-use image::imageops::FilterType::Lanczos3;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]

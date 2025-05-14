@@ -97,7 +97,7 @@ pub fn handle_text(line_width: u16, fragment: &Fragment, style: &Style, cursor: 
 }
 
 pub fn write_symbol(symbol: &str, style: &Style, cursor: &mut Position, buffer: &mut Buffer) {
-    let buffer_area = buffer.area();
+    let _buffer_area = buffer.area();
 
     // info!("[chat_item::write_symbol()] symbol: {symbol}, cursor: {cursor} buffer_area: {buffer_area}");
 

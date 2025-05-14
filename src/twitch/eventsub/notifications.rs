@@ -16,7 +16,7 @@ pub fn handle_notification(
     websocket_tx: &Sender<ChannelMessages>,
     oauth_token: &Arc<String>,
     client_id: &Arc<String>,
-) {
+) -> anyhow::Result<()> {
     info!("handle_notification()");
     info!("payload: {payload:?}");
 
@@ -35,9 +35,7 @@ pub fn handle_notification(
         SubscriptionType::ChannelChatClearUserMessages => {
             channel_chat_clear_user_messages(payload, tui_tx, websocket_tx)
         }
-        SubscriptionType::ChannelChatMessage => {
-            channel_chat_message(payload, tui_tx, websocket_tx);
-        }
+        SubscriptionType::ChannelChatMessage => channel_chat_message(payload, tui_tx, websocket_tx),
 
         // SubscriptionType::ChannelChatMessageDelete => todo!(),
         SubscriptionType::ChannelChatNotification => channel_chat_notification(payload, tui_tx, websocket_tx),
@@ -120,6 +118,6 @@ pub fn handle_notification(
         // SubscriptionType::UserUpdate => todo!(),
         // SubscriptionType::WhisperReceived => todo!(),
         // SubscriptionType::Unknown => todo!(),
-        _ => {}
+        _ => Ok(()),
     }
 }

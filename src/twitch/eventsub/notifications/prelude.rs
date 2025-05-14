@@ -8,8 +8,6 @@ mod channel_points_custom_reward_redemption_update;
 
 use std::sync::mpsc::Sender;
 
-use log::error;
-
 use crate::channel::ChannelMessages;
 
 pub use super::prelude::channel_ad_break_begin::channel_ad_break_begin;
@@ -24,15 +22,9 @@ pub fn send_to_channels(
     channel_message: ChannelMessages,
     tui_tx: &Sender<ChannelMessages>,
     websocket_tx: &Sender<ChannelMessages>,
-    context: &str,
-) {
-    match tui_tx.send(channel_message.clone()) {
-        Ok(_) => {}
-        Err(error) => error!("[{context}]: Error sending to TUI: {error}"),
-    }
+    _context: &str,
+) -> anyhow::Result<()> {
+    tui_tx.send(channel_message.clone())?;
 
-    match websocket_tx.send(channel_message) {
-        Ok(_) => {}
-        Err(error) => error!("[{context}]: Error sending to websocket: {error}"),
-    }
+    Ok(websocket_tx.send(channel_message)?)
 }

@@ -12,7 +12,7 @@ use super::scroll_view::ScrollViewState;
 impl StatefulWidget for &mut RatatuiApp {
     type State = ScrollViewState;
 
-    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+    fn render(self, area: Rect, buf: &mut Buffer, _state: &mut Self::State) {
         buf.reset();
         info!("area: {area}");
 
