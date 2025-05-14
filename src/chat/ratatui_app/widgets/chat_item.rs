@@ -33,7 +33,7 @@ fn write_user_badges(chat_item: &ChatItem, cursor: &mut Position, buffer: &mut B
             };
 
             cell.reset();
-            cell.set_symbol(&get_iterm_encoding(&base64));
+            cell.set_symbol(&get_iterm_encoding(&base64, None, None));
 
             buffer
                 .cell_mut((cursor.x + 1, cursor.y))

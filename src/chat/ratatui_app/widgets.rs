@@ -125,10 +125,15 @@ fn write_kitty_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffe
 
 fn write_iterm_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffer) {
     let Some(emote) = &fragment.emote else {
+        error!("[ratatui_app/widgets.rs] Unable to unwrap fragment.emote");
+
         return;
     };
 
-    let _ = write_emote(emote, cursor, buf);
+    match write_emote(emote, cursor, buf) {
+        Ok(_) => info!("[ratatui_app/widgets.rs] emote written successfully"),
+        Err(error) => error!("[ratatui_app/widgets.rs] Error writing emotes: {error}"),
+    }
 }
 
 // TODO: Add an emote cache for encoded emotes so that we dont keep downloading them from the web
@@ -144,7 +149,7 @@ fn write_emote(emote: &Emote, cursor: &mut Position, buf: &mut Buffer) -> anyhow
     response.into_reader().read_exact(&mut file_bytes)?;
 
     let base64_emote = BASE64_STANDARD.encode(&file_bytes);
-    let encoded_image = get_iterm_encoding(&base64_emote);
+    let encoded_image = get_iterm_encoding(&base64_emote, Some("42"), Some("42"));
 
     let Some(cell) = buf.cell_mut(*cursor) else {
         return Ok(());
@@ -157,17 +162,24 @@ fn write_emote(emote: &Emote, cursor: &mut Position, buf: &mut Buffer) -> anyhow
 
     cell.set_symbol(&encoded_image);
 
-    buf.cell_mut((cursor.x + 1, cursor.y)).map(|cell| cell.set_skip(true));
+    #[allow(clippy::option_map_unit_fn)]
+    buf.cell_mut((cursor.x + 1, cursor.y)).map(|cell| {
+        cell.reset();
+        cell.set_symbol(" ");
+    });
 
-    cursor.x += 2;
+    cursor.x += 1;
 
     Ok(())
 }
 
-pub fn get_iterm_encoding(base64: &str) -> String {
+pub fn get_iterm_encoding(base64: &str, width: Option<&str>, height: Option<&str>) -> String {
+    let w = width.unwrap_or("44");
+    let h = height.unwrap_or("44");
+
     format!(
         // "{}1337;File=inline=1;height=22px;width=22px;preserveAspectRatio=1;doNotMoveCursor=1:{}{}",
-        "{}]1337;File=inline=1;height=44px;width=44px;doNotMoveCursor=1:{}{}",
+        "{}]1337;File=inline=1;height={h}px;width={w}px;doNotMoveCursor=1:{}{}",
         ESCAPE, base64, BELL
     )
 }

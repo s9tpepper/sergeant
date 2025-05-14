@@ -485,12 +485,14 @@ pub struct Mention {
     user_login: String,
 }
 
+// https://dev.twitch.tv/docs/eventsub/eventsub-reference/#channel-chat-message-event
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Emote {
     pub id: String,
-    pub name: String,
+    pub name: Option<String>,
     pub emote_set_id: String,
     pub owner_id: String,
+    pub mention: Option<Mention>,
     pub format: Vec<String>, // animated | static
 }
 

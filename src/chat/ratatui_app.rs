@@ -27,7 +27,7 @@ use widgets::scroll_view::{ScrollView, ScrollViewState};
 
 use crate::{
     channel::ChannelMessages,
-    fs::{self, get_data_directory},
+    fs::get_data_directory,
     twitch::{
         assets::BadgeItem,
         eventsub::deserialization::{Badge, ChatMessageTypes, Fragment, FragmentType, Message, NotificationEvent},
