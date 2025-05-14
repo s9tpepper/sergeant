@@ -9,6 +9,7 @@ use crate::{
     channel::ChannelMessages,
     chat_commands::get_reward,
     twitch::{
+        api::{get_user_by_login, User},
         eventsub::{
             deserialization::{NotificationEvent, NotificationPayload},
             notifications::prelude::send_to_channels,
@@ -33,6 +34,7 @@ pub fn channel_points_custom_reward_redemption_add(
         reward,
         user_input,
         status,
+        user_login,
         ..
     } = &*payload.event
     else {
@@ -48,7 +50,28 @@ pub fn channel_points_custom_reward_redemption_add(
     // Notify websocket about reward redeem
     info!("[Reward] {} fulfilled", reward.title);
     let message = get_reward_fulfilled_message(reward, user_name, user_input);
-    let channel_message = ChannelMessages::RedeemMessage { message };
+
+    let User {
+        profile_image_url: profile_url,
+        ..
+    } = get_user_by_login(user_login, oauth_token, client_id).unwrap_or(User {
+        id: "".to_string(),
+        login: "".to_string(),
+        display_name: "Unknown".to_string(),
+        r#type: "".to_string(),
+        broadcaster_type: "".to_string(),
+        description: "".to_string(),
+        profile_image_url: "".to_string(),
+        offline_image_url: "".to_string(),
+        created_at: "".to_string(),
+    });
+
+    let channel_message = ChannelMessages::RedeemMessage {
+        message,
+        profile_url,
+        title: reward.title.to_string(),
+        display_name: user_name.to_string(),
+    };
     let _ = send_to_channels(channel_message, tui_tx, websocket_tx, "reward fulfilled");
 
     let (command_name, sub_command) = cmd_mapping.split_once(':').unwrap_or((&cmd_mapping, ""));

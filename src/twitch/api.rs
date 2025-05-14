@@ -60,6 +60,27 @@ pub fn send_message(oauth_token: &str, client_id: &str, message: &str) -> anyhow
     Ok(())
 }
 
+pub fn get_user_by_login(user_login: &str, oauth_token: &str, client_id: &str) -> anyhow::Result<User> {
+    let get_users_url = format!("https://api.twitch.tv/helix/users?login={user_login}");
+    let response = ureq::get(&get_users_url)
+        .set(
+            "Authorization",
+            &format!("Bearer {}", oauth_token.replace("oauth:", "")),
+        )
+        .set("Client-Id", client_id)
+        .call();
+
+    let Ok(response) = response else {
+        bail!("Failed to get user data");
+    };
+
+    let mut response: TwitchApiResponse<Vec<User>> = serde_json::from_reader(response.into_reader())?;
+
+    let user = response.data.swap_remove(0);
+
+    Ok(user)
+}
+
 pub fn get_user(oauth_token: &str, client_id: &str) -> anyhow::Result<User> {
     let get_users_url = "https://api.twitch.tv/helix/users";
     let response = ureq::get(get_users_url)

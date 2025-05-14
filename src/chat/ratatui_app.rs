@@ -320,7 +320,7 @@ impl RatatuiApp {
 
             ChannelMessages::AutomaticRewardRedeem { message } => self.automatic_reward_redeem(message),
 
-            ChannelMessages::RedeemMessage { message } => self.redeem_message(&message),
+            ChannelMessages::RedeemMessage { message, .. } => self.redeem_message(&message),
         }
     }
 
