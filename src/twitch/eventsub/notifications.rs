@@ -20,7 +20,6 @@ pub fn handle_notification(
     info!("handle_notification()");
     info!("payload: {payload:?}");
 
-    #[allow(clippy::single_match)]
     match payload.subscription.r#type {
         // SubscriptionType::AutomodMessageHold => todo!(),
         // SubscriptionType::AutomodMessageHoldV2 => todo!(),

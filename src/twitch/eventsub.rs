@@ -108,6 +108,7 @@ fn listen(
         }
 
         if exit {
+            info!("Exiting - exit: {exit}");
             break;
         }
     }

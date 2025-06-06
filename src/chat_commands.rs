@@ -239,7 +239,6 @@ pub fn check_for_message_actions(payload: &NotificationEvent) -> anyhow::Result<
         ..
     } = payload
     else {
-        info!("[check_for_commands()] - not a channel chat message");
         return Ok(());
     };
 
@@ -252,7 +251,7 @@ pub fn check_for_message_actions(payload: &NotificationEvent) -> anyhow::Result<
     let action_name = &message.text.as_str()[1..];
     let actions = get_list_actions()?;
     let Some(action) = actions.iter().find(|action| **action == action_name) else {
-        bail!("[check_for_message_actions()] - could not find an action");
+        return Ok(());
     };
 
     let action_details = get_item(action, "irc_actions")?;
@@ -262,13 +261,21 @@ pub fn check_for_message_actions(payload: &NotificationEvent) -> anyhow::Result<
     }
 
     let options = if details.len() == 2 { details.pop() } else { None };
-    let mut command_info: Vec<&str> = details.pop().expect("There should be one item").split(":").collect();
+    let mut command_info: Vec<&str> = match details.pop() {
+        Some(details) => details.split(":").collect(),
+        None => return Ok(()),
+    };
+
     let sub_command_name = if command_info.len() == 2 {
         command_info.pop()
     } else {
         None
     };
-    let command_name = command_info.pop().expect("There should be a command name");
+
+    let command_name = match command_info.pop() {
+        Some(info) => info,
+        None => return Ok(()),
+    };
 
     let mut command = Command::new(command_name);
     if let Some(sub_command_name) = sub_command_name {
@@ -276,11 +283,18 @@ pub fn check_for_message_actions(payload: &NotificationEvent) -> anyhow::Result<
     } else {
         command.args(vec![chatter_user_name]);
     }
-    let command_result = command
+
+    let command_result = match command
         .stdout(process::Stdio::piped())
         .stderr(process::Stdio::piped())
         .output()
-        .expect("irc action failed");
+    {
+        Ok(result) => result,
+        Err(_) => {
+            error!("The command failed to execute: {command_name}");
+            return Ok(());
+        }
+    };
 
     if command_result.status.success() && options.is_some() {
         let option = options.unwrap();
@@ -299,7 +313,6 @@ pub fn check_for_message_actions(payload: &NotificationEvent) -> anyhow::Result<
 
 pub fn check_for_commands(payload: &NotificationEvent) -> anyhow::Result<()> {
     let NotificationEvent::ChannelChatMessage { message, .. } = payload else {
-        info!("[check_for_commands()] - not a channel chat message");
         return Ok(());
     };
 
@@ -310,20 +323,31 @@ pub fn check_for_commands(payload: &NotificationEvent) -> anyhow::Result<()> {
     let (token, client_id) = get_token_info()?;
 
     let mut commands = get_list_commands()?;
-    let mut actions = get_list_actions()?;
-    commands.append(&mut actions);
 
     let command_name = &message.text.as_str()[1..];
     if command_name == "commands" {
+        let mut actions = get_list_actions()?;
+        commands.append(&mut actions);
+
         let message = format!("!{}", commands.join(" !"));
 
-        return send_message(&token, &client_id, &message);
+        match send_message(&token, &client_id, &message) {
+            Ok(_) => info!("[check_for_commands()] - chat command response sent successfully"),
+            Err(error) => info!("[check_for_commands()] - error sending chat command response, error: {error:?}"),
+        }
+
+        return Ok(());
     }
 
     let Some(cmd) = commands.iter().find(|command| **command == command_name) else {
-        bail!("[check_for_commands()] - could not find a command");
+        return Ok(());
     };
 
     let cmd_contents = get_item(cmd, "chat_commands")?;
-    send_message(&token, &client_id, &cmd_contents)
+    match send_message(&token, &client_id, &cmd_contents) {
+        Ok(_) => info!("[check_for_commands()] - chat command response sent successfully"),
+        Err(error) => info!("[check_for_commands()] - error sending chat command response, error: {error:?}"),
+    }
+
+    Ok(())
 }
