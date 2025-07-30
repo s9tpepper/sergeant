@@ -199,14 +199,20 @@ impl RatatuiApp {
         let mut chat_log_dir = get_data_directory(Some("chat_log"))?;
 
         if !chat_log_dir.exists() {
-            return Ok(());
+            // ADDED
+            create_dir_all(&chat_log_dir)?;
+            //return Ok(());
         }
 
         chat_log_dir.push("log_v2.txt");
 
+        // Creates an empty log_v2.txt if it doesn't exist
+        if !chat_log_dir.exists() {
+            write(&chat_log_dir, "[]")?;
+        }
+
         let file = File::open(chat_log_dir)?;
         let reader = BufReader::new(file);
-
         let chat_log: Vec<ChatLogItem> = serde_json::from_reader(reader)?;
 
         self.chat_log = chat_log;
