@@ -93,7 +93,6 @@ pub struct NotificationPayload {
 }
 
 #[derive(Default, Serialize, Deserialize, Debug, Clone)]
-#[serde[default]]
 pub struct ChannelNotification {
     pub broadcaster_user_id: String,
     pub broadcaster_user_login: String,
