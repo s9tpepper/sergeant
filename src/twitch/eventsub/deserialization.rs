@@ -33,7 +33,7 @@ pub enum Messages {
     },
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Default, Deserialize, Debug)]
 pub struct RevocationMetadata {
     message_id: String,
     message_type: MessageTypes,
@@ -42,7 +42,7 @@ pub struct RevocationMetadata {
     subscription_version: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Default, Deserialize, Debug)]
 pub struct RevocationPayload {
     id: String,
     status: String,
@@ -54,19 +54,20 @@ pub struct RevocationPayload {
     created_at: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Default, Deserialize, Debug)]
 pub struct ReconnectMetadata {
     message_id: String,
     message_type: MessageTypes,
     message_timestamp: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Default, Deserialize, Debug)]
 pub struct ReconnectPayload {
     session: ReconnectPayloadSession,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Default, Deserialize, Debug)]
+#[serde(default)]
 pub struct ReconnectPayloadSession {
     id: String,
     status: String,
@@ -76,7 +77,7 @@ pub struct ReconnectPayloadSession {
     connected_at: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Default, Deserialize, Debug)]
 pub struct NotificationMetadata {
     message_id: String,
     message_type: MessageTypes,
@@ -89,6 +90,50 @@ pub struct NotificationMetadata {
 pub struct NotificationPayload {
     pub subscription: NotificationPayloadSubscription,
     pub event: Box<NotificationEvent>,
+}
+
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+#[serde[default]]
+pub struct ChannelNotification {
+    pub broadcaster_user_id: String,
+    pub broadcaster_user_login: String,
+    pub broadcaster_user_name: String,
+    pub chatter_user_id: String,
+    pub chatter_user_login: String,
+    pub chatter_user_name: String,
+    pub chatter_is_anonymous: bool,
+    pub color: String,
+    pub badges: Vec<Badge>,
+    pub system_message: String,
+    pub message_id: String,
+    pub message: Box<Message>,
+    pub notice_type: Box<NoticeType>,
+    pub sub: Box<Option<Sub>>,
+    pub resub: Box<Option<Resub>>,
+    pub sub_gift: Box<Option<SubGift>>,
+    pub community_sub_gift: Box<Option<CommunitySubGift>>,
+    pub gift_paid_upgrade: Box<Option<GiftPaidUpgrade>>,
+    pub prime_paid_upgrade: Box<Option<PrimePaidUpgrade>>,
+    pub pay_it_forward: Box<Option<PayItForward>>,
+    pub raid: Box<Option<Raid>>,
+    pub unraid: Box<Option<Unraid>>,
+    pub announcement: Box<Option<Announcement>>,
+    pub bits_badge_tier: Box<Option<BitsBadgeTier>>,
+    pub charity_donation: Box<Option<CharityDonation>>,
+    pub source_broadcaster_user_id: Box<Option<String>>,
+    pub source_broadcaster_user_name: Box<Option<String>>,
+    pub source_broadcaster_user_login: Box<Option<String>>,
+    pub source_message_id: Box<Option<String>>,
+    pub source_badges: Box<Option<Vec<Emote>>>,
+    pub shared_chat_sub: Box<Option<Sub>>,
+    pub shared_chat_resub: Box<Option<Resub>>,
+    pub shared_chat_sub_gift: Box<Option<SubGift>>,
+    pub shared_chat_community_sub_gift: Box<Option<CommunitySubGift>>,
+    pub shared_chat_gift_paid_upgrade: Box<Option<GiftPaidUpgrade>>,
+    pub shared_chat_prime_paid_upgrade: Box<Option<PrimePaidUpgrade>>,
+    pub shared_chat_pay_it_forward: Box<Option<PayItForward>>,
+    pub shared_chat_raid: Box<Option<Raid>>,
+    pub shared_chat_announcement: Box<Option<Announcement>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -129,47 +174,7 @@ pub enum NotificationEvent {
         requester_user_name: String,
     },
 
-    ChannelNotification {
-        broadcaster_user_id: String,
-        broadcaster_user_login: String,
-        broadcaster_user_name: String,
-        chatter_user_id: String,
-        chatter_user_login: String,
-        chatter_user_name: String,
-        chatter_is_anonymous: bool,
-        color: String,
-        badges: Vec<Badge>,
-        system_message: String,
-        message_id: String,
-        message: Box<Message>,
-        notice_type: Box<NoticeType>,
-        sub: Box<Option<Sub>>,
-        resub: Box<Option<Resub>>,
-        sub_gift: Box<Option<SubGift>>,
-        community_sub_gift: Box<Option<CommunitySubGift>>,
-        gift_paid_upgrade: Box<Option<GiftPaidUpgrade>>,
-        prime_paid_upgrade: Box<Option<PrimePaidUpgrade>>,
-        pay_it_forward: Box<Option<PayItForward>>,
-        raid: Box<Option<Raid>>,
-        unraid: Box<Option<Unraid>>,
-        announcement: Box<Option<Announcement>>,
-        bits_badge_tier: Box<Option<BitsBadgeTier>>,
-        charity_donation: Box<Option<CharityDonation>>,
-        source_broadcaster_user_id: Box<Option<String>>,
-        source_broadcaster_user_name: Box<Option<String>>,
-        source_broadcaster_user_login: Box<Option<String>>,
-        source_message_id: Box<Option<String>>,
-        source_badges: Box<Option<Vec<Emote>>>,
-        shared_chat_sub: Box<Option<Sub>>,
-        shared_chat_resub: Box<Option<Resub>>,
-        shared_chat_sub_gift: Box<Option<SubGift>>,
-        shared_chat_community_sub_gift: Box<Option<CommunitySubGift>>,
-        shared_chat_gift_paid_upgrade: Box<Option<GiftPaidUpgrade>>,
-        shared_chat_prime_paid_upgrade: Box<Option<PrimePaidUpgrade>>,
-        shared_chat_pay_it_forward: Box<Option<PayItForward>>,
-        shared_chat_raid: Box<Option<Raid>>,
-        shared_chat_announcement: Box<Option<Announcement>>,
-    },
+    ChannelNotification(ChannelNotification),
 
     ChannelPointsCustomRewardRedemptionAdd {
         id: String,
@@ -212,7 +217,7 @@ pub enum NotificationEvent {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Default, Clone, Debug)]
 pub enum ChatMessageTypes {
     Text,
     ChannelPointsHighlighted,
@@ -220,6 +225,7 @@ pub enum ChatMessageTypes {
     UserIntro,
     PowerUpsMessageEffect,
     PowerUpsGigantifiedEmote,
+    #[default]
     Unknown,
 }
 
@@ -258,12 +264,14 @@ impl<'de> Deserialize<'de> for ChatMessageTypes {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Default, Clone, Debug, Deserialize, Serialize)]
+#[serde[default]]
 pub struct Cheer {
     bits: usize,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Default, Clone, Debug, Deserialize, Serialize)]
+#[serde[default]]
 pub struct Reply {
     parent_message_id: String,
     parent_message_body: String,
@@ -276,33 +284,39 @@ pub struct Reply {
     thread_user_login: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Default, Clone, Debug, Deserialize, Serialize)]
+#[serde[default]]
 pub struct CharityDonation {
     pub charity_name: String,
     pub amount: Amount,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Default, Clone, Debug, Deserialize, Serialize)]
+#[serde[default]]
 pub struct Amount {
     pub value: u32,
     pub decimal_place: u8,
     pub currency: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Default, Clone, Debug, Deserialize, Serialize)]
+#[serde[default]]
 pub struct BitsBadgeTier {
     pub tier: u8,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Default, Clone, Debug, Deserialize, Serialize)]
+#[serde[default]]
 pub struct Announcement {
     color: String,
 }
 
-#[derive(Serialize, Debug, Deserialize, Clone)]
+#[derive(Default, Serialize, Debug, Deserialize, Clone)]
+#[serde[default]]
 pub struct Unraid {}
 
-#[derive(Serialize, Debug, Deserialize, Clone)]
+#[derive(Default, Serialize, Debug, Deserialize, Clone)]
+#[serde[default]]
 pub struct Raid {
     pub user_id: String,
     pub user_name: String,
@@ -311,7 +325,8 @@ pub struct Raid {
     pub profile_image_url: String,
 }
 
-#[derive(Serialize, Debug, Deserialize, Clone)]
+#[derive(Default, Serialize, Debug, Deserialize, Clone)]
+#[serde[default]]
 pub struct PayItForward {
     pub gifter_is_anonymous: bool,
     pub gifter_user_id: Option<String>,
@@ -319,12 +334,14 @@ pub struct PayItForward {
     pub gifter_user_login: Option<String>,
 }
 
-#[derive(Serialize, Debug, Deserialize, Clone)]
+#[derive(Default, Serialize, Debug, Deserialize, Clone)]
+#[serde[default]]
 pub struct PrimePaidUpgrade {
     pub sub_tier: String,
 }
 
-#[derive(Serialize, Debug, Deserialize, Clone)]
+#[derive(Default, Serialize, Debug, Deserialize, Clone)]
+#[serde[default]]
 pub struct GiftPaidUpgrade {
     pub gifter_is_anonymous: bool,
     pub gifter_user_id: Option<String>,
@@ -332,7 +349,8 @@ pub struct GiftPaidUpgrade {
     pub gifter_user_login: Option<String>,
 }
 
-#[derive(Serialize, Debug, Deserialize, Clone)]
+#[derive(Default, Serialize, Debug, Deserialize, Clone)]
+#[serde[default]]
 pub struct CommunitySubGift {
     pub id: String,
     pub total: u16,
@@ -340,7 +358,8 @@ pub struct CommunitySubGift {
     pub cumulative_total: Option<u16>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+#[serde[default]]
 pub struct SubGift {
     duration_months: u8,
     cumulative_total: u8,
@@ -351,7 +370,8 @@ pub struct SubGift {
     community_gift_id: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+#[serde[default]]
 pub struct Resub {
     cumulative_months: u8,
     duration_months: u8,
@@ -365,14 +385,15 @@ pub struct Resub {
     gifter_user_login: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+#[serde[default]]
 pub struct Sub {
     sub_tier: String, // 1000, 2000, 3000
     is_prime: bool,
     duration_months: u16,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub enum NoticeType {
     Sub,
     Resub,
@@ -395,6 +416,7 @@ pub enum NoticeType {
     SharedChatRaid,
     SharedChatPayItForward,
     SharedChatAnnouncement,
+    #[default]
     Unknown,
 }
 
@@ -463,13 +485,15 @@ impl<'de> Deserialize<'de> for NoticeType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+#[serde[default]]
 pub struct Message {
     pub text: String,
     pub fragments: Vec<Fragment>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+#[serde[default]]
 pub struct Fragment {
     pub r#type: FragmentType,
     pub text: String,
@@ -478,7 +502,8 @@ pub struct Fragment {
     pub mention: Option<Mention>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+#[serde[default]]
 pub struct Mention {
     user_id: String,
     pub user_name: String,
@@ -486,7 +511,8 @@ pub struct Mention {
 }
 
 // https://dev.twitch.tv/docs/eventsub/eventsub-reference/#channel-chat-message-event
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+#[serde[default]]
 pub struct Emote {
     pub id: String,
     pub name: Option<String>,
@@ -496,19 +522,21 @@ pub struct Emote {
     pub format: Vec<String>, // animated | static
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+#[serde[default]]
 pub struct Cheermote {
     prefix: String,
     bits: u16,
     tier: u8,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub enum FragmentType {
     Text,
     Cheermote,
     Emote,
     Mention,
+    #[default]
     Unknown,
 }
 
@@ -543,14 +571,15 @@ impl<'de> Deserialize<'de> for FragmentType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+#[serde[default]]
 pub struct Badge {
     pub set_id: String,
     pub id: String,
     pub info: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
 pub struct Reward {
     pub id: String,
     pub title: String,
@@ -579,7 +608,8 @@ pub struct Subscription<'a> {
     pub created_at: Option<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
+#[serde(default)]
 pub struct NotificationPayloadSubscription {
     pub id: String,
     pub status: String,
@@ -591,7 +621,8 @@ pub struct NotificationPayloadSubscription {
     pub created_at: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Default, Serialize, Deserialize, Debug)]
+#[serde(default)]
 pub struct Condition {
     pub to_broadcaster_user_id: Option<String>,
     pub broadcaster_user_id: Option<String>,
@@ -605,10 +636,11 @@ pub struct Condition {
     pub extension_client_id: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub enum MethodType {
     WebSocket,
     WebHook,
+    #[default]
     Unknown,
 }
 
@@ -642,35 +674,37 @@ impl Serialize for MethodType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Default, Serialize, Deserialize, Debug)]
+#[serde(default)]
 pub struct Transport {
     pub method: MethodType,
     pub session_id: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Default, Deserialize, Debug)]
 pub struct KeepAliveMetadata {
     message_id: String,
     message_type: MessageTypes,
     message_timestamp: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Default, Deserialize, Debug)]
 pub struct KeepAlivePayload {}
 
-#[derive(Deserialize, Debug)]
+#[derive(Default, Deserialize, Debug)]
 pub struct WelcomeMetadata {
     message_id: String,
     message_type: MessageTypes,
     message_timestamp: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Default, Deserialize, Debug)]
 pub struct WelcomePayload {
     pub session: WelcomePayloadSession,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Default, Deserialize, Debug)]
+#[serde[default]]
 pub struct WelcomePayloadSession {
     pub id: String,
     pub status: String,
@@ -680,13 +714,14 @@ pub struct WelcomePayloadSession {
     pub recovery_url: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 enum MessageTypes {
     SessionWelcome,
     SessionKeepalive,
     Notification,
     SessionReconnect,
     Revocation,
+    #[default]
     Unknown,
 }
 
@@ -711,7 +746,7 @@ impl<'de> Deserialize<'de> for MessageTypes {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub enum SubscriptionType {
     AutomodMessageHold,
     AutomodMessageHoldV2,
@@ -793,6 +828,7 @@ pub enum SubscriptionType {
     UserAuthorizationRevoke,
     UserUpdate,
     WhisperReceived,
+    #[default]
     Unknown,
 }
 

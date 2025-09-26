@@ -4,7 +4,7 @@ use std::{
         mpsc::{channel, Receiver, Sender},
         OnceLock, RwLock,
     },
-    thread::spawn,
+    thread::{self, spawn},
 };
 
 use log::{error, info};
@@ -16,7 +16,7 @@ static SENDERS: OnceLock<RwLock<Vec<Sender<ChannelMessages>>>> = OnceLock::new()
 
 pub fn websocket(messages_rx: Receiver<ChannelMessages>) {
     thread::spawn(|| {
-        start_websocket(socket_receiver);
+        start_websocket(messages_rx);
     });
 }
 
