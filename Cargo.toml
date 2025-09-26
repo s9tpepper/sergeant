@@ -38,6 +38,7 @@ ratatui = "0.29.0"
 serde = { version = "1.0.203", features = ["alloc", "derive", "serde_derive"] }
 serde_json = "1.0.117"
 simplelog = "0.12.2"
+thiserror = "2.0.16"
 time = "0.3.36"
 tungstenite = { version = "0.26.1", features = ["native-tls"] }
 ureq = { version = "2.12.1", features = ["json"] }

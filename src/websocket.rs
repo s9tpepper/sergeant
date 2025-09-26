@@ -14,6 +14,12 @@ use crate::channel::ChannelMessages;
 
 static SENDERS: OnceLock<RwLock<Vec<Sender<ChannelMessages>>>> = OnceLock::new();
 
+pub fn websocket(messages_rx: Receiver<ChannelMessages>) {
+    thread::spawn(|| {
+        start_websocket(socket_receiver);
+    });
+}
+
 pub fn start_websocket(messages_rx: Receiver<ChannelMessages>) {
     info!("[websocket] Starting websocket server...");
 
