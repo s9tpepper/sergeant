@@ -18,7 +18,7 @@ use crate::{
         auth::{get_credentials, refresh_token, validate},
         eventsub::start_eventsub,
     },
-    websocket::{start_websocket, websocket},
+    websocket::websocket,
 };
 
 #[derive(Debug, Error)]
