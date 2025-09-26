@@ -92,9 +92,7 @@ fn listen(
                 }
 
                 tungstenite::Message::Ping(ping_message) => {
-                    info!("PING");
                     let _ = socket.send(tungstenite::Message::Pong(ping_message));
-                    info!("PONG");
                 }
 
                 tungstenite::Message::Close(close_message) => {
