@@ -1,11 +1,13 @@
+use psimple::Simple;
+use pulse::sample::Format;
+use pulse::sample::Spec;
+use pulse::stream::Direction;
 use rodio::Decoder;
+use rodio::Source;
 
 use crate::File;
 
 use crate::BufReader;
-
-use rodio::OutputStream;
-use rodio::Sink;
 
 use std::process::exit;
 
@@ -31,14 +33,37 @@ pub async fn play(name: &str) -> anyhow::Result<()> {
         exit(2);
     }
 
-    let (_stream, stream_handle) = OutputStream::try_default()?;
-    let sink = Sink::try_new(&stream_handle).unwrap();
-
     let file = BufReader::new(File::open(result.unwrap().file_path)?);
-    let source = Decoder::new(file)?;
-    sink.append(source);
-    sink.set_volume(0.25);
-    sink.sleep_until_end();
+    let source = Decoder::new(file)?.convert_samples::<f32>();
+
+    let spec = Spec {
+        format: Format::FLOAT32NE,
+        channels: source.channels() as u8,
+        rate: source.sample_rate(),
+    };
+
+    let sink = Simple::new(
+        None,                  // Use the default server
+        "intros",              // Our application’s name
+        Direction::Playback,   // We want a playback stream
+        Some("rodio.capture"), // Use the default device if failed
+        "programmatic audio",  // Description of our stream
+        &spec,                 // Our sample format
+        None,                  // Use default channel map
+        None,                  // Use default buffering attributes
+    )
+    .unwrap();
+
+    let audio_data = source.into_iter().collect::<Vec<_>>();
+    let audio = audio_data
+        .iter()
+        .flat_map(|&x| x.to_le_bytes().to_vec())
+        .collect::<Vec<_>>();
+
+    let audio_chunks = audio.chunks(1024);
+    for chunk in audio_chunks {
+        sink.write(chunk)?;
+    }
 
     Ok(())
 }

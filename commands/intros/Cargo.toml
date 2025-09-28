@@ -15,3 +15,5 @@ serde = { version = "1.0.214", features = ["derive", "serde_derive"] }
 serde_json = "1.0.132"
 sqlx = { version = "0.8.2", features = ["runtime-tokio", "sqlite"] }
 tokio = { version = "1.41.0", features = ["full"] }
+psimple = { package = "libpulse-simple-binding", version = "2.29.0" }
+pulse = { package = "libpulse-binding", version = "2.29.0" }
