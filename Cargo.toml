@@ -21,26 +21,26 @@ members = [
 anathema = { git = "https://github.com/togglebyte/anathema.git", branch = "dev"  }
 anyhow = "1.0.95"
 base64 = "0.22.1"
-clap = { version = "4.5.20", features = ["derive", "env", "cargo"] }
+clap = { version = "4.6.0", features = ["derive", "env", "cargo"] }
 color-eyre = "0.6.3"
 color-name = "1.1.0"
-colored = "2.2.0"
-crossterm = "0.28.1"
-descape = "2.0.3"
-directories = "5.0.1"
+colored = "3.1.0"
+crossterm = "0.29.0"
+descape = "3.0.0"
+directories = "6.0.0"
 dotenv = { version = "0.15.0", features = ["cli", "clap"] }
 features = "0.10.0"
 full = "0.3.0"
 # hex-rgb = "0.1.1"
 image = "0.25.1"
 log = "0.4.25"
-ratatui = "0.29.0"
-serde = { version = "1.0.203", features = ["alloc", "derive", "serde_derive"] }
-serde_json = "1.0.117"
+ratatui = "0.30.0"
+serde = { version = "1.0.228", features = ["alloc", "derive", "serde_derive"] }
+serde_json = "1.0.149"
 simplelog = "0.12.2"
 thiserror = "2.0.16"
-time = "0.3.36"
-tungstenite = { version = "0.26.1", features = ["native-tls"] }
+time = "0.3.47"
+tungstenite = { version = "0.28.0", features = ["native-tls"] }
 ureq = { version = "2.12.1", features = ["json"] }
 url = "2.5.1"
 uuid = "1.8.0"

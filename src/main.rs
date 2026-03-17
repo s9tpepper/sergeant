@@ -24,7 +24,7 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Err(error) => {
-            bail!("Mistakes were made... {error}")
+            bail!("Error executing command: {error}")
         }
     }
 }
