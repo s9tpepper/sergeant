@@ -1,3 +1,4 @@
+use log::info;
 use ratatui::layout::{Position, Size};
 
 use std::cmp::min;
@@ -17,6 +18,8 @@ pub struct ScrollViewState {
 impl ScrollViewState {
     /// Create a new scroll view state with an offset of (0, 0)
     pub fn new() -> Self {
+        info!("Creating new ScrollViewState");
+
         Self::default()
     }
 
@@ -57,7 +60,12 @@ impl ScrollViewState {
 
     /// Move the scroll view state up by one page
     pub fn scroll_page_up(&mut self) {
+        info!("self.page_size: {:?}", self.page_size);
+
         let page_size = self.page_size.map_or(1, |size| size.height);
+
+        info!("scroll_page_up :: page_size: {page_size}");
+
         // we add 1 to ensure that there is a one row overlap between pages
         self.offset.y = self.offset.y.saturating_add(1).saturating_sub(page_size);
     }
@@ -154,6 +162,9 @@ impl StatefulWidget for &mut ScrollView {
         state.offset = (x, y).into();
         state.size = Some(self.size);
         state.page_size = Some(area.into());
+
+        info!("Set page_size to {:?}", state.page_size);
+
         let visible_area = self.render_scrollbars(area, buf, state).intersection(self.buf.area);
         self.render_visible_area(area, buf, visible_area);
     }

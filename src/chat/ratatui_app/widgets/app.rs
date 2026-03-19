@@ -29,7 +29,7 @@ impl<'a> StatefulWidget for AppWidget<'a> {
             height: area.height * 2,
         };
 
-        let Ok(st) = state.lock() else {
+        let Ok(mut st) = state.lock() else {
             return;
         };
 
@@ -38,7 +38,6 @@ impl<'a> StatefulWidget for AppWidget<'a> {
 
         let mut chat_log = st.chat_log.clone();
         let iterator = chat_log.iter_mut();
-        let mut scrollstate = st.scrollstate;
         let mut scrollview = ScrollView::new(content_size);
 
         for chat_log_item in iterator {
@@ -64,7 +63,10 @@ impl<'a> StatefulWidget for AppWidget<'a> {
             }
         }
 
-        scrollstate.scroll_to_bottom();
-        scrollview.render(buf.area, buf, &mut scrollstate);
+        if chat_log.is_empty() {
+            st.scrollstate.scroll_to_bottom();
+        }
+
+        scrollview.render(buf.area, buf, &mut st.scrollstate);
     }
 }

@@ -39,7 +39,7 @@ pub struct RatatuiApp {
     channel_badges: HashMap<String, BadgeItem>,
     chat_log: Vec<ChatLogItem>,
     exit: bool,
-    pub scrollstate: ScrollViewState,
+    scrollstate: ScrollViewState,
     test_mode: bool,
 }
 
@@ -285,7 +285,6 @@ impl RatatuiApp {
             let buffer = frame.buffer_mut();
             buffer.reset();
 
-            // TODO: Need to fix the scrollview, it is not scrolling/rendering
             let stateful_widget: AppWidget = AppWidget {
                 phantom: std::marker::PhantomData,
             };
