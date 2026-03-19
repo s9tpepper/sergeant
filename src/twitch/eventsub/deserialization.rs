@@ -501,6 +501,18 @@ pub struct Fragment {
     pub mention: Option<Mention>,
 }
 
+impl Fragment {
+    pub fn get_length(&self) -> usize {
+        match self.r#type {
+            FragmentType::Text => self.text.len(),
+            FragmentType::Cheermote => 0,
+            FragmentType::Emote => 2,
+            FragmentType::Mention => 0,
+            FragmentType::Unknown => 0,
+        }
+    }
+}
+
 #[derive(Default, Serialize, Deserialize, Debug, Clone)]
 #[serde[default]]
 pub struct Mention {
@@ -529,7 +541,7 @@ pub struct Cheermote {
     tier: u8,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Eq, PartialEq)]
 pub enum FragmentType {
     Text,
     Cheermote,

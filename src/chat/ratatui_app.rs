@@ -1,21 +1,22 @@
+use ratatui::backend::Backend;
 use std::{
     collections::HashMap,
-    fs::{create_dir_all, read_to_string, write, File},
-    io::{self, stdout, BufReader, Stdout},
+    fs::{File, create_dir_all, read_to_string, write},
+    io::{self, BufReader, Stdout, stdout},
     panic,
     path::Path,
-    sync::{mpsc::Receiver, Arc, Mutex},
+    sync::{Arc, Mutex, mpsc::Receiver},
     time::Duration,
 };
 
 use color_eyre::config::HookBuilder;
 use crossterm::{
-    event::{self, poll, Event, KeyCode, KeyEventKind},
+    event::{self, Event, KeyCode, KeyEventKind, poll},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use log::{info, warn};
-use ratatui::{layout::Rect, prelude::CrosstermBackend, style::Color, widgets::StatefulWidget, Terminal};
+use ratatui::{Terminal, layout::Rect, prelude::CrosstermBackend, style::Color, widgets::StatefulWidget};
 use serde::{Deserialize, Serialize};
 use widgets::scroll_view::ScrollViewState;
 
@@ -157,22 +158,22 @@ impl RatatuiApp {
         while !self.exit {
             self.handle_keyboard_events(&mut terminal)?;
 
-            if !self.test_mode {
-                if let Ok(message) = self.receiver.try_recv() {
-                    // Check if we need to break the loop
-                    if self.exit {
-                        break;
-                    }
-
-                    // handles messages from TUI channel and adds to chat state
-                    self.handle_new_message(message);
-
-                    // persist chat log
-                    self.persist_chat()?;
-
-                    // trigger rendering here after handling message data
-                    self.render(&mut terminal)?;
+            if !self.test_mode
+                && let Ok(message) = self.receiver.try_recv()
+            {
+                // Check if we need to break the loop
+                if self.exit {
+                    break;
                 }
+
+                // handles messages from TUI channel and adds to chat state
+                self.handle_new_message(message);
+
+                // persist chat log
+                self.persist_chat()?;
+
+                // trigger rendering here after handling message data
+                self.render(&mut terminal)?;
             }
         }
 
@@ -278,13 +279,14 @@ impl RatatuiApp {
         let self_ref = Arc::new(Mutex::new(self));
         let mut state = self_ref.clone();
 
+        // NOTE: Clears the terminal before rendering, fixes the artifacts
+        // that appear behind emotes, but causes a flicker before rendering
+        // the new screen.
+        let _ = terminal.backend_mut().clear();
+
         terminal.draw(move |frame| {
             let area = frame.area();
-            info!("*** frame area: {area}");
-
             let buffer = frame.buffer_mut();
-            buffer.reset();
-
             let stateful_widget: AppWidget = AppWidget {
                 phantom: std::marker::PhantomData,
             };

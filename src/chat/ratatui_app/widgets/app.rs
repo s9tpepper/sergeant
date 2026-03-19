@@ -10,7 +10,7 @@ use ratatui::{
     widgets::{StatefulWidget, Widget},
 };
 
-use crate::chat::ratatui_app::{widgets::scroll_view::ScrollView, ChatLogItem, RatatuiApp};
+use crate::chat::ratatui_app::{ChatLogItem, RatatuiApp, widgets::scroll_view::ScrollView};
 
 pub struct AppWidget<'a> {
     pub phantom: PhantomData<&'a mut RatatuiApp>,
@@ -20,7 +20,7 @@ impl<'a> StatefulWidget for AppWidget<'a> {
     type State = Arc<Mutex<&'a mut RatatuiApp>>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        buf.reset();
+        // buf.reset();
 
         let content_size = Size {
             // Subtract one to avoid getting horizontal scrollbar from tui-scrollview
@@ -36,8 +36,7 @@ impl<'a> StatefulWidget for AppWidget<'a> {
         let mut available_area = area;
         available_area.height = content_size.height;
 
-        let mut chat_log = st.chat_log.clone();
-        let iterator = chat_log.iter_mut();
+        let iterator = st.chat_log.iter_mut();
         let mut scrollview = ScrollView::new(content_size);
 
         for chat_log_item in iterator {
@@ -63,7 +62,7 @@ impl<'a> StatefulWidget for AppWidget<'a> {
             }
         }
 
-        if chat_log.is_empty() {
+        if st.chat_log.is_empty() {
             st.scrollstate.scroll_to_bottom();
         }
 

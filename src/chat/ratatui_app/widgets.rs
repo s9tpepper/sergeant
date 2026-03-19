@@ -1,5 +1,5 @@
-use base64::{prelude::BASE64_STANDARD, Engine};
-use kitty_graphics_protocol::{check_protocol_support, get_window_size, Action};
+use base64::{Engine, prelude::BASE64_STANDARD};
+use kitty_graphics_protocol::{Action, check_protocol_support, get_window_size};
 use log::{error, info};
 use ratatui::{
     buffer::Buffer,
@@ -79,11 +79,11 @@ fn write_symbols(chars: Chars, style: &Style, cursor: &mut Position, buf: &mut B
         //     cursor.x, cursor.y
         // );
 
-        if let Some(width) = line_width {
-            if cursor.x == width {
-                cursor.x = 0;
-                cursor.y += 1;
-            }
+        if let Some(width) = line_width
+            && cursor.x == width
+        {
+            cursor.x = 0;
+            cursor.y += 1;
         }
 
         write_symbol(&char.to_string(), style, cursor, buf);
@@ -91,11 +91,11 @@ fn write_symbols(chars: Chars, style: &Style, cursor: &mut Position, buf: &mut B
 }
 
 pub fn handle_text(line_width: u16, fragment: &Fragment, style: &Style, cursor: &mut Position, buf: &mut Buffer) {
-    // info!("[chat_item::handle_text()]");
-    // info!(
-    //     "[chat_item::handle_text()] fragment.text: {}, cursor: {cursor}",
-    //     fragment.text
-    // );
+    info!("[chat_item::handle_text()]");
+    info!(
+        "[chat_item::handle_text()] fragment.text: {}, cursor: {cursor}",
+        fragment.text
+    );
 
     write_symbols(fragment.text.chars(), style, cursor, buf, Some(line_width));
 }

@@ -1,19 +1,27 @@
+use ratatui::backend::Backend;
+use std::io::stdout;
+
+use log::info;
 use ratatui::{
+    Terminal,
     layout::Position,
-    prelude::{Buffer, Rect},
+    prelude::{Buffer, CrosstermBackend, Rect},
     style::Color,
     widgets::Widget,
 };
 
 use crate::{
     chat::ratatui_app::{
-        widgets::{get_color, get_line_count, handle_emote, handle_mention, handle_text},
         ChatItem,
+        widgets::{
+            chat_event::{get_lines, has_emote},
+            get_color, get_line_count, handle_emote, handle_mention, handle_text,
+        },
     },
     twitch::{assets::get_badge_from_disk, eventsub::deserialization::FragmentType},
 };
 
-use super::{get_iterm_encoding, write_symbol, Style};
+use super::{Style, get_iterm_encoding, write_symbol};
 
 fn calculate_badges_space(chat_item: &ChatItem) -> i32 {
     let mut space = 0;
@@ -24,6 +32,7 @@ fn calculate_badges_space(chat_item: &ChatItem) -> i32 {
     space
 }
 
+// TODO: Cache these so we're not reading from disc every time
 fn write_user_badges(chat_item: &ChatItem, cursor: &mut Position, buffer: &mut Buffer) {
     chat_item.badge_items.iter().for_each(|badge_item| {
         if let Ok(base64) = get_badge_from_disk(badge_item) {
@@ -100,23 +109,38 @@ impl Widget for &mut ChatItem {
         let username_space = calculate_user_name_space(self);
         let name_display_space = badge_space + username_space;
 
-        let number_of_lines = get_line_count(&self.message.text, &area, Some(name_display_space));
-        // info!("[chat_item::render()] number_of_lines: {number_of_lines}");
+        let line_width = area.width.saturating_sub(1) as usize;
+        let lines = get_lines(&self.message.fragments, line_width, Some(name_display_space as usize));
+
+        let number_of_lines = lines.len();
 
         let mut cursor = Position::new(0, area.height.saturating_sub(number_of_lines as u16));
-        // info!("[chat_item::render()] cursor: {cursor}");
 
         write_user_badges(self, &mut cursor, buf);
         write_user_name(self, &mut style, &mut cursor, buf);
 
-        let line_width = area.width.saturating_sub(1);
         // info!("[chat_item::render()] line_width: {line_width}");
 
-        self.message
-            .fragments
-            .iter()
-            .for_each(|fragment| match fragment.r#type {
-                FragmentType::Text => handle_text(line_width, fragment, &style, &mut cursor, buf),
+        // TODO: re-use the instance that's already created instead of making
+        // a new one every time we render
+        // let mut terminal = Terminal::new(CrosstermBackend::new(stdout())).expect("No TUI");
+        for line in lines {
+            info!("Rendering line: {line:?}");
+
+            // NOTE: This block tries to clear the line where an emote needs to be rendered
+            // to attempt fixing artifacts behind the emote, didn't work 100%
+            // if has_emote(&line) {
+            //     let _ = terminal.set_cursor_position(Position {
+            //         x: cursor.x,
+            //         y: cursor.y,
+            //     });
+            //     let _ = terminal
+            //         .backend_mut()
+            //         .clear_region(ratatui::backend::ClearType::CurrentLine);
+            // }
+
+            line.iter().for_each(|fragment| match fragment.r#type {
+                FragmentType::Text => handle_text(line_width as u16, fragment, &style, &mut cursor, buf),
 
                 // TODO: Implement emotes
                 FragmentType::Cheermote => {}
@@ -129,6 +153,10 @@ impl Widget for &mut ChatItem {
                     unreachable!("We should never have an unknown fragment type");
                 }
             });
+
+            cursor.x = 0;
+            cursor.y += 1;
+        }
 
         self.area = area;
 
