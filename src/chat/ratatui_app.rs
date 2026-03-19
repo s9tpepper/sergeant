@@ -2,7 +2,6 @@ use std::{
     collections::HashMap,
     fs::{create_dir_all, read_to_string, write, File},
     io::{self, stdout, BufReader, Stdout},
-    ops::DerefMut,
     panic,
     path::Path,
     sync::{mpsc::Receiver, Arc, Mutex},
@@ -16,17 +15,13 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use log::{info, warn};
-use ratatui::{
-    layout::{Rect, Size},
-    prelude::CrosstermBackend,
-    style::Color,
-    Terminal,
-};
+use ratatui::{layout::Rect, prelude::CrosstermBackend, style::Color, widgets::StatefulWidget, Terminal};
 use serde::{Deserialize, Serialize};
-use widgets::scroll_view::{ScrollView, ScrollViewState};
+use widgets::scroll_view::ScrollViewState;
 
 use crate::{
     channel::ChannelMessages,
+    chat::ratatui_app::widgets::app::AppWidget,
     fs::get_data_directory,
     twitch::{
         assets::BadgeItem,
@@ -36,7 +31,7 @@ use crate::{
 
 mod widgets;
 
-struct RatatuiApp {
+pub struct RatatuiApp {
     #[allow(unused)]
     twitch_name: String,
     receiver: Receiver<ChannelMessages>,
@@ -44,19 +39,18 @@ struct RatatuiApp {
     channel_badges: HashMap<String, BadgeItem>,
     chat_log: Vec<ChatLogItem>,
     exit: bool,
-    scrollview: ScrollView,
-    scrollstate: ScrollViewState,
+    pub scrollstate: ScrollViewState,
     test_mode: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 enum ChatLogItem {
     Message(ChatItem),
     MessageWithEffect(ChatItemWithEffect),
     Event(ChatEvent),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct ChatEvent {
     #[serde(skip)]
     area: Rect,
@@ -64,7 +58,7 @@ struct ChatEvent {
     color: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct ChatItem {
     #[serde(skip)]
     area: Rect,
@@ -78,7 +72,7 @@ struct ChatItem {
 }
 
 // TODO: Finish this struct so it can render with effects
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct ChatItemWithEffect {
     chat_item: ChatItem,
     // message_effect: SomeThing
@@ -143,7 +137,6 @@ impl RatatuiApp {
             test_mode,
             exit: false,
             chat_log: vec![],
-            scrollview: ScrollView::new(Size { width: 0, height: 0 }),
             scrollstate: ScrollViewState::new(),
         }
     }
@@ -283,27 +276,21 @@ impl RatatuiApp {
 
     fn render(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> anyhow::Result<()> {
         let self_ref = Arc::new(Mutex::new(self));
-        let app = self_ref.clone();
+        let mut state = self_ref.clone();
 
-        terminal.draw(|frame| {
+        terminal.draw(move |frame| {
+            let area = frame.area();
+            info!("*** frame area: {area}");
+
             let buffer = frame.buffer_mut();
             buffer.reset();
 
             // TODO: Need to fix the scrollview, it is not scrolling/rendering
-            // let mut app_lock = app.lock().unwrap();
-            // let stateful_widget: &mut RatatuiApp = app_lock.deref_mut();
-            // let mut state = stateful_widget.scrollstate;
-            // state.scroll_to_bottom();
-            // stateful_widget
-            //     .scrollview
-            //     .render(frame.area(), frame.buffer_mut(), &mut state);
-            // drop(app_lock);
+            let stateful_widget: AppWidget = AppWidget {
+                phantom: std::marker::PhantomData,
+            };
 
-            let mut app_lock = app.lock().unwrap();
-            let stateful_widget: &mut RatatuiApp = app_lock.deref_mut();
-            let mut state = stateful_widget.scrollstate;
-            frame.render_stateful_widget(stateful_widget, frame.area(), &mut state);
-            drop(app_lock);
+            <AppWidget as StatefulWidget>::render(stateful_widget, area, buffer, &mut state);
         })?;
 
         Ok(())

@@ -1,4 +1,3 @@
-use log::info;
 use ratatui::{
     buffer::Buffer,
     layout::{Position, Rect},
@@ -15,20 +14,17 @@ use crate::{
 };
 
 impl Widget for &mut ChatEvent {
-    fn render(self, area: Rect, buf: &mut Buffer)
+    fn render(self, writeable_area: Rect, buf: &mut Buffer)
     where
         Self: Sized,
     {
-        info!("chat_event:render()");
-
         // NOTE: first_msg is not available in EventSub yet - 03/2025
         // let needs_borders = self.first_msg || is_animated;
 
-        let line_width = area.width.saturating_sub(1);
-        let number_of_lines = get_line_count(&self.message.text, &area, None) + 1;
-        info!("******* [chat_event::render()] number_of_lines: {number_of_lines}");
+        let line_width = writeable_area.width.saturating_sub(1);
+        let number_of_lines = get_line_count(&self.message.text, &writeable_area, None) + 1;
 
-        let y = area.height.saturating_sub(number_of_lines as u16);
+        let y = writeable_area.height.saturating_sub(number_of_lines as u16);
         let mut cursor = Position::new(0, y);
 
         let style = Style {
@@ -56,7 +52,7 @@ impl Widget for &mut ChatEvent {
                 }
             });
 
-        self.area = area;
+        self.area = writeable_area;
         self.area.height = self.area.height.saturating_sub(number_of_lines as u16);
     }
 }

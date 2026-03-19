@@ -1,4 +1,5 @@
 use base64::{prelude::BASE64_STANDARD, Engine};
+use kitty_graphics_protocol::{check_protocol_support, get_window_size, Action};
 use log::{error, info};
 use ratatui::{
     buffer::Buffer,
@@ -7,12 +8,13 @@ use ratatui::{
 };
 use std::{
     env,
+    io::Write,
     str::{Chars, FromStr},
 };
 
 use crate::twitch::eventsub::deserialization::{Emote, Fragment};
 
-mod app;
+pub mod app;
 pub mod chat_event;
 pub mod chat_item;
 pub mod scroll_view;
@@ -47,9 +49,11 @@ pub fn handle_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffer
         ImageProtocol::Iterm => write_iterm_emote(fragment, cursor, buf),
         ImageProtocol::Kitty => write_kitty_emote(fragment, cursor, buf),
 
-        _ => {} // ImageProtocol::Sixel => todo!(),
-                // ImageProtocol::Kitty => todo!(),
-                // ImageProtocol::None => todo!(),
+        _ => {
+            info!("No Image Protocol match for this terminal")
+        } // ImageProtocol::Sixel => todo!(),
+          // ImageProtocol::Kitty => todo!(),
+          // ImageProtocol::None => todo!(),
     }
 }
 
@@ -121,7 +125,18 @@ pub fn write_symbol(symbol: &str, style: &Style, cursor: &mut Position, buffer: 
 
 // TODO: Maybe render these images with ratatui-image
 #[allow(unused)]
-fn write_kitty_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffer) {}
+fn write_kitty_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffer) {
+    let Some(emote) = &fragment.emote else {
+        error!("[ratatui_app/widgets.rs] Unable to unwrap fragment.emote");
+
+        return;
+    };
+
+    match kitty_emote(emote, cursor, buf) {
+        Ok(_) => info!("[ratatui_app/widgets.rs] Kitty emote written successfully"),
+        Err(error) => error!("[ratatui_app/widgets.rs] Error writing Kitty Protocol emotes: {error}"),
+    }
+}
 
 fn write_iterm_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffer) {
     let Some(emote) = &fragment.emote else {
@@ -130,14 +145,13 @@ fn write_iterm_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffe
         return;
     };
 
-    match write_emote(emote, cursor, buf) {
-        Ok(_) => info!("[ratatui_app/widgets.rs] emote written successfully"),
-        Err(error) => error!("[ratatui_app/widgets.rs] Error writing emotes: {error}"),
+    if let Err(error) = iterm_emote(emote, cursor, buf) {
+        error!("[ratatui_app/widgets.rs] Error writing emotes: {error}");
     }
 }
 
 // TODO: Add an emote cache for encoded emotes so that we dont keep downloading them from the web
-fn write_emote(emote: &Emote, cursor: &mut Position, buf: &mut Buffer) -> anyhow::Result<()> {
+fn iterm_emote(emote: &Emote, cursor: &mut Position, buf: &mut Buffer) -> anyhow::Result<()> {
     let url = format!(
         "https://static-cdn.jtvnw.net/emoticons/v2/{}/default/dark/1.0",
         emote.id
@@ -173,14 +187,105 @@ fn write_emote(emote: &Emote, cursor: &mut Position, buf: &mut Buffer) -> anyhow
     Ok(())
 }
 
+fn kitty_emote(emote: &Emote, cursor: &mut Position, buf: &mut Buffer) -> anyhow::Result<()> {
+    if check_protocol_support().is_err() {
+        error!("Terminal does not support Kitty Image Protocol");
+        return Ok(());
+    }
+
+    let Ok(terminal_info) = get_window_size() else {
+        error!("Could not get terminal info for Kitty Image Protocol terminal");
+        return Ok(());
+    };
+
+    let url = format!(
+        "https://static-cdn.jtvnw.net/emoticons/v2/{}/default/dark/1.0",
+        emote.id
+    );
+
+    let response = ureq::get(&url).call()?;
+    let length: usize = response.header("content-length").unwrap().parse()?;
+    let mut file_bytes: Vec<u8> = vec![0; length];
+    response.into_reader().read_exact(&mut file_bytes)?;
+
+    let cell_width = terminal_info.cell_width();
+    let cell_height = terminal_info.cell_height();
+
+    info!("cell width: {cell_width}, cell_height: {cell_height}");
+
+    let h = (cursor.x + 1) * cell_width;
+    let v = cursor.y * cell_height;
+
+    info!("h: {h}, v: {v}");
+
+    let cmd = kitty_graphics_protocol::Command::builder()
+        .action(Action::TransmitAndDisplay)
+        .format(kitty_graphics_protocol::ImageFormat::Png)
+        // .quiet(2)
+        .z_index(0)
+        .display_area(2, 1)
+        .dimensions(40, 40)
+        // .source_rect(20, 20, 40, 40)
+        // .unicode_placeholder(1, 0)
+        //
+        // .parent(image_id, placement_id)
+        // .relative_offset(100, 0)
+        //
+        // .display_area(terminal_info.cols.into(), terminal_info.rows.into())
+        // .cell_offset(v.into(), h.into())
+        // .cell_offset(30, 0)
+        .build();
+    let chunks: Vec<String> = cmd.serialize_chunked(&file_bytes).unwrap().collect();
+    let mut stdout = std::io::stdout().lock();
+    for chunk in chunks {
+        stdout.write_all(chunk.as_bytes()).unwrap();
+    }
+    stdout.flush().unwrap();
+
+    // let display = ImageDisplay::new();
+    //
+    // display.transmit_png(&file_bytes, 123).unwrap();
+    //
+    // // Display the same image multiple times at different positions
+    // display.place_image(123, 10, 5).unwrap(); // column 10, row 5
+    //                                           // display.place_image(123, 20, 5).unwrap(); // column 20, row 5
+
+    // Clear images
+    // display.clear_all().unwrap();
+
+    info!("Finished Kitty Emote rendering");
+
+    cursor.x += 1;
+
+    Ok(())
+}
+
+// let tmux = term_misc::get_wininfo().is_tmux;
+//     let prefix = if tmux { "\x1bPtmux;\x1b\x1b" } else { "\x1b" };
+//     let suffix = if tmux { "\x1b\x07\x1b\\" } else { "\x07" };
+//
+//     write!(
+//         out,
+//         "{prefix}]1337;File=inline=1;size={}:{base64_encoded}{suffix}",
+//         base64_encoded.len()
+//     )?;
+//
+//     Ok(())
+
 pub fn get_iterm_encoding(base64: &str, width: Option<&str>, height: Option<&str>) -> String {
     let w = width.unwrap_or("44");
     let h = height.unwrap_or("44");
 
     format!(
         // "{}1337;File=inline=1;height=22px;width=22px;preserveAspectRatio=1;doNotMoveCursor=1:{}{}",
+        //
         "{}]1337;File=inline=1;height={h}px;width={w}px;doNotMoveCursor=1:{}{}",
-        ESCAPE, base64, BELL
+        //
+        // "{}]1337;File=inline=1;size={}px:{}{}",
+        ESCAPE,
+        // base64.len(),
+        base64,
+        BELL
     )
 }
 
