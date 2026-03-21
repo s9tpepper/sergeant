@@ -70,6 +70,9 @@ struct ChatItem {
     chatter_user_name: String,
     badges: Vec<Badge>,
     badge_items: Vec<BadgeItem>,
+
+    #[serde(skip)]
+    emotes: Vec<ratatui::layout::Position>,
 }
 
 // TODO: Finish this struct so it can render with effects
@@ -114,7 +117,8 @@ impl From<NotificationEvent> for ChatItem {
                 chatter_user_name,
                 badges,
                 badge_items: vec![],
-                area: Rect::default()
+                area: Rect::default(),
+                emotes: vec![]
             }
         } else {
             unreachable!("This should never happen");
@@ -282,7 +286,7 @@ impl RatatuiApp {
         // NOTE: Clears the terminal before rendering, fixes the artifacts
         // that appear behind emotes, but causes a flicker before rendering
         // the new screen.
-        let _ = terminal.backend_mut().clear();
+        // let _ = terminal.backend_mut().clear();
 
         terminal.draw(move |frame| {
             let area = frame.area();

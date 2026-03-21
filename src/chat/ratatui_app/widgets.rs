@@ -9,7 +9,7 @@ use ratatui::{
 use std::{
     collections::HashMap,
     env,
-    io::Write,
+    io::{self, Write},
     str::{Chars, FromStr},
     sync::{LazyLock, RwLock},
 };
@@ -154,7 +154,6 @@ fn write_iterm_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffe
 
 static IMAGE_MAP: LazyLock<RwLock<HashMap<String, String>>> = LazyLock::new(|| RwLock::new(HashMap::new()));
 
-// TODO: Add an emote cache for encoded emotes so that we dont keep downloading them from the web
 fn iterm_emote(emote: &Emote, cursor: &mut Position, buf: &mut Buffer) -> anyhow::Result<()> {
     let url = format!(
         "https://static-cdn.jtvnw.net/emoticons/v2/{}/default/dark/1.0",
@@ -190,23 +189,62 @@ fn iterm_emote(emote: &Emote, cursor: &mut Position, buf: &mut Buffer) -> anyhow
     Ok(())
 }
 
+// NOTE: This did not work.
+pub fn clear_cell(row: u16, column: u16) -> io::Result<()> {
+    // let character = ' ';
+
+    // let character = "\x033[X";
+
+    // The full escape sequence: ESC[Y;XH + character
+    // Use \x1b for the escape character (ASCII 27 or 0x1B)
+    // let sequence = format!("\x1b[{};{}H{}", row, column, character);
+    // let sequence1 = format!("\x1b[{};{}H{}", row, column + 1, character);
+    // let sequence2 = format!("\x1b[{};{}H{}", row, column + 1, character);
+
+    // let sequence = format!("\x1B[{};{}H\x1B[X", row, column);
+    //
+    let sequence = format!("\x1B[{};{}H\x1B[2K", row, column);
+    // let sequence1 = format!("\x1B[{};{}H\x1B[X", row, column + 1);
+    // let sequence2 = format!("\x1B[{};{}H\x1B[X", row, column + 2);
+
+    // Get a handle to stdout
+    let mut stdout = io::stdout();
+
+    // Write the escape sequence and character to the terminal
+    write!(stdout, "{}", sequence)?;
+    // write!(stdout, "{}", sequence1)?;
+    // write!(stdout, "{}", sequence2)?;
+
+    // Flush stdout to ensure the output is displayed immediately
+    stdout.flush()?;
+
+    // Optional: Move cursor back to a safe location (e.g., home position)
+    // write!(stdout, "\x1b[H")?;
+    // stdout.flush()?;
+
+    Ok(())
+}
+
 fn set_iterm_encoding_to_cell(buf: &mut Buffer, cursor: &mut Position, encoded_image: &str) {
     let Some(cell) = buf.cell_mut(*cursor) else {
         return;
     };
 
-    cell.reset();
+    // cell.reset();
+    // cell.set_bg(Color::Black);
+    // cell.set_fg(Color::Black);
 
-    cell.set_bg(Color::Black);
-    cell.set_fg(Color::Black);
+    let _ = clear_cell(cursor.y, cursor.x);
+    let _ = clear_cell(cursor.y, cursor.x + 1);
+    let _ = clear_cell(cursor.y, cursor.x + 2);
 
     cell.set_symbol(encoded_image);
 
-    #[allow(clippy::option_map_unit_fn)]
-    buf.cell_mut((cursor.x + 1, cursor.y)).map(|cell| {
-        cell.reset();
-        cell.set_symbol(" ");
-    });
+    // #[allow(clippy::option_map_unit_fn)]
+    // buf.cell_mut((cursor.x + 1, cursor.y)).map(|cell| {
+    //     cell.reset();
+    //     cell.set_symbol(" ");
+    // });
 
     cursor.x += 1;
 }

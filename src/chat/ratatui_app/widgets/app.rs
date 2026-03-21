@@ -10,7 +10,10 @@ use ratatui::{
     widgets::{StatefulWidget, Widget},
 };
 
-use crate::chat::ratatui_app::{ChatLogItem, RatatuiApp, widgets::scroll_view::ScrollView};
+use crate::chat::ratatui_app::{
+    ChatLogItem, RatatuiApp,
+    widgets::{clear_cell, scroll_view::ScrollView},
+};
 
 pub struct AppWidget<'a> {
     pub phantom: PhantomData<&'a mut RatatuiApp>,
@@ -39,6 +42,8 @@ impl<'a> StatefulWidget for AppWidget<'a> {
         let iterator = st.chat_log.iter_mut();
         let mut scrollview = ScrollView::new(content_size);
 
+        let mut emote_positions: Vec<ratatui::layout::Position> = vec![];
+
         for chat_log_item in iterator {
             if available_area.height == 0 {
                 break;
@@ -52,6 +57,9 @@ impl<'a> StatefulWidget for AppWidget<'a> {
 
                 ChatLogItem::Message(chat_item) => {
                     chat_item.render(available_area, scrollview.buf_mut());
+
+                    emote_positions.append(&mut chat_item.emotes);
+
                     available_area = chat_item.area;
                 }
 
@@ -67,5 +75,10 @@ impl<'a> StatefulWidget for AppWidget<'a> {
         }
 
         scrollview.render(buf.area, buf, &mut st.scrollstate);
+
+        emote_positions.iter().for_each(|position| {
+            let _ = clear_cell(position.y, position.x);
+            info!("Cleared position: {position}");
+        });
     }
 }

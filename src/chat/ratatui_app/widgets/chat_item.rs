@@ -1,13 +1,16 @@
+use ratatui::backend::Backend;
 use std::{
     borrow::Cow,
     collections::HashMap,
+    io::stdout,
     sync::{LazyLock, RwLock},
 };
 
 use log::info;
 use ratatui::{
+    Terminal,
     layout::Position,
-    prelude::{Buffer, Rect},
+    prelude::{Buffer, CrosstermBackend, Rect},
     style::Color,
     widgets::Widget,
 };
@@ -15,7 +18,10 @@ use ratatui::{
 use crate::{
     chat::ratatui_app::{
         ChatItem,
-        widgets::{chat_event::get_lines, get_color, handle_emote, handle_mention, handle_text},
+        widgets::{
+            chat_event::{get_lines, has_emote},
+            get_color, handle_emote, handle_mention, handle_text,
+        },
     },
     twitch::{assets::get_badge_from_disk, eventsub::deserialization::FragmentType},
 };
@@ -159,10 +165,10 @@ impl Widget for &mut ChatItem {
             // NOTE: This block tries to clear the line where an emote needs to be rendered
             // to attempt fixing artifacts behind the emote, didn't work 100%
             // if has_emote(&line) {
-            // let _ = terminal.set_cursor_position(Position { x: 0, y: cursor.y });
-            // let _ = terminal
-            //     .backend_mut()
-            //     .clear_region(ratatui::backend::ClearType::CurrentLine);
+            //     let _ = terminal.set_cursor_position(Position { x: 0, y: cursor.y });
+            //     let _ = terminal
+            //         .backend_mut()
+            //         .clear_region(ratatui::backend::ClearType::CurrentLine);
             // }
 
             line.iter().for_each(|fragment| match fragment.r#type {
@@ -171,7 +177,11 @@ impl Widget for &mut ChatItem {
                 // TODO: Implement emotes
                 FragmentType::Cheermote => {}
 
-                FragmentType::Emote => handle_emote(fragment, &mut cursor, buf),
+                FragmentType::Emote => {
+                    self.emotes.push(cursor);
+
+                    handle_emote(fragment, &mut cursor, buf);
+                }
 
                 FragmentType::Mention => handle_mention(fragment, &mut cursor, buf),
 
