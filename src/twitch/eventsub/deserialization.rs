@@ -507,7 +507,13 @@ impl Fragment {
             FragmentType::Text => self.text.len(),
             FragmentType::Cheermote => 0,
             FragmentType::Emote => 2,
-            FragmentType::Mention => 0,
+            FragmentType::Mention => {
+                if let Some(mention) = &self.mention {
+                    mention.user_name.len()
+                } else {
+                    0
+                }
+            }
             FragmentType::Unknown => 0,
         }
     }
