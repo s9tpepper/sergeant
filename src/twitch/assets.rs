@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{fs::get_data_directory, image_protocols::get_iterm_image_encoding};
 
-use super::api::{get_user, TwitchApiResponse};
+use super::api::{TwitchApiResponse, get_user};
 
 #[derive(Default, Clone, Serialize, Deserialize, Debug, Hash, Eq, PartialEq)]
 pub struct BadgeVersion {

@@ -7,9 +7,11 @@ use ratatui::{
     style::Color,
 };
 use std::{
+    collections::HashMap,
     env,
     io::Write,
     str::{Chars, FromStr},
+    sync::{LazyLock, RwLock},
 };
 
 use crate::twitch::eventsub::deserialization::{Emote, Fragment};
@@ -150,6 +152,8 @@ fn write_iterm_emote(fragment: &Fragment, cursor: &mut Position, buf: &mut Buffe
     }
 }
 
+static IMAGE_MAP: LazyLock<RwLock<HashMap<String, String>>> = LazyLock::new(|| RwLock::new(HashMap::new()));
+
 // TODO: Add an emote cache for encoded emotes so that we dont keep downloading them from the web
 fn iterm_emote(emote: &Emote, cursor: &mut Position, buf: &mut Buffer) -> anyhow::Result<()> {
     let url = format!(
@@ -157,16 +161,38 @@ fn iterm_emote(emote: &Emote, cursor: &mut Position, buf: &mut Buffer) -> anyhow
         emote.id
     );
 
-    let response = ureq::get(&url).call()?;
-    let length: usize = response.header("content-length").unwrap().parse()?;
-    let mut file_bytes: Vec<u8> = vec![0; length];
-    response.into_reader().read_exact(&mut file_bytes)?;
+    let image_map_reader_lock = IMAGE_MAP.read();
+    if let Ok(image_map_reader) = &image_map_reader_lock
+        && let Some(encoding) = image_map_reader.get(&url)
+    {
+        set_iterm_encoding_to_cell(buf, cursor, encoding);
+    } else {
+        drop(image_map_reader_lock);
 
-    let base64_emote = BASE64_STANDARD.encode(&file_bytes);
-    let encoded_image = get_iterm_encoding(&base64_emote, Some("42"), Some("42"));
+        let response = ureq::get(&url).call()?;
+        let length: usize = response.header("content-length").unwrap().parse()?;
+        let mut file_bytes: Vec<u8> = vec![0; length];
+        response.into_reader().read_exact(&mut file_bytes)?;
 
+        let base64_emote = BASE64_STANDARD.encode(&file_bytes);
+        let encoded_image = get_iterm_encoding(&base64_emote, Some("42"), Some("42"));
+
+        set_iterm_encoding_to_cell(buf, cursor, &encoded_image);
+
+        let mut image_map_write_lock = IMAGE_MAP.write();
+        if let Ok(ref mut image_map_writer) = image_map_write_lock {
+            image_map_writer.insert(url, encoded_image);
+        }
+
+        drop(image_map_write_lock);
+    }
+
+    Ok(())
+}
+
+fn set_iterm_encoding_to_cell(buf: &mut Buffer, cursor: &mut Position, encoded_image: &str) {
     let Some(cell) = buf.cell_mut(*cursor) else {
-        return Ok(());
+        return;
     };
 
     cell.reset();
@@ -174,7 +200,7 @@ fn iterm_emote(emote: &Emote, cursor: &mut Position, buf: &mut Buffer) -> anyhow
     cell.set_bg(Color::Black);
     cell.set_fg(Color::Black);
 
-    cell.set_symbol(&encoded_image);
+    cell.set_symbol(encoded_image);
 
     #[allow(clippy::option_map_unit_fn)]
     buf.cell_mut((cursor.x + 1, cursor.y)).map(|cell| {
@@ -183,8 +209,6 @@ fn iterm_emote(emote: &Emote, cursor: &mut Position, buf: &mut Buffer) -> anyhow
     });
 
     cursor.x += 1;
-
-    Ok(())
 }
 
 fn kitty_emote(emote: &Emote, cursor: &mut Position, buf: &mut Buffer) -> anyhow::Result<()> {

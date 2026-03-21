@@ -1,11 +1,13 @@
-use ratatui::backend::Backend;
-use std::io::stdout;
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    sync::{LazyLock, RwLock},
+};
 
 use log::info;
 use ratatui::{
-    Terminal,
     layout::Position,
-    prelude::{Buffer, CrosstermBackend, Rect},
+    prelude::{Buffer, Rect},
     style::Color,
     widgets::Widget,
 };
@@ -13,15 +15,14 @@ use ratatui::{
 use crate::{
     chat::ratatui_app::{
         ChatItem,
-        widgets::{
-            chat_event::{get_lines, has_emote},
-            get_color, get_line_count, handle_emote, handle_mention, handle_text,
-        },
+        widgets::{chat_event::get_lines, get_color, handle_emote, handle_mention, handle_text},
     },
     twitch::{assets::get_badge_from_disk, eventsub::deserialization::FragmentType},
 };
 
 use super::{Style, get_iterm_encoding, write_symbol};
+
+static IMAGE_MAP: LazyLock<RwLock<HashMap<String, String>>> = LazyLock::new(|| RwLock::new(HashMap::new()));
 
 fn calculate_badges_space(chat_item: &ChatItem) -> i32 {
     let mut space = 0;
@@ -34,22 +35,48 @@ fn calculate_badges_space(chat_item: &ChatItem) -> i32 {
 
 // TODO: Cache these so we're not reading from disc every time
 fn write_user_badges(chat_item: &ChatItem, cursor: &mut Position, buffer: &mut Buffer) {
-    chat_item.badge_items.iter().for_each(|badge_item| {
-        if let Ok(base64) = get_badge_from_disk(badge_item) {
-            let Some(cell) = buffer.cell_mut(*cursor) else {
+    for badge_item in chat_item.badge_items.iter() {
+        let Some(version) = badge_item.versions.first() else {
+            continue;
+        };
+        let badge_file_name = format!("{}_{}.txt", badge_item.set_id, version.id);
+
+        let Ok(read_lock) = IMAGE_MAP.read() else {
+            continue;
+        };
+
+        let encoding: &Cow<str> = if read_lock.contains_key(&badge_file_name) {
+            let enc = read_lock.get(&badge_file_name).expect("already checked it exists");
+            &Cow::Borrowed(enc)
+        } else {
+            drop(read_lock);
+            let Ok(mut write_lock) = IMAGE_MAP.write() else {
                 return;
             };
 
-            cell.reset();
-            cell.set_symbol(&get_iterm_encoding(&base64, None, None));
+            let badge = get_badge_from_disk(badge_item).unwrap_or_default();
+            write_lock.insert(badge_file_name, badge.clone());
 
-            buffer
-                .cell_mut((cursor.x + 1, cursor.y))
-                .map(|cell| cell.set_skip(true));
+            &Cow::Owned(badge)
+        };
 
-            cursor.x += 2;
+        if encoding.is_empty() {
+            continue;
         }
-    });
+
+        let Some(cell) = buffer.cell_mut(*cursor) else {
+            return;
+        };
+
+        cell.reset();
+        cell.set_symbol(&get_iterm_encoding(encoding, None, None));
+
+        buffer
+            .cell_mut((cursor.x + 1, cursor.y))
+            .map(|cell| cell.set_skip(true));
+
+        cursor.x += 2;
+    }
 }
 
 // Emote caching from V1
@@ -110,6 +137,8 @@ impl Widget for &mut ChatItem {
         let name_display_space = badge_space + username_space;
 
         let line_width = area.width.saturating_sub(1) as usize;
+
+        // let fragments = std::mem::take(&mut self.message.fragments);
         let lines = get_lines(&self.message.fragments, line_width, Some(name_display_space as usize));
 
         let number_of_lines = lines.len();
@@ -130,13 +159,10 @@ impl Widget for &mut ChatItem {
             // NOTE: This block tries to clear the line where an emote needs to be rendered
             // to attempt fixing artifacts behind the emote, didn't work 100%
             // if has_emote(&line) {
-            //     let _ = terminal.set_cursor_position(Position {
-            //         x: cursor.x,
-            //         y: cursor.y,
-            //     });
-            //     let _ = terminal
-            //         .backend_mut()
-            //         .clear_region(ratatui::backend::ClearType::CurrentLine);
+            // let _ = terminal.set_cursor_position(Position { x: 0, y: cursor.y });
+            // let _ = terminal
+            //     .backend_mut()
+            //     .clear_region(ratatui::backend::ClearType::CurrentLine);
             // }
 
             line.iter().for_each(|fragment| match fragment.r#type {

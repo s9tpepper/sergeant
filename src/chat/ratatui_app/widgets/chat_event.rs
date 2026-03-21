@@ -9,7 +9,7 @@ use ratatui::{
 use crate::{
     chat::ratatui_app::{
         ChatEvent,
-        widgets::{Style, get_color, get_line_count, handle_emote, handle_text},
+        widgets::{Style, get_color, handle_emote, handle_text},
     },
     twitch::eventsub::deserialization::{Fragment, FragmentType},
 };
@@ -27,6 +27,8 @@ fn break_apart(fragments: &Vec<Fragment>) -> Vec<Fragment> {
     let mut broken_apart: Vec<Fragment> = vec![];
 
     let mut word = String::new();
+
+    #[allow(clippy::needless_range_loop)]
     for fragment in fragments {
         match fragment.r#type {
             FragmentType::Text => {
@@ -34,9 +36,10 @@ fn break_apart(fragments: &Vec<Fragment>) -> Vec<Fragment> {
                     match character {
                         ' ' => {
                             if !word.is_empty() {
+                                let text = std::mem::take(&mut word);
                                 broken_apart.push(Fragment {
                                     r#type: FragmentType::Text,
-                                    text: word.clone(),
+                                    text,
                                     cheermote: None,
                                     emote: None,
                                     mention: None,
@@ -58,24 +61,12 @@ fn break_apart(fragments: &Vec<Fragment>) -> Vec<Fragment> {
                     }
                 }
             }
-            FragmentType::Emote => {
-                broken_apart.push(Fragment {
-                    r#type: FragmentType::Emote,
-                    text: fragment.text.clone(),
-                    cheermote: fragment.cheermote.clone(),
-                    emote: fragment.emote.clone(),
-                    mention: fragment.mention.clone(),
-                });
+            FragmentType::Emote | FragmentType::Mention => {
+                broken_apart.push(fragment.clone());
             }
-            FragmentType::Cheermote => todo!(),
-            FragmentType::Mention => {
-                broken_apart.push(Fragment {
-                    r#type: FragmentType::Mention,
-                    text: fragment.text.clone(),
-                    cheermote: fragment.cheermote.clone(),
-                    emote: fragment.emote.clone(),
-                    mention: fragment.mention.clone(),
-                });
+
+            FragmentType::Cheermote => {
+                info!("Found Cheermote: {fragment:?}");
             }
             FragmentType::Unknown => todo!(),
         }
